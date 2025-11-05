@@ -54,8 +54,6 @@ void DrawChart(AppState& st) {
         std::snprintf(lbl, sizeof(lbl), "ch%02d", v + 1);
         maxLabelPx = std::max(maxLabelPx, ImGui::CalcTextSize(lbl).x);
     }
-    // add the per-label inset + a much larger cushion for better spacing
-    const float leftPad = maxLabelPx + kLabelInsetPx + 50.0f;
 
     // Container that fills the remaining space (no scrollbars)
     ImGui::BeginChild("plot", ImVec2(0, 0), false,
@@ -65,7 +63,17 @@ void DrawChart(AppState& st) {
     ImPlot::PushStyleVar(ImPlotStyleVar_MajorGridSize, ImVec2(1.0f, 1.0f));
     ImPlot::PushStyleVar(ImPlotStyleVar_MinorGridSize, ImVec2(1.0f, 1.0f));
     ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding,  ImVec2(4.0f, 2.0f));
-    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding,   ImVec2(leftPad, 6.0f));
+    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding,   ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_LegendPadding,   ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_PlotBorderSize, 0.0f);
+    ImPlot::PushStyleColor(ImPlotCol_PlotBorder, ImVec4(0,0,0,0));
+    // Transparent everything + no border/frame
+    ImPlot::PushStyleColor(ImPlotCol_FrameBg,       ImVec4(0,0,0,0)); // frame behind axes
+    ImPlot::PushStyleColor(ImPlotCol_PlotBg,        ImVec4(0,0,0,0)); // plot area
+    ImPlot::PushStyleColor(ImPlotCol_AxisBg,        ImVec4(0,0,0,0)); // axis background (the gray strip)
+    ImPlot::PushStyleColor(ImPlotCol_AxisBgHovered, ImVec4(0,0,0,0)); // also transparent on hover
+    ImPlot::PushStyleColor(ImPlotCol_AxisBgActive,  ImVec4(0,0,0,0)); // and when active
+    ImPlot::PushStyleVar  (ImPlotStyleVar_PlotBorderSize, 0.0f);
 
     ImVec2 plot_size = ImGui::GetContentRegionAvail();
     if (plot_size.x < 100.0f) plot_size.x = 100.0f;
@@ -140,9 +148,12 @@ void DrawChart(AppState& st) {
             int x0 = std::max((int)ppos.x, cx);
             int x1 = std::min((int)(ppos.x + psz.x), cx + kWiperPx);
             if (x1 > x0) {
-                ImVec4 bg = ImPlot::GetStyle().Colors[ImPlotCol_PlotBg]; bg.w = 1.0f;
+                // prefer ChildBg if your parent window uses it; otherwise WindowBg
+                ImVec4 mainBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
+                if (mainBg.w == 0.0f) mainBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+                mainBg.w = 1.0f; // fully opaque so it truly wipes
                 dl->AddRectFilled(ImVec2((float)x0, ppos.y), ImVec2((float)x1, ppos.y + psz.y),
-                                  ImGui::GetColorU32(bg));
+                                  ImGui::GetColorU32(mainBg));
             }
         }
 
@@ -165,6 +176,6 @@ void DrawChart(AppState& st) {
         ImPlot::EndPlot();
     }
 
-    ImPlot::PopStyleVar(4); // PlotPadding, LabelPadding, MinorGridSize, MajorGridSize
+    ImPlot::PopStyleVar(0); // PlotPadding, LabelPadding, MinorGridSize, MajorGridSize
     ImGui::EndChild();
 }
