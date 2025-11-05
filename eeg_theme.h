@@ -2,7 +2,7 @@
 #include "imgui.h"
 #include "implot.h"
 
-// High-contrast dark theme tuned for scope visuals (cyan traces, muted grid)
+// High-contrast dark theme (compatible with older ImPlot enums)
 inline void ApplyAldaTheme() {
     ImGuiStyle& s = ImGui::GetStyle();
     ImVec4* c = s.Colors;
@@ -54,7 +54,6 @@ inline void ApplyAldaTheme() {
     const ImVec4 plotBg    = ImVec4(0.06f, 0.07f, 0.08f, 1.00f);
     const ImVec4 plotBorder= ImVec4(1,1,1,0.06f);
     const ImVec4 gridMajor = ImVec4(1,1,1,0.08f);
-    const ImVec4 gridMinor = ImVec4(1,1,1,0.04f);
     const ImVec4 axisTxt   = textDim;
     const ImVec4 axisTick  = ImVec4(1,1,1,0.06f);
     const ImVec4 cyanTrace = ImVec4(0.30f, 0.90f, 0.95f, 1.00f);
@@ -68,7 +67,6 @@ inline void ApplyAldaTheme() {
     pc[ImPlotCol_AxisTick]      = axisTick;    // tick marks
     pc[ImPlotCol_AxisBg]        = ImVec4(0,0,0,0);
     pc[ImPlotCol_AxisBgHovered] = ImVec4(0,0,0,0);
-    // (No AxisLine in this version)
 
     pc[ImPlotCol_Line]          = cyanTrace;
     pc[ImPlotCol_Fill]          = cyanTrace;

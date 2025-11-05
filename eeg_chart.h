@@ -1,7 +1,5 @@
 #pragma once
-#include "imgui.h"
-#include "implot.h"
 #include "eeg_core.h"
 
-// Draw the scope chart; consumes available region below header
+// Keep the signature that main.cpp calls:
 void DrawChart(AppState& st);

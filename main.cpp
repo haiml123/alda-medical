@@ -5,6 +5,7 @@
   #include <glad/glad.h>
 #endif
 #include <GLFW/glfw3.h>
+#include <cstdio>
 
 #include "imgui.h"
 #include "implot.h"
@@ -16,7 +17,7 @@
 #include "eeg_toolbar.h"
 #include "eeg_chart.h"
 
-static void glfw_error_callback(int e, const char* d){ fprintf(stderr,"GLFW error %d: %s\n", e, d); }
+static void glfw_error_callback(int e, const char* d){ std::fprintf(stderr,"GLFW error %d: %s\n", e, d); }
 
 int main(){
     // ---- GLFW / GL init ----
@@ -32,11 +33,14 @@ int main(){
     GLFWwindow* window = glfwCreateWindow(1700, 980, "EEG Sweep (ImPlot)", nullptr, nullptr);
     if (!window) { glfwTerminate(); return 1; }
     glfwMakeContextCurrent(window);
+
+    // VSync (smooth + low CPU).
     glfwSwapInterval(1);
+    // glfwSwapInterval(0); // uncap if you want higher FPS cursor
 
 #if !defined(__APPLE__)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        fprintf(stderr,"Failed to init GLAD\n"); glfwDestroyWindow(window); glfwTerminate(); return 1;
+        std::fprintf(stderr,"Failed to init GLAD\n"); glfwDestroyWindow(window); glfwTerminate(); return 1;
     }
 #endif
 
@@ -57,7 +61,7 @@ int main(){
     ApplyAldaTheme();
 
     // ---- App state & synth ----
-    AppState st;
+    AppState st;            // monitoring starts OFF by design now
     SynthEEG synth;
     std::vector<float> sample;
 
@@ -65,11 +69,49 @@ int main(){
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        // Acquire samples if recording
-        if (st.recording) {
+        // Hotkeys
+        if (ImGui::IsKeyPressed(ImGuiKey_F5)) { // toggle Monitor
+            if (st.isMonitoring) {
+                st.isMonitoring = false;
+                if (st.isRecordingToFile) {
+                    st.isRecordingToFile = false;
+                    st.isPaused = false;
+                    // TODO: finalize/close file
+                    std::printf("[F5] Monitor OFF; also STOP recording at t=%.3f s\n", st.currentEEGTime());
+                } else {
+                    std::printf("[F5] Monitor OFF at t=%.3f s\n", st.currentEEGTime());
+                }
+            } else {
+                st.isMonitoring = true;
+                std::printf("[F5] Monitor ON at t=%.3f s\n", st.currentEEGTime());
+            }
+        }
+
+        if (ImGui::IsKeyPressed(ImGuiKey_F7) && st.isMonitoring) { // Record/Pause toggle
+            if (st.isRecordingToFile && !st.isPaused) {
+                // -> PAUSE
+                st.isPaused = true;
+                st.pauseMarks.push_back({ st.currentEEGTime() });
+                // TODO: pause file writing
+                std::printf("[F7] PAUSE at t=%.3f s\n", st.currentEEGTime());
+            } else {
+                // -> RECORD (start or resume)
+                st.isRecordingToFile = true;
+                st.isPaused          = false;
+                // TODO: start/resume file writing
+                std::printf("[F7] %s recording at t=%.3f s\n",
+                            "Start/Resume", st.currentEEGTime());
+            }
+        }
+
+        // Generate samples only while monitoring
+        if (st.isMonitoring) {
             int n = st.sampler.due();
             for (int i=0;i<n;++i){ synth.next(sample); st.ring.push(sample); }
         }
+
+        // Cursor/playhead advances only while monitoring
+        st.tickDisplay(st.isMonitoring);
 
         // Frame start
         ImGui_ImplOpenGL3_NewFrame();
@@ -82,7 +124,7 @@ int main(){
         ImGui::Begin("Scope", nullptr,
             ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-        // Header
+        // Header / controls
         DrawToolbar(st);
 
         // Chart (fills rest)
