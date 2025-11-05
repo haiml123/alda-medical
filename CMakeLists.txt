@@ -30,16 +30,20 @@ include_directories(
         ${IMGUI_DIR}/backends
         ${IMPLOT_DIR}
         ${OPENGL_INCLUDE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_executable(alda_medical
         main.cpp
         eeg_core.h
+        eeg_core.cpp
         eeg_theme.h
         eeg_toolbar.h
         eeg_toolbar.cpp
         eeg_chart.h
         eeg_chart.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.cpp
         ${IMGUI_SOURCES}
         ${IMPLOT_SOURCES}
 )

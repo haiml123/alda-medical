@@ -7,6 +7,9 @@
 #include <algorithm>
 #include <cstdio>
 
+// Forward declaration
+struct Channel;
+
 // ===== App constants =====
 static constexpr int   CHANNELS        = 64;         // simulate 64 channels
 static constexpr float SAMPLE_RATE_HZ  = 1000.0f;    // 1000 Hz
@@ -73,10 +76,13 @@ struct AppState {
     bool isMonitoring       = false;   // START (F5) enables live viewing + sweeper
     bool isRecordingToFile  = false;   // RECORD (F7) toggles writing (not implemented yet)
     bool isPaused           = false;   // PAUSE (F8) pauses file writing; screen continues
+    bool showSettingsPopup  = false;   // Settings popup toggle
 
     // choices
     int   winIdx    = 2; // default 10s
     int   ampIdx    = 4; // default 200 µV
+    int   lastWinIdx = 2; // ADD THIS - track last window index for smooth transitions
+
 
     // derived
     float windowSec() const { return WINDOW_OPTIONS[winIdx]; }
@@ -111,22 +117,6 @@ struct AppState {
             playheadSeconds += dt;
         }
 
-        // ===================================================================
-        // FRAME-RATE INDEPENDENT SMOOTHING (FIXED)
-        // ===================================================================
-        // Using exponential decay: smoothed = target + (smoothed - target) * exp(-lambda * dt)
-        // This ensures consistent smoothing regardless of frame rate (30, 60, 144+ FPS)
-        //
-        // Lambda parameter controls smoothing speed:
-        //   lambda = 5.0  -> Heavy smoothing (~140ms half-life), very smooth
-        //   lambda = 6.0  -> Medium smoothing (~115ms half-life), smooth
-        //   lambda = 8.0  -> RECOMMENDED (~87ms half-life), best balance
-        //   lambda = 10.0 -> Light smoothing (~70ms half-life), responsive
-        //   lambda = 12.0 -> Minimal smoothing (~58ms half-life), very responsive
-        //
-        // Increase lambda for more responsiveness, decrease for more smoothing.
-        // ===================================================================
-
         const double lambda = 8.0; // Tunable smoothing parameter (recommended: 5-10)
 
         if (!emaPrimed) {
@@ -135,17 +125,9 @@ struct AppState {
         }
         else {
             // Frame-rate independent exponential decay formula
-            // Works identically at any FPS (30, 60, 120, 144, etc.)
             displayNowSmoothed = playheadSeconds +
                                  (displayNowSmoothed - playheadSeconds) * std::exp(-lambda * dt);
         }
-
-        // ===================================================================
-        // OLD CODE (REMOVED - was frame-rate dependent):
-        // const double alpha = 0.22; // 0.12..0.35 works well
-        // if (!emaPrimed) { displayNowSmoothed = playheadSeconds; emaPrimed = true; }
-        // else            { displayNowSmoothed = alpha*playheadSeconds + (1.0 - alpha)*displayNowSmoothed; }
-        // ===================================================================
 
         displayNow = playheadSeconds;
     }
@@ -153,14 +135,17 @@ struct AppState {
     // channel names
     std::vector<std::string> chNames;
 
+    // ===== Channel configuration =====
+    std::vector<Channel> availableChannels;
+
     // pause marks (timestamped in EEG/playhead seconds)
     struct PauseMark { double t_start; };
     std::vector<PauseMark> pauseMarks;
 
-    AppState() {
-        chNames.reserve(CHANNELS);
-        for (int i=0;i<CHANNELS;++i){ char b[16]; std::snprintf(b,sizeof(b),"Ch%02d",i+1); chNames.emplace_back(b); }
-    }
+    AppState();
+
+    // Helper method to initialize channels
+    void InitializeChannels();
 
     // helper for marks / logging
     double currentEEGTime() const { return playheadSeconds; }
@@ -274,7 +259,6 @@ struct SynthEEG {
 
             float spike = 0.f;
             if (uni01(rng) < spikeChance) {
-                // one-shot; keep it rare
                 if ((rng() & 127) == 0) spike = ((rng() & 1) ? spikeAmp : -spikeAmp);
             }
 

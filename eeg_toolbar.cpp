@@ -1,6 +1,6 @@
 #include "eeg_toolbar.h"
 #include <cstdio>
-#include <cmath> // sinf, floorf
+#include <cmath>
 
 static inline float Roundf(float x){ return std::floor(x + 0.5f); }
 
@@ -34,7 +34,22 @@ static void DrawStatusDotInLastItem(bool recordingActive, bool paused, float rad
     dl->AddCircle(ImVec2(cx, cy), radius, ImGui::GetColorU32(ImVec4(0,0,0,0.45f)), 32, 1.0f);
 }
 
+// Callback for when user confirms channel selection
+static void OnChannelSelectionConfirmed(const std::string& name, const std::vector<Channel>& channels) {
+    std::printf("[Channel Selector] Configuration: %s\n", name.c_str());
+    std::printf("[Channel Selector] Selected channels:\n");
+    for (const auto& ch : channels) {
+        if (ch.selected) {
+            std::printf("  - %s (ID: %s, Color: %s)\n",
+                       ch.name.c_str(), ch.id.c_str(), ch.color.c_str());
+        }
+    }
+}
+
 float DrawToolbar(AppState& st) {
+    // Static modal instance
+    static ChannelSelectorModal channelModal;
+
     const float header_h = 52.0f;
     ImGui::BeginChild("header", ImVec2(0, header_h), false, ImGuiWindowFlags_NoScrollbar);
 
@@ -47,6 +62,8 @@ float DrawToolbar(AppState& st) {
     const ImVec4 orangeH = ImVec4(0.92f, 0.70f, 0.22f, 1.00f);
     const ImVec4 red     = ImVec4(0.89f, 0.33f, 0.30f, 1.00f);
     const ImVec4 redH    = ImVec4(0.85f, 0.28f, 0.25f, 1.00f);
+    const ImVec4 purple  = ImVec4(0.60f, 0.40f, 0.80f, 1.00f);
+    const ImVec4 purpleH = ImVec4(0.65f, 0.45f, 0.85f, 1.00f);
 
     // ===== MONITOR toggle =====
     const bool monitoring = st.isMonitoring;
@@ -63,7 +80,6 @@ float DrawToolbar(AppState& st) {
             if (st.isRecordingToFile) {
                 st.isRecordingToFile = false;
                 st.isPaused = false;
-                // TODO: finalize/close file here
                 std::printf("[MONITOR OFF] Also stopped recording at t=%.3f s\n", st.currentEEGTime());
             } else {
                 std::printf("[MONITOR OFF] Monitoring stopped at t=%.3f s\n", st.currentEEGTime());
@@ -77,13 +93,13 @@ float DrawToolbar(AppState& st) {
 
     ImGui::SameLine();
 
-    // ===== RECORD / PAUSE toggle (only while monitoring) =====
+    // ===== RECORD / PAUSE toggle =====
     const bool canRecord       = st.isMonitoring;
     const bool recordingActive = st.isRecordingToFile && !st.isPaused;
     const bool currentlyPaused = st.isRecordingToFile &&  st.isPaused;
 
     const char* recLabel = recordingActive ? "PAUSE (F7)" : "RECORD (F7)";
-    ImVec4 recCol        = recordingActive ? orange : green;   // PAUSE -> orange, RECORD -> green
+    ImVec4 recCol        = recordingActive ? orange : green;
     ImVec4 recColH       = recordingActive ? orangeH : greenH;
 
     ImGui::PushStyleColor(ImGuiCol_Button,        recCol);
@@ -94,12 +110,10 @@ float DrawToolbar(AppState& st) {
             if (recordingActive) {
                 st.isPaused = true;
                 st.pauseMarks.push_back({ st.currentEEGTime() });
-                // TODO: pause file writing here
                 std::printf("[PAUSE] Recording paused at t=%.3f s\n", st.currentEEGTime());
             } else {
                 st.isRecordingToFile = true;
                 st.isPaused          = false;
-                // TODO: start/resume file writing here
                 std::printf("%s recording at t=%.3f s\n",
                             currentlyPaused ? "[RESUME]" : "[RECORD]", st.currentEEGTime());
             }
@@ -134,21 +148,36 @@ float DrawToolbar(AppState& st) {
     ImGui::SameLine();
     if (ImGui::Button("+##amp")) { incIdx(st.ampIdx, AMP_COUNT); }
 
+    // Channel Selector button
+    ImGui::SameLine(); ImGui::Dummy(ImVec2(12,1)); ImGui::SameLine();
+
+    // Store button position BEFORE drawing the button
+    ImVec2 channelButtonPos = ImGui::GetCursorScreenPos();
+    ImVec2 channelButtonSize = ImVec2(120, 36);
+
+    ImGui::PushStyleColor(ImGuiCol_Button,        purple);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, purpleH);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  purpleH);
+    if (ImGui::Button("Channels", channelButtonSize)) {
+        channelModal.Open(&st.availableChannels, OnChannelSelectionConfirmed);
+    }
+    ImGui::PopStyleColor(3);
+
     // ===== Right status area =====
     ImGui::SameLine(0.0f, 0.0f);
     float right = ImGui::GetWindowContentRegionMax().x;
-    float x = right - 360.0f; // adjust if layout gets tight
+    float x = right - 360.0f;
     ImGui::SameLine(x > 0 ? x : 0);
 
     // Monitoring text
     ImGui::Text("%s", st.isMonitoring ? "MONITORING" : "IDLE");
     ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
 
-    // Reserve a square the height of the current text line; draw a dot centered in it
+    // Status dot
     const float dotRadius = 5.5f;
     ImGui::InvisibleButton("##rec_dot", ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
     DrawStatusDotInLastItem(recordingActive, currentlyPaused, dotRadius);
-    ImGui::SameLine(0.0f, 6.0f); // small gap after the dot
+    ImGui::SameLine(0.0f, 6.0f);
 
     // Recording status text
     if (st.isRecordingToFile) {
@@ -163,5 +192,9 @@ float DrawToolbar(AppState& st) {
     ImGui::SameLine(); ImGui::Text("%.0f FPS", ImGui::GetIO().Framerate);
 
     ImGui::EndChild();
+
+    // Draw the channel modal
+    channelModal.Draw(channelButtonPos, channelButtonSize);
+
     return header_h;
 }
