@@ -1,32 +1,64 @@
 cmake_minimum_required(VERSION 3.16)
 project(alda_medical)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Enable Qt's MOC, UIC, and RCC
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+find_package(OpenGL REQUIRED)
+find_package(glfw3 REQUIRED)
 
-# Set Qt path - adjust this to your Qt installation
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui)
+set(IMPLOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/implot)
 
-# For Homebrew Qt on Intel Mac:
-set(CMAKE_PREFIX_PATH "/opt/homebrew/opt/qt")
-# Or if you installed Qt manually:
-# set(CMAKE_PREFIX_PATH "~/Qt/6.5.0/macos")
+set(IMGUI_SOURCES
+        ${IMGUI_DIR}/imgui.cpp
+        ${IMGUI_DIR}/imgui_demo.cpp
+        ${IMGUI_DIR}/imgui_draw.cpp
+        ${IMGUI_DIR}/imgui_tables.cpp
+        ${IMGUI_DIR}/imgui_widgets.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+        ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+)
 
-# Find Qt packages
-find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
+set(IMPLOT_SOURCES
+        ${IMPLOT_DIR}/implot.cpp
+        ${IMPLOT_DIR}/implot_items.cpp
+)
 
-# Add source files
+include_directories(
+        ${IMGUI_DIR}
+        ${IMGUI_DIR}/backends
+        ${IMPLOT_DIR}
+        ${OPENGL_INCLUDE_DIR}
+)
+
 add_executable(alda_medical
         main.cpp
-        mainwindow.cpp
-        mainwindow.h
+        eeg_core.h
+        eeg_theme.h
+        eeg_toolbar.h
+        eeg_toolbar.cpp
+        eeg_chart.h
+        eeg_chart.cpp
+        ${IMGUI_SOURCES}
+        ${IMPLOT_SOURCES}
 )
 
-# Link Qt libraries
 target_link_libraries(alda_medical
-        Qt6::Core
-        Qt6::Widgets
+        OpenGL::GL
+        glfw
 )
+
+if(APPLE)
+    target_link_libraries(alda_medical
+            "-framework Cocoa" "-framework IOKit" "-framework CoreVideo"
+    )
+endif()
+
+if(MSVC)
+    target_compile_options(alda_medical PRIVATE /W4)
+else()
+    target_compile_options(alda_medical PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+install(TARGETS alda_medical RUNTIME DESTINATION bin)

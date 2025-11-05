@@ -1,0 +1,126 @@
+;--------------------------------------------------------------------;
+;
+; Media Converter
+;
+; INF file for Windows Windows 7, Vista, XP (32-bit and 64-bit)
+;
+; Copyright (c) Medical Computer Systems, 2013
+;
+;--------------------------------------------------------------------;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class = McsClass
+ClassGUID = {528D322C-0809-11D4-89C1-0060520407E9}
+Provider = %Provider.Desc%
+CatalogFile = MediaConverter.cat
+DriverVer = 01/17/2013,3.4.5.0
+DriverPackageDisplayName=%DriverPackage.Desc%
+
+;--------------------------------------------------------------------;
+
+[ClassInstall32]
+AddReg = Class.AddReg 
+CopyFiles = Class.CopyFiles
+
+[Class.AddReg]
+HKR,,,,%ClassName%
+HKR,,EnumPropPages32,,"MediaConverter.dll,MCSPropPageProvider"
+HKR,,Icon,,2
+
+[Class.CopyFiles]
+MediaConverter.dll
+
+;--------------------------------------------------------------------;
+
+[SourceDisksFiles]
+MediaConverter.dll = 1,,
+CyUsb.sys.XP = 1,,
+CyUsb.sys.Vista = 1,,
+
+[SourceDisksNames]
+1=,,,\x86
+
+[SourceDisksNames.amd64]
+1=,,,\x64
+
+[DestinationDirs]
+Class.CopyFiles = 11
+MediaConverter.XP.CopyFiles = 10,System32\Drivers
+MediaConverter.Vista.CopyFiles = 10,System32\Drivers
+
+;--------------------------------------------------------------------;
+
+[Manufacturer]
+%Manufacturer.Desc% = MediaConverter, NTx86.5.1, NTamd64.5.1, NTx86.6.0, NTamd64.6.0
+
+;--------------------------------------------------------------------;
+
+; XP 32-bit and later
+[MediaConverter.NTx86.5.1]
+%Dev.DeviceDesc.20F9.0123% = MediaConverter.XP, USB\VID_20F9&PID_0123
+
+; XP 64-bit and later
+[MediaConverter.NTamd64.5.1]
+%Dev.DeviceDesc.20F9.0123% = MediaConverter.XP, USB\VID_20F9&PID_0123
+
+; Vista 32-bit and later
+[MediaConverter.NTx86.6.0]
+%Dev.DeviceDesc.20F9.0123% = MediaConverter.Vista, USB\VID_20F9&PID_0123
+
+; Vista 64-bit and later
+[MediaConverter.NTamd64.6.0]
+%Dev.DeviceDesc.20F9.0123% = MediaConverter.Vista, USB\VID_20F9&PID_0123
+
+;--------------------------------------------------------------------;
+
+[MediaConverter.XP.NT]
+CopyFiles = MediaConverter.XP.CopyFiles
+
+[MediaConverter.XP.NT.HW]
+AddReg = MediaConverter.Common.AddReg
+
+[MediaConverter.XP.NT.Services]
+AddService = %Device.Dev.Service%, 0x2, MediaConverter.Common.AddService
+
+[MediaConverter.XP.CopyFiles]
+CyUsb.sys, CyUsb.sys.XP
+
+;--------------------------------------------------------------------;
+
+[MediaConverter.Vista.NT]
+CopyFiles = MediaConverter.Vista.CopyFiles
+
+[MediaConverter.Vista.NT.HW]
+AddReg = MediaConverter.Common.AddReg
+
+[MediaConverter.Vista.NT.Services]
+AddService = %Device.Dev.Service%, 0x2, MediaConverter.Common.AddService
+
+[MediaConverter.Vista.CopyFiles]
+CyUsb.sys, CyUsb.sys.Vista
+
+;--------------------------------------------------------------------;
+
+[MediaConverter.Common.AddService]
+ServiceType    = 1 ; SERVICE_KERNEL_DRIVER
+StartType      = 3 ; SERVICE_DEMAND_START
+ErrorControl   = 1 ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\CyUsb.sys
+
+[MediaConverter.Common.AddReg]
+HKR,,DriverGUID,,%Device.Drv.GUID%
+
+;--------------------------------------------------------------------;
+
+[Strings]
+Provider.Desc = "Medical Computer Systems"
+DriverPackage.Desc="MCS USB Driver Package"
+ClassName = "MCS USB Medical Devices"
+Manufacturer.Desc = "Medical Computer Systems"
+Dev.DeviceDesc.20F9.0123 = "Media Converter"                                              	
+Device.Drv.GUID="{AE18AA60-7F6A-11d4-97DD-00010229B959}"
+Device.Dev.Service="Media Converter"
+
+;--------------------------------------------------------------------;
+	

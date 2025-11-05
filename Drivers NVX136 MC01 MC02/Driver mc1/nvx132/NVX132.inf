@@ -1,0 +1,126 @@
+;--------------------------------------------------------------------;
+;
+; NVX 132
+;
+; INF file for Windows Windows 7, Vista, XP (32-bit and 64-bit)
+;
+; Copyright (c) Medical Computer Systems, 2013
+;
+;--------------------------------------------------------------------;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class = McsClass
+ClassGUID = {528D322C-0809-11D4-89C1-0060520407E9}
+Provider = %Provider.Desc%
+CatalogFile = NVX132.cat
+DriverVer = 01/17/2013,3.4.5.0
+DriverPackageDisplayName=%DriverPackage.Desc%
+
+;--------------------------------------------------------------------;
+
+[ClassInstall32]
+AddReg = Class.AddReg 
+CopyFiles = Class.CopyFiles
+
+[Class.AddReg]
+HKR,,,,%ClassName%
+HKR,,EnumPropPages32,,"NVX132MCS.dll,MCSPropPageProvider"
+HKR,,Icon,,2
+
+[Class.CopyFiles]
+NVX132MCS.dll
+
+;--------------------------------------------------------------------;
+
+[SourceDisksFiles]
+NVX132MCS.dll = 1,,
+CyUsb.sys.XP = 1,,
+CyUsb.sys.Vista = 1,,
+
+[SourceDisksNames]
+1=,,,\x86
+
+[SourceDisksNames.amd64]
+1=,,,\x64
+
+[DestinationDirs]
+Class.CopyFiles = 11
+NVX132.XP.CopyFiles = 10,System32\Drivers
+NVX132.Vista.CopyFiles = 10,System32\Drivers
+
+;--------------------------------------------------------------------;
+
+[Manufacturer]
+%Manufacturer.Desc% = NVX132, NTx86.5.1, NTamd64.5.1, NTx86.6.0, NTamd64.6.0
+
+;--------------------------------------------------------------------;
+
+; XP 32-bit and later
+[NVX132.NTx86.5.1]
+%Dev.DeviceDesc.20F9.0123% = NVX132.XP, USB\VID_20F9&PID_0123
+
+; XP 64-bit and later
+[NVX132.NTamd64.5.1]
+%Dev.DeviceDesc.20F9.0123% = NVX132.XP, USB\VID_20F9&PID_0123
+
+; Vista 32-bit and later
+[NVX132.NTx86.6.0]
+%Dev.DeviceDesc.20F9.0123% = NVX132.Vista, USB\VID_20F9&PID_0123
+
+; Vista 64-bit and later
+[NVX132.NTamd64.6.0]
+%Dev.DeviceDesc.20F9.0123% = NVX132.Vista, USB\VID_20F9&PID_0123
+
+;--------------------------------------------------------------------;
+
+[NVX132.XP.NT]
+CopyFiles = NVX132.XP.CopyFiles
+
+[NVX132.XP.NT.HW]
+AddReg = NVX132.Common.AddReg
+
+[NVX132.XP.NT.Services]
+AddService = %Device.Dev.Service%, 0x2, NVX132.Common.AddService
+
+[NVX132.XP.CopyFiles]
+CyUsb.sys, CyUsb.sys.XP
+
+;--------------------------------------------------------------------;
+
+[NVX132.Vista.NT]
+CopyFiles = NVX132.Vista.CopyFiles
+
+[NVX132.Vista.NT.HW]
+AddReg = NVX132.Common.AddReg
+
+[NVX132.Vista.NT.Services]
+AddService = %Device.Dev.Service%, 0x2, NVX132.Common.AddService
+
+[NVX132.Vista.CopyFiles]
+CyUsb.sys, CyUsb.sys.Vista
+
+;--------------------------------------------------------------------;
+
+[NVX132.Common.AddService]
+ServiceType    = 1 ; SERVICE_KERNEL_DRIVER
+StartType      = 3 ; SERVICE_DEMAND_START
+ErrorControl   = 1 ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\CyUsb.sys
+
+[NVX132.Common.AddReg]
+HKR,,DriverGUID,,%Device.Drv.GUID%
+
+;--------------------------------------------------------------------;
+
+[Strings]
+Provider.Desc = "Medical Computer Systems"
+DriverPackage.Desc="MCS USB Driver Package"
+ClassName = "MCS USB Medical Devices"
+Manufacturer.Desc = "Medical Computer Systems"
+Dev.DeviceDesc.20F9.0123 = "NVX132 EEG amplifier"                                              	
+Device.Drv.GUID="{AE18AA60-7F6A-11d4-97DD-00010229B959}"
+Device.Dev.Service="NVX132"
+
+;--------------------------------------------------------------------;
+	
