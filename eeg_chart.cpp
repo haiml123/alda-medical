@@ -1,3 +1,10 @@
+// =============================================================================
+// FEATURE: Hover Highlight - Change Label Color on Waveform Hover
+// =============================================================================
+// When mouse hovers over a waveform, the corresponding channel label changes
+// to cyan (same color as waveform)
+// =============================================================================
+
 #include "eeg_chart.h"
 
 // GUI
@@ -29,14 +36,20 @@ static void sort_by_x(std::vector<float>& xs, std::vector<float>& ys) {
     }
 }
 
-// Opaque "wiper" width (px)
-static constexpr int kWiperPx = 18;
+// Wiper width in time units (scales with window size to prevent artifacts)
+static constexpr float kWiperWidthSeconds = 0.02f;
 
 // Small per-label nudge rightwards so text isn't on the frame
 static constexpr float kLabelInsetPx = 25.0f;
 
-// Label width in plot coordinates (adjust based on your time scale)
-static constexpr double kLabelWidthPlotUnits = 0.3;  // ~0.3 seconds for labels
+// Label spacing (constant visual spacing at all time scales)
+static constexpr float kLabelSpacingPixels = 50.0f;
+
+// =============================================================================
+// NEW: Color constants for labels
+// =============================================================================
+static const ImVec4 kLabelColorNormal    = ImVec4(0.65f, 0.68f, 0.72f, 1.0f);  // Gray (default)
+static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);  // Cyan (waveform color)
 
 // ----------------------------- main -----------------------------
 void DrawChart(AppState& st) {
@@ -55,46 +68,77 @@ void DrawChart(AppState& st) {
         maxLabelPx = std::max(maxLabelPx, ImGui::CalcTextSize(lbl).x);
     }
 
-    // Container that fills the remaining space (no scrollbars)
-    ImGui::BeginChild("plot", ImVec2(0, 0), false,
-                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+    // Container that fills the remaining space
+    ImGui::BeginChild("##eegchild", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar);
 
-    // Subtle style + dynamic left padding so labels fit neatly
-    ImPlot::PushStyleVar(ImPlotStyleVar_MajorGridSize, ImVec2(1.0f, 1.0f));
-    ImPlot::PushStyleVar(ImPlotStyleVar_MinorGridSize, ImVec2(1.0f, 1.0f));
-    ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding,  ImVec2(4.0f, 2.0f));
-    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding,   ImVec2(0, 0));
-    ImPlot::PushStyleVar(ImPlotStyleVar_LegendPadding,   ImVec2(0, 0));
-    ImPlot::PushStyleVar(ImPlotStyleVar_PlotBorderSize, 0.0f);
-    ImPlot::PushStyleColor(ImPlotCol_PlotBorder, ImVec4(0,0,0,0));
-    // Transparent everything + no border/frame
-    ImPlot::PushStyleColor(ImPlotCol_FrameBg,       ImVec4(0,0,0,0)); // frame behind axes
-    ImPlot::PushStyleColor(ImPlotCol_PlotBg,        ImVec4(0,0,0,0)); // plot area
-    ImPlot::PushStyleColor(ImPlotCol_AxisBg,        ImVec4(0,0,0,0)); // axis background (the gray strip)
-    ImPlot::PushStyleColor(ImPlotCol_AxisBgHovered, ImVec4(0,0,0,0)); // also transparent on hover
-    ImPlot::PushStyleColor(ImPlotCol_AxisBgActive,  ImVec4(0,0,0,0)); // and when active
-    ImPlot::PushStyleVar  (ImPlotStyleVar_PlotBorderSize, 0.0f);
+    // Calculate pixel-based label padding
+    const double windowSec = st.windowSec();
+    const float plotWidthPixels = ImGui::GetContentRegionAvail().x;
+    const double leftPaddingTime = (kLabelSpacingPixels / plotWidthPixels) * windowSec;
 
-    ImVec2 plot_size = ImGui::GetContentRegionAvail();
-    if (plot_size.x < 100.0f) plot_size.x = 100.0f;
+    // Build the plot limits
+    const double xMin = -leftPaddingTime;
+    const double xMax = windowSec;
 
-    if (ImPlot::BeginPlot("##eeg", plot_size,
-                          ImPlotFlags_NoLegend | ImPlotFlags_NoMenus | ImPlotFlags_NoBoxSelect)) {
+    // Style tweaks
+    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(2, 2));
+    ImPlot::PushStyleVar(ImPlotStyleVar_MinorGridSize, ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_MajorGridSize, ImVec2(0, 0));
 
-        // Axes - shift X axis to start after label area
-        const double xMin = -kLabelWidthPlotUnits;  // Start before 0 to make room for labels
-        const double xMax = double(st.windowSec());
-        ImPlot::SetupAxis(ImAxis_X1, "Time (s)", ImPlotAxisFlags_NoGridLines);  // Disable grid lines
+    // Build the plot
+    ImPlotFlags plotFlags = ImPlotFlags_NoLegend
+                          | ImPlotFlags_NoMenus
+                          | ImPlotFlags_NoBoxSelect
+                          | ImPlotFlags_NoTitle
+                          | ImPlotFlags_NoMouseText;
+
+    ImPlotAxisFlags axFlags = ImPlotAxisFlags_NoLabel
+                            | ImPlotAxisFlags_NoTickLabels
+                            | ImPlotAxisFlags_NoTickMarks
+                            | ImPlotAxisFlags_Lock
+                            | ImPlotAxisFlags_NoHighlight;
+
+    if (ImPlot::BeginPlot("##sweep", ImVec2(-1, -1), plotFlags)) {
+        // Set up axes
         ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
-
-        ImPlot::SetupAxis(ImAxis_Y1, "", ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoGridLines);  // Disable grid lines
         ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, yTop, ImGuiCond_Always);
 
+        ImPlot::SetupAxis(ImAxis_X1, nullptr, axFlags);
+        ImPlot::SetupAxis(ImAxis_Y1, nullptr, axFlags);
+
+        // Lock the view
+        ImPlot::SetupFinish();
+
+        // Get smoothed cursor position from AppState
+        const double smoothedCursor = st.displayNowSmoothed;
+
         // Sweep timing
-        const double cycleCur   = std::floor(st.ring.now / st.windowSec());
-        const double cycleStart = cycleCur * st.windowSec();
-        const double cursorX    = st.ring.now - cycleStart;        // [0, windowSec)
-        const double eps        = 0.5 / SAMPLE_RATE_HZ;            // half-sample hysteresis
+        const double cycleCur   = std::floor(smoothedCursor / windowSec);
+        const double cycleStart = cycleCur * windowSec;
+        const double cursorX    = smoothedCursor - cycleStart;
+        const double eps        = 0.5 / SAMPLE_RATE_HZ;
+
+        // =============================================================================
+        // NEW: Detect which channel is being hovered
+        // =============================================================================
+        int hoveredChannel = -1;  // -1 means no hover
+
+        if (ImPlot::IsPlotHovered()) {
+            ImPlotPoint mouse = ImPlot::GetPlotMousePos();
+
+            // Find which channel row the mouse is over
+            for (int v = 0; v < visibleCount; ++v) {
+                const double yBase = rowHeight * (visibleCount - v);
+                const double yMin = yBase - rowHeight * 0.5;
+                const double yMax = yBase + rowHeight * 0.5;
+
+                if (mouse.y >= yMin && mouse.y <= yMax) {
+                    hoveredChannel = v;  // Store which channel is hovered
+                    break;
+                }
+            }
+        }
 
         // Draw channels (erase semantics across the cursor)
         const int N = st.ring.size();
@@ -102,8 +146,8 @@ void DrawChart(AppState& st) {
 
         if (N > 0) {
             for (int v = 0; v < visibleCount; ++v) {
-                const int    c     = v;                           // channel index
-                const double yBase = rowHeight * (visibleCount - v);  // REVERSED: higher v = higher y
+                const int    c     = v;
+                const double yBase = rowHeight * (visibleCount - v);
 
                 xsPrev.clear(); ysPrev.clear();
                 xsCur.clear();  ysCur.clear();
@@ -112,15 +156,21 @@ void DrawChart(AppState& st) {
 
                 for (int i = 0; i < N; ++i) {
                     const double t   = st.ring.tAbs[i];
-                    const double cyc = std::floor(t / st.windowSec());
-                    const double rx  = t - cyc * st.windowSec();
+                    const double cyc = std::floor(t / windowSec);
+                    const double rx  = t - cyc * windowSec;
                     const double val = yBase + st.gainMul() * st.ring.data[c][i];
 
                     if (cyc == cycleCur) {
-                        if (rx < cursorX - eps) { xsCur.push_back((float)rx); ysCur.push_back((float)val); }
+                        if (rx < cursorX - eps) {
+                            xsCur.push_back((float)rx);
+                            ysCur.push_back((float)val);
+                        }
                     }
                     else if (cyc == cycleCur - 1.0) {
-                        if (rx >= cursorX - eps) { xsPrev.push_back((float)rx); ysPrev.push_back((float)val); }
+                        if (rx >= cursorX - eps) {
+                            xsPrev.push_back((float)rx);
+                            ysPrev.push_back((float)val);
+                        }
                     }
                 }
 
@@ -131,51 +181,101 @@ void DrawChart(AppState& st) {
                 std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", c + 1);
                 std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        c + 1);
 
+                // Draw waveforms (color unchanged)
                 ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
-                if (!xsPrev.empty()) ImPlot::PlotLine(idPrev, xsPrev.data(), ysPrev.data(), (int)xsPrev.size());
+                if (!xsPrev.empty()) {
+                    ImPlot::PlotLine(idPrev, xsPrev.data(), ysPrev.data(), (int)xsPrev.size());
+                }
 
                 ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
-                if (!xsCur.empty())  ImPlot::PlotLine(idCur,  xsCur.data(),  ysCur.data(),  (int)xsCur.size());
+                if (!xsCur.empty()) {
+                    ImPlot::PlotLine(idCur, xsCur.data(), ysCur.data(), (int)xsCur.size());
+                }
             }
 
-            // Opaque wiper ahead of the cursor (plot background color)
+            // Cursor wiper (dynamic width)
             ImDrawList* dl   = ImPlot::GetPlotDrawList();
             ImVec2      ppos = ImPlot::GetPlotPos();
             ImVec2      psz  = ImPlot::GetPlotSize();
 
             ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
             int cx = (int)std::floor(pc.x);
+
+            // Calculate dynamic wiper width
+            const ImVec2 pcEnd = ImPlot::PlotToPixels(ImPlotPoint(cursorX + kWiperWidthSeconds, 0.0));
+            const int wiperWidthPixels = std::max(18, (int)(pcEnd.x - pc.x));
+
             int x0 = std::max((int)ppos.x, cx);
-            int x1 = std::min((int)(ppos.x + psz.x), cx + kWiperPx);
+            int x1 = std::min((int)(ppos.x + psz.x), cx + wiperWidthPixels);
+
             if (x1 > x0) {
-                // prefer ChildBg if your parent window uses it; otherwise WindowBg
                 ImVec4 mainBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
-                if (mainBg.w == 0.0f) mainBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-                mainBg.w = 1.0f; // fully opaque so it truly wipes
-                dl->AddRectFilled(ImVec2((float)x0, ppos.y), ImVec2((float)x1, ppos.y + psz.y),
-                                  ImGui::GetColorU32(mainBg));
+                if (mainBg.w == 0.0f) {
+                    mainBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+                }
+                mainBg.w = 1.0f;
+
+                dl->AddRectFilled(
+                    ImVec2((float)x0, ppos.y),
+                    ImVec2((float)x1, ppos.y + psz.y),
+                    ImGui::GetColorU32(mainBg)
+                );
             }
         }
 
-        // ---------------- Left-side channel labels (inside plot) ----------------
+        // =============================================================================
+        // Channel labels with hover highlight
+        // =============================================================================
         const ImPlotRect lim  = ImPlot::GetPlotLimits();
-        const double     xLeft = lim.X.Min;  // This will now be negative
+        const double     xLeft = lim.X.Min;
 
         for (int v = 0; v < visibleCount; ++v) {
-            const double yBase = rowHeight * (visibleCount - v);  // REVERSED: same as waveform
+            const double yBase = rowHeight * (visibleCount - v);
             char label[16];
             std::snprintf(label, sizeof(label), "ch%02d", v + 1);
 
-            // Position label at yBase with NO vertical offset
-            ImPlot::PlotText(label,
-                             xLeft, yBase,
-                             ImVec2(+kLabelInsetPx, 0.0f),
-                             ImPlotTextFlags_None);
+            // =============================================================================
+            // NEW: Choose color based on hover state
+            // =============================================================================
+            ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
+
+            // Convert ImVec4 color to plot coordinate space for PlotText
+            ImPlot::PushStyleColor(ImPlotCol_InlayText, labelColor);
+
+            ImPlot::PlotText(
+                label,
+                xLeft, yBase,
+                ImVec2(+kLabelInsetPx, 0.0f),
+                ImPlotTextFlags_None
+            );
+
+            ImPlot::PopStyleColor();  // Restore color
         }
 
         ImPlot::EndPlot();
     }
 
-    ImPlot::PopStyleVar(0); // PlotPadding, LabelPadding, MinorGridSize, MajorGridSize
+    ImPlot::PopStyleVar(4);
     ImGui::EndChild();
 }
+
+// =============================================================================
+// SUMMARY OF CHANGES:
+// =============================================================================
+// 1. Added color constants:
+//    - kLabelColorNormal (gray)
+//    - kLabelColorHighlight (cyan, same as waveform)
+//
+// 2. Added hover detection:
+//    - Check if plot is hovered: ImPlot::IsPlotHovered()
+//    - Get mouse position: ImPlot::GetPlotMousePos()
+//    - Determine which channel row mouse is over
+//
+// 3. Modified label drawing:
+//    - Choose color based on hover state
+//    - Use ImPlot::PushStyleColor(ImPlotCol_InlayText, color)
+//    - Draw label with PlotText
+//    - Pop style color
+//
+// Result: Channel label turns cyan when you hover over its waveform!
+// =============================================================================

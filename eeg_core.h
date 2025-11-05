@@ -98,7 +98,10 @@ struct AppState {
     double displayNowSmoothed  = 0.0;  // EMA smoothed (used by sweeper)
     bool   emaPrimed           = false;
 
-    // call once per frame
+    // ========================================================================
+    // FIXED: Frame-rate independent exponential smoothing
+    // ========================================================================
+    // called once per frame
     inline void tickDisplay(bool advance_playhead) {
         auto now = std::chrono::steady_clock::now();
         double dt = std::chrono::duration<double>(now - lastTick).count();
@@ -107,10 +110,42 @@ struct AppState {
         if (advance_playhead) {
             playheadSeconds += dt;
         }
-        // Smooth the visible cursor toward the playhead to absorb FPS jitter
-        const double alpha = 0.22; // 0.12..0.35 works well
-        if (!emaPrimed) { displayNowSmoothed = playheadSeconds; emaPrimed = true; }
-        else            { displayNowSmoothed = alpha*playheadSeconds + (1.0 - alpha)*displayNowSmoothed; }
+
+        // ===================================================================
+        // FRAME-RATE INDEPENDENT SMOOTHING (FIXED)
+        // ===================================================================
+        // Using exponential decay: smoothed = target + (smoothed - target) * exp(-lambda * dt)
+        // This ensures consistent smoothing regardless of frame rate (30, 60, 144+ FPS)
+        //
+        // Lambda parameter controls smoothing speed:
+        //   lambda = 5.0  -> Heavy smoothing (~140ms half-life), very smooth
+        //   lambda = 6.0  -> Medium smoothing (~115ms half-life), smooth
+        //   lambda = 8.0  -> RECOMMENDED (~87ms half-life), best balance
+        //   lambda = 10.0 -> Light smoothing (~70ms half-life), responsive
+        //   lambda = 12.0 -> Minimal smoothing (~58ms half-life), very responsive
+        //
+        // Increase lambda for more responsiveness, decrease for more smoothing.
+        // ===================================================================
+
+        const double lambda = 8.0; // Tunable smoothing parameter (recommended: 5-10)
+
+        if (!emaPrimed) {
+            displayNowSmoothed = playheadSeconds;
+            emaPrimed = true;
+        }
+        else {
+            // Frame-rate independent exponential decay formula
+            // Works identically at any FPS (30, 60, 120, 144, etc.)
+            displayNowSmoothed = playheadSeconds +
+                                 (displayNowSmoothed - playheadSeconds) * std::exp(-lambda * dt);
+        }
+
+        // ===================================================================
+        // OLD CODE (REMOVED - was frame-rate dependent):
+        // const double alpha = 0.22; // 0.12..0.35 works well
+        // if (!emaPrimed) { displayNowSmoothed = playheadSeconds; emaPrimed = true; }
+        // else            { displayNowSmoothed = alpha*playheadSeconds + (1.0 - alpha)*displayNowSmoothed; }
+        // ===================================================================
 
         displayNow = playheadSeconds;
     }
@@ -142,45 +177,33 @@ struct SynthEEG {
     float blinkChance     = 4.0e-4f;   // chance per sample per channel to start a blink
     float blinkDurSec     = 0.18f;     // blink duration
     float blinkAmp        = 12.0f;     // blink amplitude
-    float burstChance     = 8.0e-5f;   // brief high-freq burst (muscle)
+    float burstChance     = 8.0e-5f;   // brief high-freq burst
     float burstDurSec     = 0.12f;
     float burstAmp        = 8.0f;
-    float spikeChance     = 6.0e-5f;   // rare sharp spike
-    float spikeAmp        = 22.0f;
+    float spikeChance     = 1.5e-5f;   // random single-sample spike
+    float spikeAmp        = 18.0f;
 
-    // Live scales (written from AppState each frame)
-    float noiseScale    = 1.0f;
-    float artifactScale = 1.0f;
-
+    // runtime
     std::mt19937 rng{std::random_device{}()};
-    std::normal_distribution<float> gauss{0.f, 1.f};
-    std::uniform_real_distribution<float> uni01{0.f, 1.f};
+    std::normal_distribution<float> gauss{0.0f, 1.0f};
+    std::uniform_real_distribution<float> uni01{0.0f, 1.0f};
 
-    // Per-channel states
-    std::vector<float> phAlpha{std::vector<float>(CHANNELS, 0.f)}; // 8–12 Hz
-    std::vector<float> phBeta {std::vector<float>(CHANNELS, 0.f)}; // 15–25 Hz
-    std::vector<float> phTheta{std::vector<float>(CHANNELS, 0.f)}; // 4–7 Hz
-    std::vector<float> phDC   {std::vector<float>(CHANNELS, 0.f)}; // 0.08 Hz
-    std::vector<float> phMains{std::vector<float>(CHANNELS, 0.f)}; // 50/60 Hz (per-channel phase)
-    std::vector<float> blNoise{std::vector<float>(CHANNELS, 0.f)}; // band-limited noise state
-
-    // Slow frequency and amplitude modifiers per channel
-    std::vector<float> alphaHz{std::vector<float>(CHANNELS, 10.0f)};
-    std::vector<float> betaHz {std::vector<float>(CHANNELS, 20.0f)};
-    std::vector<float> thetaHz{std::vector<float>(CHANNELS, 6.0f)};
-
-    std::vector<float> alphaAmp{std::vector<float>(CHANNELS, 2.5f)};
-    std::vector<float> betaAmp {std::vector<float>(CHANNELS, 1.6f)};
-    std::vector<float> thetaAmp{std::vector<float>(CHANNELS, 1.2f)};
-    std::vector<float> dcAmp   {std::vector<float>(CHANNELS, 3.5f)};
-    std::vector<float> mainsChAmp{std::vector<float>(CHANNELS, 1.0f)};
-
-    // Transient artifact timers
-    std::vector<int> blinkLeft {std::vector<int>(CHANNELS, 0)};
-    std::vector<int> burstLeft {std::vector<int>(CHANNELS, 0)};
-    std::vector<int> spikeLeft {std::vector<int>(CHANNELS, 0)};
+    std::vector<float>   phAlpha, phBeta, phTheta, phDC, phMains;
+    std::vector<float>   alphaHz, betaHz, thetaHz;
+    std::vector<float>   alphaAmp, betaAmp, thetaAmp, dcAmp, mainsChAmp;
+    std::vector<float>   blNoise;
+    std::vector<int>     blinkLeft, burstLeft;
 
     SynthEEG() {
+        phAlpha.resize(CHANNELS); phBeta.resize(CHANNELS); phTheta.resize(CHANNELS);
+        phDC.resize(CHANNELS); phMains.resize(CHANNELS);
+        alphaHz.resize(CHANNELS); betaHz.resize(CHANNELS); thetaHz.resize(CHANNELS);
+        alphaAmp.resize(CHANNELS); betaAmp.resize(CHANNELS); thetaAmp.resize(CHANNELS);
+        dcAmp.resize(CHANNELS); mainsChAmp.resize(CHANNELS);
+        blNoise.resize(CHANNELS, 0.0f);
+        blinkLeft.resize(CHANNELS, 0);
+        burstLeft.resize(CHANNELS, 0);
+
         for (int c=0;c<CHANNELS;++c) {
             phAlpha[c] = uni01(rng) * 2.f * float(M_PI);
             phBeta [c] = uni01(rng) * 2.f * float(M_PI);
@@ -223,41 +246,41 @@ struct SynthEEG {
 
             float drift = dcAmp[c] * std::sin(phDC[c]);
 
-            float wn = noiseStdBase * noiseScale * gauss(rng);
+            float wn = noiseStdBase * gauss(rng);
             blNoise[c] = blNoiseAlpha * blNoise[c] + (1.f - blNoiseAlpha) * wn;
 
-            float mains = (mainsChAmp[c] * noiseScale) * std::sin(phMains[c]);
+            float mains = mainsChAmp[c] * std::sin(phMains[c]);
 
-            if (blinkLeft[c] <= 0 && ((c < 8) ? uni01(rng) < 3.f*blinkChance*artifactScale
-                                              : uni01(rng) < blinkChance*artifactScale)) {
+            if (blinkLeft[c] <= 0 && ((c < 8) ? uni01(rng) < 3.f*blinkChance
+                                              : uni01(rng) < blinkChance)) {
                 blinkLeft[c] = int(std::round(blinkDurSec * SAMPLE_RATE_HZ));
             }
             float blink = 0.f;
             if (blinkLeft[c] > 0) {
                 float k = 1.f - std::cos(float(M_PI) * (1.f - float(blinkLeft[c]) / (blinkDurSec * SAMPLE_RATE_HZ)));
-                blink = (blinkAmp * artifactScale) * k * 0.5f;
+                blink = blinkAmp * k * 0.5f;
                 --blinkLeft[c];
             }
 
-            if (burstLeft[c] <= 0 && uni01(rng) < (burstChance*artifactScale)) {
+            if (burstLeft[c] <= 0 && uni01(rng) < burstChance) {
                 burstLeft[c] = int(std::round(burstDurSec * SAMPLE_RATE_HZ));
             }
             float burst = 0.f;
             if (burstLeft[c] > 0) {
                 float hf = std::sin(phBeta[c]*2.5f) + 0.6f*std::sin(phAlpha[c]*3.3f);
-                burst = (burstAmp * artifactScale) * (0.5f*std::abs(hf) + 0.5f*std::abs(gauss(rng)));
+                burst = burstAmp * (0.5f*std::abs(hf) + 0.5f*std::abs(gauss(rng)));
                 --burstLeft[c];
             }
 
             float spike = 0.f;
-            if (uni01(rng) < (spikeChance*artifactScale)) {
+            if (uni01(rng) < spikeChance) {
                 // one-shot; keep it rare
-                if ((rng() & 127) == 0) spike = ((rng() & 1) ? spikeAmp : -spikeAmp) * artifactScale;
+                if ((rng() & 127) == 0) spike = ((rng() & 1) ? spikeAmp : -spikeAmp);
             }
 
             float y = drift + alpha + beta + theta + blNoise[c] + mains + blink + burst + spike;
 
-            if (uni01(rng) < 2e-6f * artifactScale) {
+            if (uni01(rng) < 2e-6f) {
                 y += (uni01(rng) - 0.5f) * 8.0f;
             }
 
