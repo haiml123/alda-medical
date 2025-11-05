@@ -36,9 +36,6 @@ static void sort_by_x(std::vector<float>& xs, std::vector<float>& ys) {
     }
 }
 
-// Wiper width in time units (scales with window size to prevent artifacts)
-static constexpr float kWiperWidthSeconds = 0.02f;
-
 // Small per-label nudge rightwards so text isn't on the frame
 static constexpr float kLabelInsetPx = 25.0f;
 
@@ -46,7 +43,7 @@ static constexpr float kLabelInsetPx = 25.0f;
 static constexpr float kLabelSpacingPixels = 50.0f;
 
 // =============================================================================
-// NEW: Color constants for labels
+// Color constants for labels
 // =============================================================================
 static const ImVec4 kLabelColorNormal    = ImVec4(0.65f, 0.68f, 0.72f, 1.0f);  // Gray (default)
 static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);  // Cyan (waveform color)
@@ -120,7 +117,7 @@ void DrawChart(AppState& st) {
         const double eps        = 0.5 / SAMPLE_RATE_HZ;
 
         // =============================================================================
-        // NEW: Detect which channel is being hovered
+        // Detect which channel is being hovered
         // =============================================================================
         int hoveredChannel = -1;  // -1 means no hover
 
@@ -193,7 +190,7 @@ void DrawChart(AppState& st) {
                 }
             }
 
-            // Cursor wiper (dynamic width)
+            // Cursor wiper (FIXED WIDTH)
             ImDrawList* dl   = ImPlot::GetPlotDrawList();
             ImVec2      ppos = ImPlot::GetPlotPos();
             ImVec2      psz  = ImPlot::GetPlotSize();
@@ -201,9 +198,8 @@ void DrawChart(AppState& st) {
             ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
             int cx = (int)std::floor(pc.x);
 
-            // Calculate dynamic wiper width
-            const ImVec2 pcEnd = ImPlot::PlotToPixels(ImPlotPoint(cursorX + kWiperWidthSeconds, 0.0));
-            const int wiperWidthPixels = std::max(18, (int)(pcEnd.x - pc.x));
+            // Fixed pixel width - does not scale with window time
+            constexpr int wiperWidthPixels = 10;
 
             int x0 = std::max((int)ppos.x, cx);
             int x1 = std::min((int)(ppos.x + psz.x), cx + wiperWidthPixels);
@@ -234,9 +230,7 @@ void DrawChart(AppState& st) {
             char label[16];
             std::snprintf(label, sizeof(label), "ch%02d", v + 1);
 
-            // =============================================================================
-            // NEW: Choose color based on hover state
-            // =============================================================================
+            // Choose color based on hover state
             ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
 
             // Convert ImVec4 color to plot coordinate space for PlotText
@@ -258,24 +252,3 @@ void DrawChart(AppState& st) {
     ImPlot::PopStyleVar(4);
     ImGui::EndChild();
 }
-
-// =============================================================================
-// SUMMARY OF CHANGES:
-// =============================================================================
-// 1. Added color constants:
-//    - kLabelColorNormal (gray)
-//    - kLabelColorHighlight (cyan, same as waveform)
-//
-// 2. Added hover detection:
-//    - Check if plot is hovered: ImPlot::IsPlotHovered()
-//    - Get mouse position: ImPlot::GetPlotMousePos()
-//    - Determine which channel row mouse is over
-//
-// 3. Modified label drawing:
-//    - Choose color based on hover state
-//    - Use ImPlot::PushStyleColor(ImPlotCol_InlayText, color)
-//    - Draw label with PlotText
-//    - Pop style color
-//
-// Result: Channel label turns cyan when you hover over its waveform!
-// =============================================================================

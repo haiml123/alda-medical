@@ -13,7 +13,7 @@ struct Channel;
 // ===== App constants =====
 static constexpr int   CHANNELS        = 64;         // simulate 64 channels
 static constexpr float SAMPLE_RATE_HZ  = 1000.0f;    // 1000 Hz
-static constexpr int   BUFFER_SECONDS  = 20;
+static constexpr int   BUFFER_SECONDS  = 25;
 static constexpr int   BUFFER_SIZE     = int(SAMPLE_RATE_HZ * BUFFER_SECONDS);
 
 // X-window choices (sec)
