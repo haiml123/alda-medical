@@ -1,8 +1,6 @@
 // =============================================================================
 // FEATURE: Hover Highlight - Change Label Color on Waveform Hover
-// =============================================================================
-// When mouse hovers over a waveform, the corresponding channel label changes
-// to cyan (same color as waveform)
+// WITH PERFORMANCE LOGGING
 // =============================================================================
 
 #include "eeg_chart.h"
@@ -15,6 +13,66 @@
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
+#include <chrono>
+
+// =============================================================================
+// Performance Timer
+// =============================================================================
+struct PerformanceTimer {
+    std::chrono::steady_clock::time_point start;
+    const char* label;
+    double* output_ms;
+
+    PerformanceTimer(const char* lbl, double* out = nullptr)
+        : start(std::chrono::steady_clock::now()), label(lbl), output_ms(out) {}
+
+    ~PerformanceTimer() {
+        auto end = std::chrono::steady_clock::now();
+        double ms = std::chrono::duration<double, std::milli>(end - start).count();
+        if (output_ms) *output_ms = ms;
+
+        if (ms > 20.0) {  // Only warn if really slow
+            printf("[PERF WARNING] %s took %.3f ms\n", label, ms);
+        }
+    }
+};
+
+// =============================================================================
+// Frame Statistics
+// =============================================================================
+struct FrameStats {
+    double total_frame_ms = 0.0;
+    double data_prep_ms = 0.0;
+    double sort_ms = 0.0;
+    double plot_render_ms = 0.0;
+    double cursor_wiper_ms = 0.0;
+    double labels_ms = 0.0;
+    int ring_size = 0;
+    int samples_in_window = 0;
+    int total_points_rendered = 0;
+
+    static int frame_counter;
+
+    void Log() {
+        frame_counter++;
+        if (frame_counter >= 300) {  // Log every 300 frames (~5 seconds at 60fps)
+            printf("\n=== PERFORMANCE STATS ===\n");
+            printf("  Total Frame:   %.3f ms\n", total_frame_ms);
+            printf("  Data Prep:     %.3f ms\n", data_prep_ms);
+            printf("  Sorting:       %.3f ms\n", sort_ms);
+            printf("  Plot Render:   %.3f ms\n", plot_render_ms);
+            printf("  Cursor Wiper:  %.3f ms\n", cursor_wiper_ms);
+            printf("  Labels:        %.3f ms\n", labels_ms);
+            printf("  Ring Size:     %d samples\n", ring_size);
+            printf("  In Window:     %d samples\n", samples_in_window);
+            printf("  Points/Frame:  %d\n", total_points_rendered);
+            printf("  FPS:           %.1f\n", ImGui::GetIO().Framerate);
+            printf("============================\n\n");
+            frame_counter = 0;
+        }
+    }
+};
+int FrameStats::frame_counter = 0;
 
 // ----------------------------- helpers -----------------------------
 static void sort_by_x(std::vector<float>& xs, std::vector<float>& ys) {
@@ -50,6 +108,9 @@ static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);  /
 
 // ----------------------------- main -----------------------------
 void DrawChart(AppState& st) {
+    PerformanceTimer total_timer("DrawChart_Total");
+    FrameStats stats;
+
     // Vertical band spacing (plot units); keep consistent with your amplitude scaling
     const double rowHeight    = std::max(1.0, 1.2 * (double)st.ampPPuV());
     const int    visibleCount = CHANNELS;                 // draw all channels
@@ -139,116 +200,168 @@ void DrawChart(AppState& st) {
 
         // Draw channels (erase semantics across the cursor)
         const int N = st.ring.size();
+        stats.ring_size = N;
+
         std::vector<float> xsPrev, ysPrev, xsCur, ysCur;
+
+        double data_prep_ms_total = 0.0;
+        double sort_ms_total = 0.0;
+        double plot_render_ms_total = 0.0;
 
         if (N > 0) {
             for (int v = 0; v < visibleCount; ++v) {
-                const int    c     = v;
+                double channel_data_prep_ms, channel_sort_ms, channel_plot_ms;
+
+                // ===== DATA PREPARATION =====
+                {
+                    PerformanceTimer timer("Channel_DataPrep", &channel_data_prep_ms);
+
+                    const int    c     = v;
+                    const double yBase = rowHeight * (visibleCount - v);
+
+                    xsPrev.clear(); ysPrev.clear();
+                    xsCur.clear();  ysCur.clear();
+                    xsPrev.reserve(N); ysPrev.reserve(N);
+                    xsCur.reserve(N);  ysCur.reserve(N);
+
+                    int samples_this_channel = 0;
+
+                    for (int i = 0; i < N; ++i) {
+                        const double t   = st.ring.tAbs[i];
+                        const double cyc = std::floor(t / windowSec);
+                        const double rx  = t - cyc * windowSec;
+                        const double val = yBase + st.gainMul() * st.ring.data[c][i];
+
+                        if (cyc == cycleCur) {
+                            if (rx < cursorX - eps) {
+                                xsCur.push_back((float)rx);
+                                ysCur.push_back((float)val);
+                                samples_this_channel++;
+                            }
+                        }
+                        else if (cyc == cycleCur - 1.0) {
+                            if (rx >= cursorX - eps) {
+                                xsPrev.push_back((float)rx);
+                                ysPrev.push_back((float)val);
+                                samples_this_channel++;
+                            }
+                        }
+                    }
+
+                    if (v == 0) {  // Only count once
+                        stats.samples_in_window = samples_this_channel;
+                    }
+                }
+                data_prep_ms_total += channel_data_prep_ms;
+
+                // ===== SORTING =====
+                {
+                    PerformanceTimer timer("Channel_Sort", &channel_sort_ms);
+                    sort_by_x(xsPrev, ysPrev);
+                    sort_by_x(xsCur,  ysCur);
+                }
+                sort_ms_total += channel_sort_ms;
+
+                // ===== PLOT RENDERING =====
+                {
+                    PerformanceTimer timer("Channel_PlotRender", &channel_plot_ms);
+
+                    char idPrev[32], idCur[32];
+                    std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", v + 1);
+                    std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        v + 1);
+
+                    // Draw waveforms (color unchanged)
+                    ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
+                    if (!xsPrev.empty()) {
+                        ImPlot::PlotLine(idPrev, xsPrev.data(), ysPrev.data(), (int)xsPrev.size());
+                        stats.total_points_rendered += (int)xsPrev.size();
+                    }
+
+                    ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
+                    if (!xsCur.empty()) {
+                        ImPlot::PlotLine(idCur, xsCur.data(), ysCur.data(), (int)xsCur.size());
+                        stats.total_points_rendered += (int)xsCur.size();
+                    }
+                }
+                plot_render_ms_total += channel_plot_ms;
+            }
+
+            stats.data_prep_ms = data_prep_ms_total;
+            stats.sort_ms = sort_ms_total;
+            stats.plot_render_ms = plot_render_ms_total;
+
+            // ===== CURSOR WIPER =====
+            double cursor_wiper_ms;
+            {
+                PerformanceTimer timer("CursorWiper", &cursor_wiper_ms);
+
+                ImDrawList* dl   = ImPlot::GetPlotDrawList();
+                ImVec2      ppos = ImPlot::GetPlotPos();
+                ImVec2      psz  = ImPlot::GetPlotSize();
+
+                ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
+                int cx = (int)std::floor(pc.x);
+
+                // Fixed pixel width - does not scale with window time
+                constexpr int wiperWidthPixels = 10;
+
+                int x0 = std::max((int)ppos.x, cx);
+                int x1 = std::min((int)(ppos.x + psz.x), cx + wiperWidthPixels);
+
+                if (x1 > x0) {
+                    ImVec4 mainBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
+                    if (mainBg.w == 0.0f) {
+                        mainBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+                    }
+                    mainBg.w = 1.0f;
+
+                    dl->AddRectFilled(
+                        ImVec2((float)x0, ppos.y),
+                        ImVec2((float)x1, ppos.y + psz.y),
+                        ImGui::GetColorU32(mainBg)
+                    );
+                }
+            }
+            stats.cursor_wiper_ms = cursor_wiper_ms;
+        }
+
+        // ===== CHANNEL LABELS =====
+        double labels_ms;
+        {
+            PerformanceTimer timer("ChannelLabels", &labels_ms);
+
+            const ImPlotRect lim  = ImPlot::GetPlotLimits();
+            const double     xLeft = lim.X.Min;
+
+            for (int v = 0; v < visibleCount; ++v) {
                 const double yBase = rowHeight * (visibleCount - v);
+                char label[16];
+                std::snprintf(label, sizeof(label), "ch%02d", v + 1);
 
-                xsPrev.clear(); ysPrev.clear();
-                xsCur.clear();  ysCur.clear();
-                xsPrev.reserve(N); ysPrev.reserve(N);
-                xsCur.reserve(N);  ysCur.reserve(N);
+                // Choose color based on hover state
+                ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
 
-                for (int i = 0; i < N; ++i) {
-                    const double t   = st.ring.tAbs[i];
-                    const double cyc = std::floor(t / windowSec);
-                    const double rx  = t - cyc * windowSec;
-                    const double val = yBase + st.gainMul() * st.ring.data[c][i];
+                // Convert ImVec4 color to plot coordinate space for PlotText
+                ImPlot::PushStyleColor(ImPlotCol_InlayText, labelColor);
 
-                    if (cyc == cycleCur) {
-                        if (rx < cursorX - eps) {
-                            xsCur.push_back((float)rx);
-                            ysCur.push_back((float)val);
-                        }
-                    }
-                    else if (cyc == cycleCur - 1.0) {
-                        if (rx >= cursorX - eps) {
-                            xsPrev.push_back((float)rx);
-                            ysPrev.push_back((float)val);
-                        }
-                    }
-                }
-
-                sort_by_x(xsPrev, ysPrev);
-                sort_by_x(xsCur,  ysCur);
-
-                char idPrev[32], idCur[32];
-                std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", c + 1);
-                std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        c + 1);
-
-                // Draw waveforms (color unchanged)
-                ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
-                if (!xsPrev.empty()) {
-                    ImPlot::PlotLine(idPrev, xsPrev.data(), ysPrev.data(), (int)xsPrev.size());
-                }
-
-                ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
-                if (!xsCur.empty()) {
-                    ImPlot::PlotLine(idCur, xsCur.data(), ysCur.data(), (int)xsCur.size());
-                }
-            }
-
-            // Cursor wiper (FIXED WIDTH)
-            ImDrawList* dl   = ImPlot::GetPlotDrawList();
-            ImVec2      ppos = ImPlot::GetPlotPos();
-            ImVec2      psz  = ImPlot::GetPlotSize();
-
-            ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
-            int cx = (int)std::floor(pc.x);
-
-            // Fixed pixel width - does not scale with window time
-            constexpr int wiperWidthPixels = 10;
-
-            int x0 = std::max((int)ppos.x, cx);
-            int x1 = std::min((int)(ppos.x + psz.x), cx + wiperWidthPixels);
-
-            if (x1 > x0) {
-                ImVec4 mainBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
-                if (mainBg.w == 0.0f) {
-                    mainBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-                }
-                mainBg.w = 1.0f;
-
-                dl->AddRectFilled(
-                    ImVec2((float)x0, ppos.y),
-                    ImVec2((float)x1, ppos.y + psz.y),
-                    ImGui::GetColorU32(mainBg)
+                ImPlot::PlotText(
+                    label,
+                    xLeft, yBase,
+                    ImVec2(+kLabelInsetPx, 0.0f),
+                    ImPlotTextFlags_None
                 );
+
+                ImPlot::PopStyleColor();  // Restore color
             }
         }
-
-        // =============================================================================
-        // Channel labels with hover highlight
-        // =============================================================================
-        const ImPlotRect lim  = ImPlot::GetPlotLimits();
-        const double     xLeft = lim.X.Min;
-
-        for (int v = 0; v < visibleCount; ++v) {
-            const double yBase = rowHeight * (visibleCount - v);
-            char label[16];
-            std::snprintf(label, sizeof(label), "ch%02d", v + 1);
-
-            // Choose color based on hover state
-            ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
-
-            // Convert ImVec4 color to plot coordinate space for PlotText
-            ImPlot::PushStyleColor(ImPlotCol_InlayText, labelColor);
-
-            ImPlot::PlotText(
-                label,
-                xLeft, yBase,
-                ImVec2(+kLabelInsetPx, 0.0f),
-                ImPlotTextFlags_None
-            );
-
-            ImPlot::PopStyleColor();  // Restore color
-        }
+        stats.labels_ms = labels_ms;
 
         ImPlot::EndPlot();
     }
 
     ImPlot::PopStyleVar(4);
     ImGui::EndChild();
+
+    // Log performance stats
+    stats.Log();
 }
