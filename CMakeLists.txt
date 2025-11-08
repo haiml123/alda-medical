@@ -25,6 +25,21 @@ set(IMPLOT_SOURCES
         ${IMPLOT_DIR}/implot_items.cpp
 )
 
+set(MODELS
+        ${CMAKE_CURRENT_SOURCE_DIR}/models/channel.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/models/channels_group.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/models/patient.h
+)
+
+set(SERVICES
+        ${CMAKE_CURRENT_SOURCE_DIR}/services/secure_storage_service.h
+)
+
+set(VIEWS
+        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.cpp
+)
+
 include_directories(
         ${IMGUI_DIR}
         ${IMGUI_DIR}/backends
@@ -42,8 +57,9 @@ add_executable(alda_medical
         eeg_toolbar.cpp
         eeg_chart.h
         eeg_chart.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.cpp
+        ${MODELS}
+        ${SERVICES}
+        ${VIEWS}
         ${IMGUI_SOURCES}
         ${IMPLOT_SOURCES}
 )
