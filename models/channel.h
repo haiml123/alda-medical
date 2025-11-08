@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-namespace elda {
+namespace elda::models {
 
     struct Channel {
         std::string id;              // Unique identifier (e.g., "CH001")

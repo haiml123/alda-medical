@@ -1,5 +1,5 @@
 #pragma once
-#include "Channel.h"
+#include "channel.h"
 #include <vector>
 #include <string>
 

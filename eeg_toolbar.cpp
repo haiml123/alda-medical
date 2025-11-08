@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cmath>
 
+// Helper functions
 static inline float Roundf(float x){ return std::floor(x + 0.5f); }
 
 static void DrawStatusDotInLastItem(bool recordingActive, bool paused, float radius) {
@@ -34,26 +35,15 @@ static void DrawStatusDotInLastItem(bool recordingActive, bool paused, float rad
     dl->AddCircle(ImVec2(cx, cy), radius, ImGui::GetColorU32(ImVec4(0,0,0,0.45f)), 32, 1.0f);
 }
 
-// Callback for when user confirms channel selection
-static void OnChannelSelectionConfirmed(const std::string& name, const std::vector<Channel>& channels) {
-    std::printf("[Channel Selector] Configuration: %s\n", name.c_str());
-    std::printf("[Channel Selector] Selected channels:\n");
-    for (const auto& ch : channels) {
-        if (ch.selected) {
-            std::printf("  - %s (ID: %s, Color: %s)\n",
-                       ch.name.c_str(), ch.id.c_str(), ch.color.c_str());
-        }
-    }
-}
-
 float DrawToolbar(AppState& st) {
-    // Static modal instance
-    static ChannelSelectorModal channelModal;
+    // Static presenter instance for MVP pattern
+    using namespace elda::channels_group;
+    static ChannelsGroupPresenter g_channelsPresenter;
 
     const float header_h = 52.0f;
     ImGui::BeginChild("header", ImVec2(0, header_h), false, ImGuiWindowFlags_NoScrollbar);
 
-    // Palette
+    // Color palette
     const ImVec4 blue    = ImVec4(0.18f, 0.52f, 0.98f, 1.00f);
     const ImVec4 blueH   = ImVec4(0.16f, 0.46f, 0.90f, 1.00f);
     const ImVec4 green   = ImVec4(0.20f, 0.90f, 0.35f, 1.00f);
@@ -148,7 +138,7 @@ float DrawToolbar(AppState& st) {
     ImGui::SameLine();
     if (ImGui::Button("+##amp")) { incIdx(st.ampIdx, AMP_COUNT); }
 
-    // Channel Selector button
+    // ===== CHANNELS button with MVP =====
     ImGui::SameLine(); ImGui::Dummy(ImVec2(12,1)); ImGui::SameLine();
 
     // Store button position BEFORE drawing the button
@@ -158,9 +148,32 @@ float DrawToolbar(AppState& st) {
     ImGui::PushStyleColor(ImGuiCol_Button,        purple);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, purpleH);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  purpleH);
+
     if (ImGui::Button("Channels", channelButtonSize)) {
-        channelModal.Open(&st.availableChannels, OnChannelSelectionConfirmed);
+        // Open modal with active group using MVP presenter
+        g_channelsPresenter.OpenWithActiveGroup(
+            [&st](const elda::models::ChannelsGroup& group) {
+                // Callback when user confirms selection
+                // Group is already saved automatically by the service!
+                std::printf("[Channels Group] Configuration: %s\n", group.name.c_str());
+                std::printf("[Channels Group] Selected channels (%zu total, %zu selected):\n",
+                           group.channels.size(), group.getSelectedCount());
+
+                // Print selected channels
+                for (const auto& ch : group.channels) {
+                    if (ch.selected) {
+                        std::printf("  - %s (ID: %s, Color: %s)\n",
+                                   ch.name.c_str(), ch.id.c_str(), ch.color.c_str());
+                    }
+                }
+
+                // Optional: Update AppState with selected group
+                // st.currentChannelGroupName = group.name;
+                // st.selectedChannels = group.getSelectedChannels();
+            }
+        );
     }
+
     ImGui::PopStyleColor(3);
 
     // ===== Right status area =====
@@ -193,8 +206,8 @@ float DrawToolbar(AppState& st) {
 
     ImGui::EndChild();
 
-    // Draw the channel modal
-    channelModal.Draw(channelButtonPos, channelButtonSize);
+    // CRITICAL: Render the presenter every frame (even when modal is closed)
+    g_channelsPresenter.Render(channelButtonPos, channelButtonSize);
 
     return header_h;
 }

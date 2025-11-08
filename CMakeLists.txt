@@ -33,11 +33,17 @@ set(MODELS
 
 set(SERVICES
         ${CMAKE_CURRENT_SOURCE_DIR}/services/secure_storage_service.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/services/channel_management_service.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/services/channel_management_service.cpp
 )
 
 set(VIEWS
-        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/screens/channels_selector_modal/channel_selector_modal.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_model.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_model.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_view.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_view.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_presenter.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_presenter.cpp
 )
 
 include_directories(

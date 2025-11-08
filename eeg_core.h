@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <cstdio>
 
-// Forward declaration
-struct Channel;
+
+namespace elda::models {
+    struct Channel;
+}
 
 // ===== App constants =====
 static constexpr int   CHANNELS        = 64;         // simulate 64 channels
@@ -136,7 +138,7 @@ struct AppState {
     std::vector<std::string> chNames;
 
     // ===== Channel configuration =====
-    std::vector<Channel> availableChannels;
+    std::vector<elda::models::Channel> availableChannels;
 
     // pause marks (timestamped in EEG/playhead seconds)
     struct PauseMark { double t_start; };

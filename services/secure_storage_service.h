@@ -25,7 +25,7 @@
 #include <iomanip>
 #include <algorithm>
 
-namespace ELDA {
+namespace elda::services {
 
 // ============================================================================
 // SHA-256 IMPLEMENTATION
