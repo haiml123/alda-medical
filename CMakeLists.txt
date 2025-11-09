@@ -44,6 +44,15 @@ set(VIEWS
         ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_view.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_presenter.h
         ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_presenter.cpp
+
+        views/monitoring/monitoring_screen.h
+        views/monitoring/monitoring_screen.cpp
+        views/monitoring/monitoring_model.h
+        views/monitoring/monitoring_model.cpp
+        views/monitoring/monitoring_view.h
+        views/monitoring/monitoring_view.cpp
+        views/monitoring/monitoring_presenter.h
+        views/monitoring/monitoring_presenter.cpp
 )
 
 set(CORE
@@ -63,13 +72,12 @@ include_directories(
 
 add_executable(alda_medical
         main.cpp
-        eeg_core.cpp.h.dist
-        eeg_core.cpp.dist
         eeg_theme.h
         UI/toolbar/toolbar.h
         UI/toolbar/toolbar.cpp
-        eeg_chart.h
-        eeg_chart.cpp
+        UI/chart/chart.h
+        UI/chart/chart.cpp
+        UI/chart/chart_data.h
         ${CORE}
         ${MODELS}
         ${SERVICES}

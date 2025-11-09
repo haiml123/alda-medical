@@ -5,7 +5,7 @@
 // - Better cache locality (early exit)
 // =============================================================================
 
-#include "eeg_chart.h"
+#include "chart.h"
 #include "imgui.h"
 #include "implot.h"
 
@@ -74,11 +74,10 @@ struct PlotBuffers {
     std::vector<float> xsPrev, ysPrev, xsCur, ysCur;
 
     PlotBuffers() {
-        const int maxSize = BUFFER_SIZE;
-        xsPrev.reserve(maxSize);
-        ysPrev.reserve(maxSize);
-        xsCur.reserve(maxSize);
-        ysCur.reserve(maxSize);
+        xsPrev.reserve(25000);
+        ysPrev.reserve(25000);
+        xsCur.reserve(25000);
+        ysCur.reserve(25000);
     }
 
     void clear() {
@@ -89,16 +88,16 @@ struct PlotBuffers {
     }
 };
 
-void DrawChart(AppState& st) {
+void DrawChart(const elda::ChartData& data) {
     FrameStats fs;
     static PlotBuffers plotBuffers;
 
     {
         PerfScope _total(&fs.total_ms);
 
-        const double rowHeight    = std::max(1.0, 1.2 * (double)st.ampPPuV());
-        const int    visibleCount = CHANNELS;
-        const double yTop         = rowHeight * (visibleCount + 1);
+        const double rowHeight = std::max(1.0, 1.2 * data.amplitudePPuV);
+        const int visibleCount = data.numChannels;
+        const double yTop = rowHeight * (visibleCount + 1);
 
         {
             PerfScope _lbl(&fs.label_width_ms);
@@ -113,7 +112,7 @@ void DrawChart(AppState& st) {
 
         ImGui::BeginChild("##eegchild", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar);
 
-        const double windowSec = st.windowSec();
+        const double windowSec = data.windowSeconds;
         const float plotWidthPixels = ImGui::GetContentRegionAvail().x;
         const double leftPaddingTime = (kLabelSpacingPixels / plotWidthPixels) * windowSec;
 
@@ -142,18 +141,17 @@ void DrawChart(AppState& st) {
 
             PerfScope _plotting(&fs.plotting_ms);
 
-            const double smoothedCursor = st.playheadSeconds;
-            const double cycleCur   = std::floor(smoothedCursor / windowSec);
+            const double smoothedCursor = data.playheadSeconds;
+            const double cycleCur = std::floor(smoothedCursor / windowSec);
             const double cycleStart = cycleCur * windowSec;
-            const double cursorX    = smoothedCursor - cycleStart;
-            const double eps        = 0.5 / SAMPLE_RATE_HZ;
+            const double cursorX = smoothedCursor - cycleStart;
+            const double eps = 0.5 / data.sampleRateHz;
 
-            // OPTIMIZATION 1: Pre-calculate cycle boundaries (avoid floor() in loop)
             const double prevCycleStart = (cycleCur - 1.0) * windowSec;
-            const double prevCycleEnd   = cycleCur * windowSec;
-            const double curCycleStart  = cycleCur * windowSec;
-            const double curCycleEnd    = (cycleCur + 1.0) * windowSec;
-            const double cursorAbsTime  = curCycleStart + cursorX;
+            const double prevCycleEnd = cycleCur * windowSec;
+            const double curCycleStart = cycleCur * windowSec;
+            const double curCycleEnd = (cycleCur + 1.0) * windowSec;
+            const double cursorAbsTime = curCycleStart + cursorX;
 
             int hoveredChannel = -1;
             if (ImPlot::IsPlotHovered()) {
@@ -169,7 +167,7 @@ void DrawChart(AppState& st) {
                 }
             }
 
-            const int N = st.ring.size();
+            const int N = (int)data.ring.tAbs.size();
 
             if (N > 0) {
                 for (int v = 0; v < visibleCount; ++v) {
@@ -178,8 +176,7 @@ void DrawChart(AppState& st) {
 
                     plotBuffers.clear();
 
-                    // OPTIMIZATION 2: Reserve capacity (avoid reallocations)
-                    const int estimatedPoints = (int)(windowSec * SAMPLE_RATE_HZ * 1.1);
+                    const int estimatedPoints = (int)(windowSec * data.sampleRateHz * 1.1);
                     plotBuffers.xsCur.reserve(estimatedPoints);
                     plotBuffers.ysCur.reserve(estimatedPoints);
                     plotBuffers.xsPrev.reserve(estimatedPoints);
@@ -188,16 +185,15 @@ void DrawChart(AppState& st) {
                     {
                         PerfScope _scan(&fs.scan_ms);
 
-                        const int startIdx = st.ring.filled ? st.ring.write : 0;
-                        const int totalSamples = st.ring.filled ? BUFFER_SIZE : st.ring.write;
+                        const int startIdx = data.ring.filled ? data.ring.write : 0;
+                        const int totalSamples = data.ring.filled ? data.bufferSize : data.ring.write;
 
                         for (int offset = 0; offset < totalSamples; ++offset) {
-                            const int i = (startIdx + offset) % BUFFER_SIZE;
-                            const double t = st.ring.tAbs[i];
+                            const int i = (startIdx + offset) % data.bufferSize;
+                            const double t = data.ring.tAbs[i];
 
                             fs.points_scanned++;
 
-                            // OPTIMIZATION 3: Early exit when past visible range
                             if (t < prevCycleStart) {
                                 fs.points_skipped++;
                                 continue;
@@ -205,21 +201,18 @@ void DrawChart(AppState& st) {
 
                             if (t > curCycleEnd) {
                                 fs.points_skipped += (totalSamples - offset);
-                                break; // All remaining samples are beyond visible range
+                                break;
                             }
 
-                            const double val = yBase + st.gainMul() * st.ring.data[c][i];
+                            const double val = yBase + data.gainMultiplier * data.ring.data[c][i];
 
-                            // OPTIMIZATION 1: Direct time comparisons (no floor())
                             if (t >= curCycleStart && t < curCycleEnd) {
-                                // Current cycle
                                 if (t < cursorAbsTime - eps) {
                                     plotBuffers.xsCur.push_back((float)(t - curCycleStart));
                                     plotBuffers.ysCur.push_back((float)val);
                                 }
                             }
                             else if (t >= prevCycleStart && t < prevCycleEnd) {
-                                // Previous cycle
                                 const float rx = (float)(t - prevCycleStart);
                                 if (rx >= cursorX - eps) {
                                     plotBuffers.xsPrev.push_back(rx);
@@ -237,13 +230,17 @@ void DrawChart(AppState& st) {
 
                         ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
                         if (!plotBuffers.xsPrev.empty()) {
-                            ImPlot::PlotLine(idPrev, plotBuffers.xsPrev.data(), plotBuffers.ysPrev.data(), (int)plotBuffers.xsPrev.size());
+                            ImPlot::PlotLine(idPrev, plotBuffers.xsPrev.data(), 
+                                           plotBuffers.ysPrev.data(), 
+                                           (int)plotBuffers.xsPrev.size());
                             fs.points_rendered += (int)plotBuffers.xsPrev.size();
                         }
 
                         ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
                         if (!plotBuffers.xsCur.empty()) {
-                            ImPlot::PlotLine(idCur, plotBuffers.xsCur.data(), plotBuffers.ysCur.data(), (int)plotBuffers.xsCur.size());
+                            ImPlot::PlotLine(idCur, plotBuffers.xsCur.data(), 
+                                           plotBuffers.ysCur.data(), 
+                                           (int)plotBuffers.xsCur.size());
                             fs.points_rendered += (int)plotBuffers.xsCur.size();
                         }
                     }

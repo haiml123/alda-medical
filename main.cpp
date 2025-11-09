@@ -1,212 +1,174 @@
-#if defined(__APPLE__)
-  #define GL_SILENCE_DEPRECATION
-  #include <OpenGL/gl3.h>
-#else
-  #include <glad/glad.h>
-#endif
-#include <GLFW/glfw3.h>
-#include <cstdio>
-
 #include "imgui.h"
-#include "implot.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "implot.h"
+#include <GLFW/glfw3.h>
+#include <iostream>
+#include <memory>
 
-#include "core/core.h"
-#include "eeg_theme.h"
-#include "UI/toolbar/toolbar.h"
-#include "eeg_chart.h"
-#include "core/app_state_manager.h"
-#include "services/channel_management_service.h"
-
-static void glfw_error_callback(int e, const char* d) {
-    std::fprintf(stderr, "GLFW error %d: %s\n", e, d);
-}
-
-// SAFE: Static function for observer callback
-static const char* GetFieldName(elda::StateField field) {
-    static const char* names[] = {
-        "Monitoring", "Recording", "Paused", "ChannelConfig",
-        "DisplayWindow", "DisplayAmplitude", "NoiseSettings"
-    };
-    int index = static_cast<int>(field);
-    if (index >= 0 && index < 7) {
-        return names[index];
-    }
-    return "Unknown";
-}
+#include "core/router/app_router.h"
+#include "views//monitoring/monitoring_screen.h"
 
 int main() {
-    // ---- GLFW / GL init ----
-    glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit()) return 1;
+    // ========================================================================
+    // GLFW + OpenGL Setup
+    // ========================================================================
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW" << std::endl;
+        return -1;
+    }
 
-#if defined(__APPLE__)
+    const char* glsl_version = "#version 150";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
 
-    GLFWwindow* window = glfwCreateWindow(1700, 980, "ELDA EEG",
-                                         nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "ELDA - EEG Acquisition", nullptr, nullptr);
     if (!window) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
-        return 1;
+        return -1;
     }
+
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
-#if !defined(__APPLE__)
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::fprintf(stderr, "Failed to init GLAD\n");
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return 1;
-    }
-#endif
-
-    // ---- ImGui / ImPlot ----
+    // ========================================================================
+    // ImGui Setup
+    // ========================================================================
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImPlot::CreateContext();
-    ImGui::StyleColorsDark();
 
-#if defined(__APPLE__)
-    const char* glsl_version = "#version 150";
-#else
-    const char* glsl_version = "#version 130";
-#endif
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.IniFilename = nullptr;
 
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-    ApplyAldaTheme();
+    ImGui::StyleColorsDark();
 
-    // ---- App state & State Manager ----
-    AppState st;
-    elda::AppStateManager stateManager(st);
+    // ========================================================================
+    // Create Screens
+    // ========================================================================
+    auto monitoringScreen = std::make_unique<elda::MonitoringScreen>();
 
-    // Enable audit logging
-    stateManager.EnableAuditLog(true, "elda_audit_log.txt");
+    // TODO: Add other screens when ready
+    // auto idleScreen = std::make_unique<elda::IdleScreen>();
+    // auto settingsScreen = std::make_unique<elda::SettingsScreen>();
 
-    // Auto-load active channel group
-    auto& channelService = elda::services::ChannelManagementService::GetInstance();
-    auto activeGroup = channelService.LoadActiveChannelGroup();
+    // ========================================================================
+    // Setup Router with Callbacks
+    // ========================================================================
+    AppRouter router;
 
-    if (activeGroup.has_value()) {
-        auto result = stateManager.SetChannelConfiguration(
-            activeGroup->name,
-            activeGroup->getSelectedChannels()
-        );
+    // Called when entering a new mode
+    router.onModeEnter = [&](AppMode mode) {
+        std::cout << "→ Entering: " << AppModeToString(mode) << std::endl;
 
-        if (result.IsSuccess()) {
-            std::printf("[Startup] ✓ Loaded channel group: '%s' with %zu channels\n",
-                       activeGroup->name.c_str(), activeGroup->getSelectedCount());
-
-            // DEVELOPMENT MODE: Auto-pass impedance check for synthetic data
-            stateManager.SetImpedanceCheckPassed(true);
-            std::printf("[Startup] ✓ Impedance check passed (development mode)\n");
-            std::printf("[Startup] ✓ Ready to start monitoring!\n");
+        switch (mode) {
+            case AppMode::MONITORING:
+                monitoringScreen->onEnter();
+                break;
+            case AppMode::IDLE:
+                // Future: idleScreen->onEnter();
+                break;
+            case AppMode::SETTINGS:
+                // Future: settingsScreen->onEnter();
+                break;
         }
-    } else {
-        // DEVELOPMENT MODE: Even without saved channel groups, pass impedance check
-        stateManager.SetImpedanceCheckPassed(true);
-        std::printf("[Startup] ⚠ No saved channel group - using defaults\n");
-        std::printf("[Startup] ✓ Impedance check passed (development mode)\n");
-    }
+    };
 
-    // Add observer with safe callback
-    stateManager.AddObserver([](elda::StateField field) {
-        std::printf("[Observer] State changed: %s\n", GetFieldName(field));
-        std::fflush(stdout);
-    });
+    // Called when exiting current mode
+    router.onModeExit = [&](AppMode mode) {
+        std::cout << "← Exiting: " << AppModeToString(mode) << std::endl;
 
-    // Synth for data generation
-    SynthEEG synth;
-    std::vector<float> sample;
+        switch (mode) {
+            case AppMode::MONITORING:
+                monitoringScreen->onExit();
+                break;
+            case AppMode::IDLE:
+                // Future: idleScreen->onExit();
+                break;
+            case AppMode::SETTINGS:
+                // Future: settingsScreen->onExit();
+                break;
+        }
+    };
 
-    // Main loop
+    // Start in MONITORING mode
+    router.transitionTo(AppMode::MONITORING);
+
+    // ========================================================================
+    // Main Loop
+    // ========================================================================
+    double lastTime = glfwGetTime();
+
     while (!glfwWindowShouldClose(window)) {
+        // Calculate deltaTime
+        double currentTime = glfwGetTime();
+        float deltaTime = static_cast<float>(currentTime - lastTime);
+        lastTime = currentTime;
+
+        // Poll events
         glfwPollEvents();
 
-        // ===== HOTKEYS (Original simple logic) =====
-
-        // F5: Toggle Monitoring
-        if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
-            stateManager.SetMonitoring(!stateManager.IsMonitoring());
-        }
-
-        // F7: Toggle Recording/Pause (original combined behavior)
-        if (ImGui::IsKeyPressed(ImGuiKey_F7) && stateManager.IsMonitoring()) {
-            bool recording = stateManager.IsRecording();
-            bool paused = stateManager.IsPaused();
-
-            if (recording && !paused) {
-                // Active recording -> pause
-                stateManager.PauseRecording();
-            } else if (paused) {
-                // Paused -> resume
-                stateManager.ResumeRecording();
-            } else {
-                // Not recording -> start
-                stateManager.StartRecording();
-            }
-        }
-
-        // ===== DATA GENERATION (Original logic) =====
-        if (stateManager.IsMonitoring()) {
-            int n = st.sampler.due();
-            for (int i = 0; i < n; ++i) {
-                synth.next(sample);
-                st.ring.push(sample);
-            }
-        }
-
-        // ===== CURSOR ADVANCES (Original logic) =====
-        st.tickDisplay(stateManager.IsMonitoring());
-
-        // ===== RENDER UI =====
+        // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Full-screen window
-        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
-        ImGui::Begin("Scope", nullptr,
-            ImGuiWindowFlags_NoDecoration |
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoBringToFrontOnFocus);
+        // ====================================================================
+        // Route to current screen
+        // ====================================================================
+        AppMode mode = router.getCurrentMode();
 
-        // Toolbar
-        Toolbar(st, stateManager);
+        switch (mode) {
+            case AppMode::MONITORING:
+                monitoringScreen->update(deltaTime);
+                monitoringScreen->render();
+                break;
 
-        // Chart
-        DrawChart(st);
+            case AppMode::IDLE:
+                // Future: idleScreen->render();
+                break;
 
-        ImGui::End();
+            case AppMode::SETTINGS:
+                // Future: settingsScreen->render();
+                // Example: if (settingsScreen->shouldClose()) {
+                //     router.returnToPreviousMode();
+                // }
+                break;
+        }
+
+        // ====================================================================
+        // Example: Switch modes with keyboard (for testing)
+        // ====================================================================
+        if (ImGui::IsKeyPressed(ImGuiKey_F1)) {
+            router.transitionTo(AppMode::IDLE);
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
+            router.transitionTo(AppMode::MONITORING);
+        }
+        if (ImGui::IsKeyPressed(ImGuiKey_F3)) {
+            router.transitionTo(AppMode::SETTINGS);
+        }
 
         // Render
         ImGui::Render();
-        int dw, dh;
-        glfwGetFramebufferSize(window, &dw, &dh);
-        glViewport(0, 0, dw, dh);
-        glClearColor(0.10f, 0.10f, 0.10f, 1.0f);
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);
     }
 
-    // Shutdown
-    std::printf("[Main] Shutting down...\n");
-
-    if (stateManager.IsRecording()) {
-        stateManager.StopRecording();
-    }
-    if (stateManager.IsMonitoring()) {
-        stateManager.SetMonitoring(false);
-    }
-
+    // ========================================================================
+    // Cleanup
+    // ========================================================================
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
