@@ -1,15 +1,21 @@
 #ifndef ELDA_MONITORING_PRESENTER_H
 #define ELDA_MONITORING_PRESENTER_H
 
-#include "monitoring_model.h"
-#include "monitoring_view.h"
+#include "views/channels_selector_modal/channels_group_presenter.h"
+
+namespace elda {
+    class MonitoringModel;
+    class MonitoringView;
+}
 
 namespace elda {
 
     class MonitoringPresenter {
     public:
-        MonitoringPresenter(MonitoringModel& model, MonitoringView& view);
-        ~MonitoringPresenter() = default;
+        MonitoringPresenter(
+            MonitoringModel& model,
+            MonitoringView& view,
+            elda::channels_group::ChannelsGroupPresenter& channelsPresenter);
 
         void onEnter();
         void onExit();
@@ -19,8 +25,9 @@ namespace elda {
     private:
         MonitoringModel& model_;
         MonitoringView& view_;
+        elda::channels_group::ChannelsGroupPresenter& channelsPresenter_;
     };
 
 } // namespace elda
 
-#endif
+#endif // ELDA_MONITORING_PRESENTER_H

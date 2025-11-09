@@ -29,66 +29,48 @@ void MonitoringModel::initializeBuffers() {
 
 void MonitoringModel::startAcquisition() {
     std::cout << "[Model] Start acquisition" << std::endl;
-    // Don't reset here - we'll reset when monitoring actually starts
 }
 
 void MonitoringModel::stopAcquisition() {
     std::cout << "[Model] Stop acquisition" << std::endl;
 }
 
-void MonitoringModel::pauseAcquisition() {
-    std::cout << "[Model] Pause" << std::endl;
-}
-
-void MonitoringModel::resumeAcquisition() {
-    std::cout << "[Model] Resume" << std::endl;
-}
-
 void MonitoringModel::update(float deltaTime) {
     if (stateManager_.IsMonitoring()) {
-        state_.tickDisplay(true);  // This advances playheadSeconds
+        state_.tickDisplay(true);
         updateChartData();
 
-        // Only generate new data when NOT paused
         if (!stateManager_.IsPaused()) {
             generateSyntheticData(deltaTime);
         }
     } else {
-        // When not monitoring, freeze the playhead
         state_.tickDisplay(false);
     }
 }
 
 void MonitoringModel::generateSyntheticData(float /*deltaTime*/) {
-    // Generate samples using AppState's sampler and generator
     static SynthEEG synthGen;
     std::vector<float> sample(CHANNELS);
 
     int samplesThisFrame = state_.sampler.due();
 
     for (int i = 0; i < samplesThisFrame; ++i) {
-        // Generate one sample
         synthGen.next(sample);
 
-        // Apply noise/artifact scaling
         for (int ch = 0; ch < CHANNELS; ++ch) {
             sample[ch] *= state_.noiseScale;
-            // Could also apply artifactScale if needed
         }
 
-        // Push to AppState's ring buffer
         state_.ring.push(sample);
     }
 }
 
 void MonitoringModel::updateChartData() {
-    // Copy data from AppState.ring to chartData_.ring for rendering
     chartData_.amplitudePPuV = state_.ampPPuV();
     chartData_.windowSeconds = state_.windowSec();
     chartData_.gainMultiplier = state_.gainMul();
     chartData_.playheadSeconds = state_.ring.now;
 
-    // Convert from float (AppState) to double (ChartData)
     chartData_.ring.tAbs.resize(BUFFER_SIZE);
     chartData_.ring.data.resize(CHANNELS);
 
@@ -109,28 +91,25 @@ void MonitoringModel::updateChartData() {
 }
 
 // ============================================================================
-// TOOLBAR BUSINESS LOGIC (delegated to AppStateManager)
+// ACTIONS
 // ============================================================================
 
 void MonitoringModel::toggleMonitoring() {
     const bool monitoring = stateManager_.IsMonitoring();
-    std::printf("[Model] toggleMonitoring called - current state: %s\n",
+    std::printf("[Model] toggleMonitoring - current: %s\n",
                monitoring ? "MONITORING" : "IDLE");
 
     auto result = stateManager_.SetMonitoring(!monitoring);
     if (!result.IsSuccess()) {
         std::fprintf(stderr, "[Model] Monitor toggle failed: %s\n", result.message.c_str());
     } else {
-        std::printf("[Model] Monitor toggle SUCCESS - new state: %s\n",
+        std::printf("[Model] Monitor toggle SUCCESS - new: %s\n",
                    !monitoring ? "MONITORING" : "IDLE");
 
-        // Reset the ring buffer and timing when starting monitoring
-        if (!monitoring) {  // We just turned monitoring ON
-            std::printf("[Model] Resetting ring buffer and timing\n");
+        if (!monitoring) {
+            std::printf("[Model] Resetting ring buffer\n");
             state_.ring.reset();
             state_.playheadSeconds = 0.0;
-
-            // Also reset the sample clock to prevent jumping
             state_.sampler = SampleClock(SAMPLE_RATE_HZ);
         }
     }
@@ -141,13 +120,11 @@ void MonitoringModel::toggleRecording() {
     const bool currentlyPaused = stateManager_.IsRecording() && stateManager_.IsPaused();
 
     if (recordingActive) {
-        // Pause recording
         auto result = stateManager_.PauseRecording();
         if (!result.IsSuccess()) {
             std::fprintf(stderr, "[Model] Pause failed: %s\n", result.message.c_str());
         }
     } else {
-        // Start or resume recording
         elda::StateChangeError result;
         if (currentlyPaused) {
             result = stateManager_.ResumeRecording();
@@ -199,53 +176,25 @@ void MonitoringModel::applyChannelConfiguration(const elda::models::ChannelsGrou
     }
 }
 
-ToolbarViewModel MonitoringModel::getToolbarViewModel() const {
-    ToolbarViewModel vm;
-
-    // Button states
-    vm.monitoring = stateManager_.IsMonitoring();
-    vm.canRecord = vm.monitoring;
-    vm.recordingActive = stateManager_.IsRecording() && !stateManager_.IsPaused();
-    vm.currentlyPaused = stateManager_.IsRecording() && stateManager_.IsPaused();
-
-    // Display values
-    vm.windowSeconds = (int)stateManager_.GetWindowSeconds();
-    vm.amplitudeMicroVolts = stateManager_.GetAmplitudeMicroVolts();
-    vm.winIdx = state_.winIdx;
-    vm.ampIdx = state_.ampIdx;
-
-    // System info
-    vm.sampleRateHz = SAMPLE_RATE_HZ;
-    // FPS will be set by View from ImGui
-
-    return vm;
-}
-
 // ============================================================================
-// TAB BAR SUPPORT (NEW!)
+// TAB BAR SUPPORT
 // ============================================================================
 
 int MonitoringModel::getActiveGroupIndex() const {
-    // Get active group name from AppState (single source of truth)
     const std::string& activeName = state_.currentChannelGroupName;
-
-    // Get available groups from AppState
     const auto& groups = state_.availableGroups;
 
-    // Find which group is currently active
     auto it = std::find_if(groups.begin(), groups.end(),
         [&activeName](const elda::models::ChannelsGroup& g) {
             return g.name == activeName;
         });
 
     if (it != groups.end()) {
-        int index = std::distance(groups.begin(), it);
-        return index;
+        return std::distance(groups.begin(), it);
     }
 
-    // Not found - default to first group (0)
     if (!activeName.empty()) {
-        std::fprintf(stderr, "[Model] Warning: Active group '%s' not found in availableGroups\n",
+        std::fprintf(stderr, "[Model] Warning: Active group '%s' not found\n",
                     activeName.c_str());
     }
     return 0;

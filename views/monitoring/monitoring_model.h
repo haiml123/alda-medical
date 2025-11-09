@@ -8,92 +8,52 @@
 
 namespace elda {
 
-    /**
-     * ViewModel for toolbar - exposes only what View needs
-     * No direct AppState access for View
-     */
-    struct ToolbarViewModel {
-        // Button states
-        bool monitoring = false;
-        bool canRecord = false;
-        bool recordingActive = false;
-        bool currentlyPaused = false;
-
-        // Display values
-        int windowSeconds = 10;
-        int amplitudeMicroVolts = 100;
-        int winIdx = 0;
-        int ampIdx = 0;
-
-        // System info
-        double sampleRateHz = 1000.0;
-        float fps = 60.0f;
-    };
-
     class MonitoringModel {
     public:
         MonitoringModel(AppState& state, elda::AppStateManager& stateManager);
         ~MonitoringModel() = default;
 
-        // === ACQUISITION CONTROL ===
+        // Lifecycle
         void startAcquisition();
         void stopAcquisition();
-        void pauseAcquisition();
-        void resumeAcquisition();
         void update(float deltaTime);
 
-        // === TOOLBAR BUSINESS LOGIC ===
-
-        // Monitor control
+        // Actions (called by Presenter)
         void toggleMonitoring();
-
-        // Recording control
         void toggleRecording();
-
-        // Display controls
         void increaseWindow();
         void decreaseWindow();
         void increaseAmplitude();
         void decreaseAmplitude();
-
-        // Channel configuration - accepts ChannelsGroup
         void applyChannelConfiguration(const elda::models::ChannelsGroup& group);
 
-        // === DATA ACCESS (Read-only for View) ===
-
+        // Getters (Presenter collects this data for View)
         const ChartData& getChartData() const { return chartData_; }
-        ToolbarViewModel getToolbarViewModel() const;
+        bool isMonitoring() const { return stateManager_.IsMonitoring(); }
+        bool canRecord() const { return isMonitoring(); }
+        bool isRecordingActive() const {
+            return stateManager_.IsRecording() && !stateManager_.IsPaused();
+        }
+        bool isCurrentlyPaused() const {
+            return stateManager_.IsRecording() && stateManager_.IsPaused();
+        }
+        int getWindowSeconds() const {
+            return (int)stateManager_.GetWindowSeconds();
+        }
+        int getAmplitudeMicroVolts() const {
+            return stateManager_.GetAmplitudeMicroVolts();
+        }
+        double getSampleRateHz() const { return SAMPLE_RATE_HZ; }
 
-        // === TAB BAR SUPPORT (NEW!) ===
-
-        /**
-         * Get all available channel groups (from AppState)
-         * Returns reference to AppState.availableGroups - no caching!
-         */
         const std::vector<elda::models::ChannelsGroup>& getAvailableGroups() const {
             return state_.availableGroups;
         }
 
-        /**
-         * Get currently active group name (from AppState)
-         * Returns AppState.currentChannelGroupName - single source of truth!
-         */
-        const std::string& getActiveGroupName() const {
-            return state_.currentChannelGroupName;
-        }
-
-        /**
-         * Get index of currently active group
-         * Finds which index in availableGroups matches currentChannelGroupName
-         */
         int getActiveGroupIndex() const;
 
     private:
-        // References to core state (Model layer only!)
         AppState& state_;
         elda::AppStateManager& stateManager_;
-
-        // Internal state
         ChartData chartData_;
         static constexpr int kBufferSize = 25000;
 
@@ -104,4 +64,4 @@ namespace elda {
 
 } // namespace elda
 
-#endif
+#endif // ELDA_MONITORING_MODEL_H

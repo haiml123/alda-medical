@@ -12,8 +12,14 @@ namespace elda {
         // View has no AppState access
         view_ = std::make_unique<MonitoringView>();
 
-        // Presenter orchestrates
-        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_);
+        // Create channels presenter
+        auto channelsPresenter = std::make_unique<elda::channels_group::ChannelsGroupPresenter>();
+
+        // Presenter orchestrates - needs all three
+        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channelsPresenter);
+
+        // Store channelsPresenter so it doesn't get destroyed
+        channelsPresenter_ = std::move(channelsPresenter);
     }
 
     void MonitoringScreen::onEnter() {

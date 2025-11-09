@@ -1,18 +1,14 @@
 #include "monitoring_toolbar.h"
-#include "views/monitoring/monitoring_model.h" // For ToolbarViewModel and ToolbarCallbacks
-#include "views/channels_selector_modal/channels_group_presenter.h"
+#include "imgui.h"
 #include <cmath>
 
 namespace elda {
- float MonitoringToolbar(const elda::ToolbarViewModel& vm, const elda::ToolbarCallbacks& callbacks) {
-    // Static presenter instance for MVP pattern
-    using namespace elda::channels_group;
-    static ChannelsGroupPresenter g_channelsPresenter;
 
+float MonitoringToolbar(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks) {
     const float header_h = 52.0f;
     ImGui::BeginChild("header", ImVec2(0, header_h), false, ImGuiWindowFlags_NoScrollbar);
 
-    // ===== COLOR PALETTE =====
+    // Colors
     const ImVec4 blue    = ImVec4(0.18f, 0.52f, 0.98f, 1.00f);
     const ImVec4 blueH   = ImVec4(0.16f, 0.46f, 0.90f, 1.00f);
     const ImVec4 green   = ImVec4(0.20f, 0.90f, 0.35f, 1.00f);
@@ -21,15 +17,12 @@ namespace elda {
     const ImVec4 orangeH = ImVec4(0.92f, 0.70f, 0.22f, 1.00f);
     const ImVec4 red     = ImVec4(0.89f, 0.33f, 0.30f, 1.00f);
     const ImVec4 redH    = ImVec4(0.85f, 0.28f, 0.25f, 1.00f);
-    const ImVec4 purple  = ImVec4(0.60f, 0.40f, 0.80f, 1.00f);
-    const ImVec4 purpleH = ImVec4(0.65f, 0.45f, 0.85f, 1.00f);
 
-    // ===== HELPER: STATUS DOT =====
+    // Status dot helper
     auto DrawStatusDot = [](bool recordingActive, bool paused, float radius) {
         ImDrawList* dl = ImGui::GetWindowDrawList();
         ImVec2 rMin = ImGui::GetItemRectMin();
         ImVec2 rMax = ImGui::GetItemRectMax();
-
         float cx = std::floor((rMin.x + rMax.x) * 0.5f + 0.5f);
         float textOffsetY = ImGui::GetStyle().FramePadding.y;
         float textHeight = ImGui::GetTextLineHeight();
@@ -47,39 +40,35 @@ namespace elda {
         } else {
             col = ImGui::GetColorU32(ImVec4(0.65f, 0.65f, 0.65f, 0.85f));
         }
-
         dl->AddCircleFilled(ImVec2(cx, cy), radius, col, 32);
         dl->AddCircle(ImVec2(cx, cy), radius, ImGui::GetColorU32(ImVec4(0,0,0,0.45f)), 32, 1.0f);
     };
 
-    // ===== MONITOR TOGGLE BUTTON =====
-    const char* monLabel = vm.monitoring ? "STOP MONITOR (F5)" : "MONITOR (F5)";
-    ImVec4 monCol  = vm.monitoring ? red : blue;
-    ImVec4 monColH = vm.monitoring ? redH : blueH;
+    // Monitor button
+    const char* monLabel = data.monitoring ? "STOP MONITOR (F5)" : "MONITOR (F5)";
+    ImVec4 monCol = data.monitoring ? red : blue;
+    ImVec4 monColH = data.monitoring ? redH : blueH;
 
     ImGui::PushStyleColor(ImGuiCol_Button, monCol);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, monColH);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, monColH);
-
     if (ImGui::Button(monLabel, ImVec2(160, 36))) {
         if (callbacks.onToggleMonitoring) {
             callbacks.onToggleMonitoring();
         }
     }
-
     ImGui::PopStyleColor(3);
     ImGui::SameLine();
 
-    // ===== RECORD / PAUSE TOGGLE BUTTON =====
-    const char* recLabel = vm.recordingActive ? "PAUSE (F7)" : "RECORD (F7)";
-    ImVec4 recCol  = vm.recordingActive ? orange : green;
-    ImVec4 recColH = vm.recordingActive ? orangeH : greenH;
+    // Record button
+    const char* recLabel = data.recordingActive ? "PAUSE (F7)" : "RECORD (F7)";
+    ImVec4 recCol = data.recordingActive ? orange : green;
+    ImVec4 recColH = data.recordingActive ? orangeH : greenH;
 
     ImGui::PushStyleColor(ImGuiCol_Button, recCol);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, recColH);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, recColH);
-
-    if (vm.canRecord) {
+    if (data.canRecord) {
         if (ImGui::Button(recLabel, ImVec2(150, 36))) {
             if (callbacks.onToggleRecording) {
                 callbacks.onToggleRecording();
@@ -90,22 +79,20 @@ namespace elda {
         ImGui::Button("RECORD (F7)", ImVec2(150, 36));
         ImGui::EndDisabled();
     }
-
     ImGui::PopStyleColor(3);
     ImGui::SameLine();
 
-    // ===== DIVIDER =====
     ImGui::TextDisabled("|");
     ImGui::SameLine();
 
-    // ===== TIME WINDOW CONTROLS =====
+    // Window controls
     if (ImGui::Button("-##win")) {
         if (callbacks.onDecreaseWindow) {
             callbacks.onDecreaseWindow();
         }
     }
     ImGui::SameLine();
-    ImGui::Text("%d sec", vm.windowSeconds);
+    ImGui::Text("%d sec", data.windowSeconds);
     ImGui::SameLine();
     if (ImGui::Button("+##win")) {
         if (callbacks.onIncreaseWindow) {
@@ -117,19 +104,17 @@ namespace elda {
     ImGui::Dummy(ImVec2(12, 1));
     ImGui::SameLine();
 
-    // ===== AMPLITUDE CONTROLS =====
+    // Amplitude controls
     if (ImGui::Button("-##amp")) {
         if (callbacks.onDecreaseAmplitude) {
             callbacks.onDecreaseAmplitude();
         }
     }
     ImGui::SameLine();
-    {
-        if (vm.amplitudeMicroVolts == 1000) {
-            ImGui::Text("1 mV");
-        } else {
-            ImGui::Text("%d µV", vm.amplitudeMicroVolts);
-        }
+    if (data.amplitudeMicroVolts == 1000) {
+        ImGui::Text("1 mV");
+    } else {
+        ImGui::Text("%d µV", data.amplitudeMicroVolts);
     }
     ImGui::SameLine();
     if (ImGui::Button("+##amp")) {
@@ -138,52 +123,25 @@ namespace elda {
         }
     }
 
-    ImGui::SameLine();
-    ImGui::Dummy(ImVec2(12, 1));
-    ImGui::SameLine();
-
-    // ===== CHANNELS BUTTON =====
-    ImVec2 channelButtonPos = ImGui::GetCursorScreenPos();
-    ImVec2 channelButtonSize = ImVec2(120, 36);
-
-    ImGui::PushStyleColor(ImGuiCol_Button, purple);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, purpleH);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, purpleH);
-
-    if (ImGui::Button("Channels", channelButtonSize)) {
-        g_channelsPresenter.OpenWithActiveGroup(
-            [&callbacks](const elda::models::ChannelsGroup& group) {
-                if (callbacks.onApplyChannelConfig) {
-                    callbacks.onApplyChannelConfig(group);
-                }
-            }
-        );
-    }
-
-    ImGui::PopStyleColor(3);
-
-    // ===== STATUS INFO (RIGHT-ALIGNED) =====
+    // Status info (right-aligned)
     ImGui::SameLine(0.0f, 0.0f);
     float right = ImGui::GetWindowContentRegionMax().x;
     float x = right - 360.0f;
     ImGui::SameLine(x > 0 ? x : 0);
 
-    // Monitoring text
-    ImGui::Text("%s", vm.monitoring ? "MONITORING" : "IDLE");
+    ImGui::Text("%s", data.monitoring ? "MONITORING" : "IDLE");
     ImGui::SameLine();
     ImGui::TextDisabled("|");
     ImGui::SameLine();
 
-    // Status dot
     const float dotRadius = 5.5f;
     ImGui::InvisibleButton("##rec_dot", ImVec2(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight()));
-    DrawStatusDot(vm.recordingActive, vm.currentlyPaused, dotRadius);
+    DrawStatusDot(data.recordingActive, data.currentlyPaused, dotRadius);
     ImGui::SameLine(0.0f, 6.0f);
 
-    // Recording status text
-    if (vm.recordingActive) {
+    if (data.recordingActive) {
         ImGui::TextColored(green, "RECORDING");
-    } else if (vm.currentlyPaused) {
+    } else if (data.currentlyPaused) {
         ImGui::TextColored(orange, "PAUSED");
     } else {
         ImGui::TextDisabled("NOT RECORDING");
@@ -193,17 +151,13 @@ namespace elda {
     ImGui::TextDisabled("|");
     ImGui::SameLine();
 
-    // Frame rate and sample rate
-    ImGui::Text("%.0f Hz", vm.sampleRateHz);
+    ImGui::Text("%.0f Hz", data.sampleRateHz);
     ImGui::SameLine();
     ImGui::Text("%.0f FPS", ImGui::GetIO().Framerate);
 
     ImGui::EndChild();
 
-    // ===== RENDER CHANNEL SELECTOR MODAL =====
-    // CRITICAL: Render the presenter every frame (even when modal is closed)
-    g_channelsPresenter.Render(channelButtonPos, channelButtonSize);
-
     return header_h;
 }
-}
+
+} // namespace elda

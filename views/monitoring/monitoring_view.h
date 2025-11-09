@@ -2,18 +2,55 @@
 #define ELDA_MONITORING_VIEW_H
 
 #include "UI/chart/chart_data.h"
-#include "UI/tabbar/tabbar.h"        // NEW: TabBar component
-#include "monitoring_toolbar.h"
-#include "monitoring_model.h"
-#include "models/channels_group.h"   // NEW: For ChannelsGroup
+#include "UI/tabbar/tabbar.h"
+#include "models/channels_group.h"
 #include <functional>
+#include <vector>
 
 namespace elda {
 
     /**
-     * MonitoringView - Pure UI rendering, no business logic
-     *
-     * Now includes TabBar for channel group selection
+     * All data the view needs to display
+     * Presenter collects this from Model
+     */
+    struct MonitoringViewData {
+        // Chart
+        const ChartData* chartData = nullptr;
+
+        // Toolbar state
+        bool monitoring = false;
+        bool canRecord = false;
+        bool recordingActive = false;
+        bool currentlyPaused = false;
+        int windowSeconds = 10;
+        int amplitudeMicroVolts = 100;
+        double sampleRateHz = 1000.0;
+
+        // Tab bar
+        const std::vector<elda::models::ChannelsGroup>* groups = nullptr;
+        int activeGroupIndex = 0;
+    };
+
+    /**
+     * All actions the view can trigger
+     * Presenter handles these
+     */
+    struct MonitoringViewCallbacks {
+        // Toolbar actions
+        std::function<void()> onToggleMonitoring;
+        std::function<void()> onToggleRecording;
+        std::function<void()> onIncreaseWindow;
+        std::function<void()> onDecreaseWindow;
+        std::function<void()> onIncreaseAmplitude;
+        std::function<void()> onDecreaseAmplitude;
+
+        // Tab actions
+        std::function<void()> onCreateChannelGroup;
+        std::function<void(const std::string&)> onEditChannelGroup;
+    };
+
+    /**
+     * MonitoringView - Completely passive, no logic
      */
     class MonitoringView {
     public:
@@ -21,31 +58,17 @@ namespace elda {
         ~MonitoringView() = default;
 
         /**
-         * Main render method
-         *
-         * @param chartData - EEG data for oscilloscope
-         * @param toolbarVM - Toolbar display state
-         * @param callbacks - User interaction callbacks
-         * @param groups - Available channel groups (NEW!)
-         * @param activeGroupIndex - Currently active group index (NEW!)
+         * Render the view with given data and callbacks
+         * View doesn't know about Model at all!
          */
-        void render(const ChartData& chartData,
-                   const ToolbarViewModel& toolbarVM,
-                   const ToolbarCallbacks& callbacks,
-                   const std::vector<elda::models::ChannelsGroup>& groups,
-                   int activeGroupIndex);
+        void render(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks);
 
     private:
-        elda::ui::TabBar tabBar_;  // NEW: TabBar instance
+        elda::ui::TabBar tabBar_;
 
-        /**
-         * Render the tab bar for channel group selection
-         */
-        void renderTabBar(const std::vector<elda::models::ChannelsGroup>& groups,
-                         int activeGroupIndex,
-                         const ToolbarCallbacks& callbacks);
+        void renderTabBar(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks);
     };
 
 } // namespace elda
 
-#endif
+#endif // ELDA_MONITORING_VIEW_H

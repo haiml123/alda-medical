@@ -1,14 +1,11 @@
 #include "monitoring_view.h"
+#include "monitoring_toolbar.h"
 #include "imgui.h"
 #include "UI/chart/chart.h"
 
 namespace elda {
 
-void MonitoringView::render(const ChartData& chartData,
-                           const ToolbarViewModel& toolbarVM,
-                           const ToolbarCallbacks& callbacks,
-                           const std::vector<elda::models::ChannelsGroup>& groups,
-                           int activeGroupIndex) {
+void MonitoringView::render(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks) {
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
     ImGui::SetNextWindowSize(viewport->Size);
@@ -19,33 +16,33 @@ void MonitoringView::render(const ChartData& chartData,
                  ImGuiWindowFlags_NoResize |
                  ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    // ===== RENDER TOOLBAR AT TOP =====
-    MonitoringToolbar(toolbarVM, callbacks);
+    // Render toolbar using separate component
+    MonitoringToolbar(data, callbacks);
 
-    // ===== RENDER TAB BAR (NEW!) =====
-    renderTabBar(groups, activeGroupIndex, callbacks);
+    // Render tab bar
+    renderTabBar(data, callbacks);
 
-    // ===== RENDER CHART BELOW TOOLBAR AND TABS =====
+    // Render chart
     ImVec2 availableSize = ImGui::GetContentRegionAvail();
     ImGui::BeginChild("ChartArea", ImVec2(availableSize.x, availableSize.y),
                      false, ImGuiWindowFlags_NoScrollbar);
 
-    DrawChart(chartData);
+    if (data.chartData) {
+        DrawChart(*data.chartData);
+    }
 
     ImGui::EndChild();
-
     ImGui::End();
 }
 
-void MonitoringView::renderTabBar(const std::vector<elda::models::ChannelsGroup>& groups,
-                                  int activeGroupIndex,
-                                  const ToolbarCallbacks& callbacks) {
-    // Don't render if no groups available
-    if (groups.empty()) {
+void MonitoringView::renderTabBar(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks) {
+    if (!data.groups || data.groups->empty()) {
         return;
     }
 
-    // Convert ChannelsGroup objects to Tab objects for TabBar component
+    const auto& groups = *data.groups;
+
+    // Convert to Tab objects
     std::vector<elda::ui::Tab> tabs;
     tabs.reserve(groups.size());
 
@@ -53,72 +50,56 @@ void MonitoringView::renderTabBar(const std::vector<elda::models::ChannelsGroup>
         elda::ui::Tab tab;
         tab.label = group.name;
         tab.id = group.name;
-        tab.badge = static_cast<int>(group.getSelectedCount());  // Show channel count
+        tab.badge = static_cast<int>(group.getSelectedCount());
         tab.enabled = true;
         tabs.push_back(tab);
     }
 
-    // Update TabBar with current data
     tabBar_.setTabs(tabs);
-    tabBar_.setActiveTab(activeGroupIndex);
+    tabBar_.setActiveTab(data.activeGroupIndex);
 
-    // Set the add button callback - button appears automatically!
-    tabBar_.setOnAddTab([]() {
-        printf("Add button clicked!\n");
-        // Your add logic here
+    // Add button → Create
+    tabBar_.setOnAddTab([&callbacks]() {
+        if (callbacks.onCreateChannelGroup) {
+            callbacks.onCreateChannelGroup();
+        }
     });
 
-    tabBar_.setOnTabDoubleClick([](int index, const elda::ui::Tab& tab) {
-        printf("Double-clicked tab %d: %s\n", index, tab.label.c_str());
-
+    // Single-click → Create
+    tabBar_.setOnTabClick([&callbacks](int, const elda::ui::Tab&) {
+        if (callbacks.onCreateChannelGroup) {
+            callbacks.onCreateChannelGroup();
+        }
     });
 
-    // Configure styling (only once)
+    // Double-click → Edit
+    tabBar_.setOnTabDoubleClick([&callbacks, &groups](int index, const elda::ui::Tab&) {
+        if (index >= 0 && index < static_cast<int>(groups.size())) {
+            if (callbacks.onEditChannelGroup) {
+                callbacks.onEditChannelGroup(groups[index].name);
+            }
+        }
+    });
+
+    // Styling
     static bool styled = false;
     if (!styled) {
         auto& style = tabBar_.getStyle();
-
-        // Match your medical device theme colors
-        style.activeColor = ImVec4(0.18f, 0.52f, 0.98f, 1.00f);    // Blue (active)
-        style.inactiveColor = ImVec4(0.20f, 0.21f, 0.23f, 1.00f);  // Dark gray (inactive)
-        style.hoverColor = ImVec4(0.16f, 0.46f, 0.90f, 1.00f);     // Darker blue (hover)
-        style.disabledColor = ImVec4(0.10f, 0.10f, 0.10f, 0.50f);  // Disabled
-        style.badgeColor = ImVec4(0.89f, 0.33f, 0.30f, 1.00f);     // Red badge
-        style.badgeTextColor = ImVec4(1.00f, 1.00f, 1.00f, 1.00f); // White text
-
-        // Sizing
+        style.activeColor = ImVec4(0.18f, 0.52f, 0.98f, 1.00f);
+        style.inactiveColor = ImVec4(0.20f, 0.21f, 0.23f, 1.00f);
+        style.hoverColor = ImVec4(0.16f, 0.46f, 0.90f, 1.00f);
         style.height = 40.0f;
         style.buttonPaddingX = 16.0f;
         style.buttonPaddingY = 8.0f;
         style.spacing = 2.0f;
         style.rounding = 4.0f;
-
-        // Features
         style.showSeparator = true;
         style.autoSize = false;
         style.showBadges = true;
-
         styled = true;
     }
 
-    // Set click callback - when user clicks a tab, apply that group's configuration
-    tabBar_.setOnTabClick([&callbacks, &groups](int tabIndex, const elda::ui::Tab& tab) {
-        std::printf("[View] Tab clicked: index %d (%s)\n", tabIndex, tab.label.c_str());
-
-        // Apply the selected group's configuration
-        if (tabIndex >= 0 && tabIndex < static_cast<int>(groups.size())) {
-            if (callbacks.onApplyChannelConfig) {
-                callbacks.onApplyChannelConfig(groups[tabIndex]);
-            }
-        }
-    });
-
-    // Render the tab bar
-    bool tabChanged = tabBar_.render();
-
-    if (tabChanged) {
-        std::printf("[View] Active tab changed to: %d\n", tabBar_.getActiveTab());
-    }
+    tabBar_.render();
 }
 
 } // namespace elda
