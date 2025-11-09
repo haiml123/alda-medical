@@ -1,5 +1,5 @@
-#include "eeg_core.h"
-#include "./views/channels_selector_modal/channels_group_presenter.h"
+#include "core/core.h"
+#include "models/channel.h"
 
 // AppState constructor implementation
 AppState::AppState() {

@@ -46,6 +46,13 @@ set(VIEWS
         ${CMAKE_CURRENT_SOURCE_DIR}/views/channels_selector_modal/channels_group_presenter.cpp
 )
 
+set(CORE
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/core.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/core.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/app_state_manager.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/core/app_state_manager.cpp
+)
+
 include_directories(
         ${IMGUI_DIR}
         ${IMGUI_DIR}/backends
@@ -56,13 +63,14 @@ include_directories(
 
 add_executable(alda_medical
         main.cpp
-        eeg_core.h
-        eeg_core.cpp
+        eeg_core.cpp.h.dist
+        eeg_core.cpp.dist
         eeg_theme.h
         eeg_toolbar.h
         eeg_toolbar.cpp
         eeg_chart.h
         eeg_chart.cpp
+        ${CORE}
         ${MODELS}
         ${SERVICES}
         ${VIEWS}

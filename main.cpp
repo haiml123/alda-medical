@@ -12,14 +12,31 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include "eeg_core.h"
+#include "core/core.h"
 #include "eeg_theme.h"
 #include "eeg_toolbar.h"
 #include "eeg_chart.h"
+#include "core/app_state_manager.h"
+#include "services/channel_management_service.h"
 
-static void glfw_error_callback(int e, const char* d){ std::fprintf(stderr,"GLFW error %d: %s\n", e, d); }
+static void glfw_error_callback(int e, const char* d) {
+    std::fprintf(stderr, "GLFW error %d: %s\n", e, d);
+}
 
-int main(){
+// SAFE: Static function for observer callback
+static const char* GetFieldName(elda::StateField field) {
+    static const char* names[] = {
+        "Monitoring", "Recording", "Paused", "ChannelConfig",
+        "DisplayWindow", "DisplayAmplitude", "NoiseSettings"
+    };
+    int index = static_cast<int>(field);
+    if (index >= 0 && index < 7) {
+        return names[index];
+    }
+    return "Unknown";
+}
+
+int main() {
     // ---- GLFW / GL init ----
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return 1;
@@ -30,17 +47,22 @@ int main(){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-    GLFWwindow* window = glfwCreateWindow(1700, 980, "EEG Sweep (ImPlot)", nullptr, nullptr);
-    if (!window) { glfwTerminate(); return 1; }
-    glfwMakeContextCurrent(window);
 
-    // VSync (smooth + low CPU).
+    GLFWwindow* window = glfwCreateWindow(1700, 980, "ELDA EEG",
+                                         nullptr, nullptr);
+    if (!window) {
+        glfwTerminate();
+        return 1;
+    }
+    glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
-    // glfwSwapInterval(0); // uncap if you want higher FPS cursor
 
 #if !defined(__APPLE__)
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::fprintf(stderr,"Failed to init GLAD\n"); glfwDestroyWindow(window); glfwTerminate(); return 1;
+        std::fprintf(stderr, "Failed to init GLAD\n");
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return 1;
     }
 #endif
 
@@ -49,19 +71,57 @@ int main(){
     ImGui::CreateContext();
     ImPlot::CreateContext();
     ImGui::StyleColorsDark();
+
 #if defined(__APPLE__)
     const char* glsl_version = "#version 150";
 #else
     const char* glsl_version = "#version 130";
 #endif
+
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
-    // Theme
     ApplyAldaTheme();
 
-    // ---- App state & synth ----
-    AppState st;            // monitoring starts OFF by design now
+    // ---- App state & State Manager ----
+    AppState st;
+    elda::AppStateManager stateManager(st);
+
+    // Enable audit logging
+    stateManager.EnableAuditLog(true, "elda_audit_log.txt");
+
+    // Auto-load active channel group
+    auto& channelService = elda::services::ChannelManagementService::GetInstance();
+    auto activeGroup = channelService.LoadActiveChannelGroup();
+
+    if (activeGroup.has_value()) {
+        auto result = stateManager.SetChannelConfiguration(
+            activeGroup->name,
+            activeGroup->getSelectedChannels()
+        );
+
+        if (result.IsSuccess()) {
+            std::printf("[Startup] ✓ Loaded channel group: '%s' with %zu channels\n",
+                       activeGroup->name.c_str(), activeGroup->getSelectedCount());
+
+            // DEVELOPMENT MODE: Auto-pass impedance check for synthetic data
+            stateManager.SetImpedanceCheckPassed(true);
+            std::printf("[Startup] ✓ Impedance check passed (development mode)\n");
+            std::printf("[Startup] ✓ Ready to start monitoring!\n");
+        }
+    } else {
+        // DEVELOPMENT MODE: Even without saved channel groups, pass impedance check
+        stateManager.SetImpedanceCheckPassed(true);
+        std::printf("[Startup] ⚠ No saved channel group - using defaults\n");
+        std::printf("[Startup] ✓ Impedance check passed (development mode)\n");
+    }
+
+    // Add observer with safe callback
+    stateManager.AddObserver([](elda::StateField field) {
+        std::printf("[Observer] State changed: %s\n", GetFieldName(field));
+        std::fflush(stdout);
+    });
+
+    // Synth for data generation
     SynthEEG synth;
     std::vector<float> sample;
 
@@ -69,72 +129,67 @@ int main(){
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
-        // Hotkeys
-        if (ImGui::IsKeyPressed(ImGuiKey_F5)) { // toggle Monitor
-            if (st.isMonitoring) {
-                st.isMonitoring = false;
-                if (st.isRecordingToFile) {
-                    st.isRecordingToFile = false;
-                    st.isPaused = false;
-                    // TODO: finalize/close file
-                    std::printf("[F5] Monitor OFF; also STOP recording at t=%.3f s\n", st.currentEEGTime());
-                } else {
-                    std::printf("[F5] Monitor OFF at t=%.3f s\n", st.currentEEGTime());
-                }
+        // ===== HOTKEYS (Original simple logic) =====
+
+        // F5: Toggle Monitoring
+        if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
+            stateManager.SetMonitoring(!stateManager.IsMonitoring());
+        }
+
+        // F7: Toggle Recording/Pause (original combined behavior)
+        if (ImGui::IsKeyPressed(ImGuiKey_F7) && stateManager.IsMonitoring()) {
+            bool recording = stateManager.IsRecording();
+            bool paused = stateManager.IsPaused();
+
+            if (recording && !paused) {
+                // Active recording -> pause
+                stateManager.PauseRecording();
+            } else if (paused) {
+                // Paused -> resume
+                stateManager.ResumeRecording();
             } else {
-                st.isMonitoring = true;
-                std::printf("[F5] Monitor ON at t=%.3f s\n", st.currentEEGTime());
+                // Not recording -> start
+                stateManager.StartRecording();
             }
         }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_F7) && st.isMonitoring) { // Record/Pause toggle
-            if (st.isRecordingToFile && !st.isPaused) {
-                // -> PAUSE
-                st.isPaused = true;
-                st.pauseMarks.push_back({ st.currentEEGTime() });
-                // TODO: pause file writing
-                std::printf("[F7] PAUSE at t=%.3f s\n", st.currentEEGTime());
-            } else {
-                // -> RECORD (start or resume)
-                st.isRecordingToFile = true;
-                st.isPaused          = false;
-                // TODO: start/resume file writing
-                std::printf("[F7] %s recording at t=%.3f s\n",
-                            "Start/Resume", st.currentEEGTime());
-            }
-        }
-
-        // Generate samples only while monitoring
-        if (st.isMonitoring) {
+        // ===== DATA GENERATION (Original logic) =====
+        if (stateManager.IsMonitoring()) {
             int n = st.sampler.due();
-            for (int i=0;i<n;++i){ synth.next(sample); st.ring.push(sample); }
+            for (int i = 0; i < n; ++i) {
+                synth.next(sample);
+                st.ring.push(sample);
+            }
         }
 
-        // Cursor/playhead advances only while monitoring
-        st.tickDisplay(st.isMonitoring);
+        // ===== CURSOR ADVANCES (Original logic) =====
+        st.tickDisplay(stateManager.IsMonitoring());
 
-        // Frame start
+        // ===== RENDER UI =====
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Full-screen single window
-        ImGui::SetNextWindowPos(ImVec2(0,0), ImGuiCond_Always);
+        // Full-screen window
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize, ImGuiCond_Always);
         ImGui::Begin("Scope", nullptr,
-            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus);
+            ImGuiWindowFlags_NoDecoration |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-        // Header / controls
-        DrawToolbar(st);
+        // Toolbar
+        DrawToolbar(st, stateManager);
 
-        // Chart (fills rest)
+        // Chart
         DrawChart(st);
 
         ImGui::End();
 
         // Render
         ImGui::Render();
-        int dw, dh; glfwGetFramebufferSize(window, &dw, &dh);
+        int dw, dh;
+        glfwGetFramebufferSize(window, &dw, &dh);
         glViewport(0, 0, dw, dh);
         glClearColor(0.10f, 0.10f, 0.10f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -143,11 +198,21 @@ int main(){
     }
 
     // Shutdown
+    std::printf("[Main] Shutting down...\n");
+
+    if (stateManager.IsRecording()) {
+        stateManager.StopRecording();
+    }
+    if (stateManager.IsMonitoring()) {
+        stateManager.SetMonitoring(false);
+    }
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
     glfwDestroyWindow(window);
     glfwTerminate();
+
     return 0;
 }

@@ -3,7 +3,7 @@
 #include <cmath>
 
 // Helper functions
-static inline float Roundf(float x){ return std::floor(x + 0.5f); }
+static inline float Roundf(float x) { return std::floor(x + 0.5f); }
 
 static void DrawStatusDotInLastItem(bool recordingActive, bool paused, float radius) {
     ImDrawList* dl = ImGui::GetWindowDrawList();
@@ -35,7 +35,7 @@ static void DrawStatusDotInLastItem(bool recordingActive, bool paused, float rad
     dl->AddCircle(ImVec2(cx, cy), radius, ImGui::GetColorU32(ImVec4(0,0,0,0.45f)), 32, 1.0f);
 }
 
-float DrawToolbar(AppState& st) {
+float DrawToolbar(AppState& st, elda::AppStateManager& stateManager) {
     // Static presenter instance for MVP pattern
     using namespace elda::channels_group;
     static ChannelsGroupPresenter g_channelsPresenter;
@@ -56,7 +56,7 @@ float DrawToolbar(AppState& st) {
     const ImVec4 purpleH = ImVec4(0.65f, 0.45f, 0.85f, 1.00f);
 
     // ===== MONITOR toggle =====
-    const bool monitoring = st.isMonitoring;
+    const bool monitoring = stateManager.IsMonitoring();
     const char* monLabel  = monitoring ? "STOP MONITOR (F5)" : "MONITOR (F5)";
     ImVec4 monCol         = monitoring ? red : blue;
     ImVec4 monColH        = monitoring ? redH : blueH;
@@ -64,29 +64,22 @@ float DrawToolbar(AppState& st) {
     ImGui::PushStyleColor(ImGuiCol_Button,        monCol);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, monColH);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  monColH);
+
     if (ImGui::Button(monLabel, ImVec2(160, 36))) {
-        if (monitoring) {
-            st.isMonitoring = false;
-            if (st.isRecordingToFile) {
-                st.isRecordingToFile = false;
-                st.isPaused = false;
-                std::printf("[MONITOR OFF] Also stopped recording at t=%.3f s\n", st.currentEEGTime());
-            } else {
-                std::printf("[MONITOR OFF] Monitoring stopped at t=%.3f s\n", st.currentEEGTime());
-            }
-        } else {
-            st.isMonitoring = true;
-            std::printf("[MONITOR ON] Monitoring started at t=%.3f s\n", st.currentEEGTime());
+        // Use state manager for validation, but handle state changes simply
+        auto result = stateManager.SetMonitoring(!monitoring);
+        if (!result.IsSuccess()) {
+            std::fprintf(stderr, "[UI Error] %s\n", result.message.c_str());
         }
     }
-    ImGui::PopStyleColor(3);
 
+    ImGui::PopStyleColor(3);
     ImGui::SameLine();
 
     // ===== RECORD / PAUSE toggle =====
-    const bool canRecord       = st.isMonitoring;
-    const bool recordingActive = st.isRecordingToFile && !st.isPaused;
-    const bool currentlyPaused = st.isRecordingToFile &&  st.isPaused;
+    const bool canRecord       = monitoring;
+    const bool recordingActive = stateManager.IsRecording() && !stateManager.IsPaused();
+    const bool currentlyPaused = stateManager.IsRecording() && stateManager.IsPaused();
 
     const char* recLabel = recordingActive ? "PAUSE (F7)" : "RECORD (F7)";
     ImVec4 recCol        = recordingActive ? orange : green;
@@ -95,81 +88,116 @@ float DrawToolbar(AppState& st) {
     ImGui::PushStyleColor(ImGuiCol_Button,        recCol);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, recColH);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  recColH);
+
     if (canRecord) {
         if (ImGui::Button(recLabel, ImVec2(150, 36))) {
             if (recordingActive) {
-                st.isPaused = true;
-                st.pauseMarks.push_back({ st.currentEEGTime() });
-                std::printf("[PAUSE] Recording paused at t=%.3f s\n", st.currentEEGTime());
+                // Pause recording
+                auto result = stateManager.PauseRecording();
+                if (!result.IsSuccess()) {
+                    std::fprintf(stderr, "[RECORD] Failed to pause: %s\n", result.message.c_str());
+                }
             } else {
-                st.isRecordingToFile = true;
-                st.isPaused          = false;
-                std::printf("%s recording at t=%.3f s\n",
-                            currentlyPaused ? "[RESUME]" : "[RECORD]", st.currentEEGTime());
+                // Start or resume recording
+                elda::StateChangeError result;
+                if (currentlyPaused) {
+                    result = stateManager.ResumeRecording();
+                    if (!result.IsSuccess()) {
+                        std::fprintf(stderr, "[RECORD] Failed to resume: %s\n", result.message.c_str());
+                    }
+                } else {
+                    result = stateManager.StartRecording();
+                    if (!result.IsSuccess()) {
+                        std::fprintf(stderr, "[RECORD] Failed to start: %s\n", result.message.c_str());
+
+                        // Special message for impedance check
+                        if (result.result == elda::StateChangeResult::ImpedanceCheckRequired) {
+                            std::fprintf(stderr, "[RECORD] HINT: Call stateManager.SetImpedanceCheckPassed(true) in development mode\n");
+                        }
+                    }
+                }
             }
         }
     } else {
         ImGui::BeginDisabled();
-        ImGui::Button(recLabel, ImVec2(150, 36));
+        ImGui::Button("RECORD (F7)", ImVec2(150, 36));
         ImGui::EndDisabled();
     }
+
     ImGui::PopStyleColor(3);
+    ImGui::SameLine();
 
     // Divider
-    ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
-
-    // Window - / value / +
-    if (ImGui::Button("-")) { decIdx(st.winIdx, WINDOW_COUNT); }
+    ImGui::TextDisabled("|");
     ImGui::SameLine();
-    ImGui::Text("%d sec", (int)WINDOW_OPTIONS[st.winIdx]);
-    ImGui::SameLine();
-    if (ImGui::Button("+")) { incIdx(st.winIdx, WINDOW_COUNT); }
 
-    ImGui::SameLine(); ImGui::Dummy(ImVec2(12,1)); ImGui::SameLine();
-
-    // Amplitude (pp) - / value / +
-    if (ImGui::Button("-##amp")) { decIdx(st.ampIdx, AMP_COUNT); }
-    ImGui::SameLine();
-    {
-        int amp = AMP_PP_UV_OPTIONS[st.ampIdx];
-        if (amp == 1000) ImGui::Text("1 mV");
-        else             ImGui::Text("%d \xC2\xB5V", amp);
+    // ===== Window size controls =====
+    if (ImGui::Button("-##win")) {
+        if (st.winIdx > 0) {
+            stateManager.SetDisplayWindow(st.winIdx - 1);
+        }
     }
     ImGui::SameLine();
-    if (ImGui::Button("+##amp")) { incIdx(st.ampIdx, AMP_COUNT); }
+    ImGui::Text("%d sec", (int)stateManager.GetWindowSeconds());
+    ImGui::SameLine();
+    if (ImGui::Button("+##win")) {
+        if (st.winIdx < WINDOW_COUNT - 1) {
+            stateManager.SetDisplayWindow(st.winIdx + 1);
+        }
+    }
 
-    // ===== CHANNELS button with MVP =====
-    ImGui::SameLine(); ImGui::Dummy(ImVec2(12,1)); ImGui::SameLine();
+    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(12, 1));
+    ImGui::SameLine();
 
-    // Store button position BEFORE drawing the button
+    // ===== Amplitude controls =====
+    if (ImGui::Button("-##amp")) {
+        if (st.ampIdx > 0) {
+            stateManager.SetDisplayAmplitude(st.ampIdx - 1);
+        }
+    }
+    ImGui::SameLine();
+    {
+        int amp = stateManager.GetAmplitudeMicroVolts();
+        if (amp == 1000) {
+            ImGui::Text("1 mV");
+        } else {
+            ImGui::Text("%d µV", amp);
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("+##amp")) {
+        if (st.ampIdx < AMP_COUNT - 1) {
+            stateManager.SetDisplayAmplitude(st.ampIdx + 1);
+        }
+    }
+
+    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(12, 1));
+    ImGui::SameLine();
+
+    // ===== CHANNELS button =====
     ImVec2 channelButtonPos = ImGui::GetCursorScreenPos();
     ImVec2 channelButtonSize = ImVec2(120, 36);
 
-    ImGui::PushStyleColor(ImGuiCol_Button,        purple);
+    ImGui::PushStyleColor(ImGuiCol_Button, purple);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, purpleH);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  purpleH);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, purpleH);
 
     if (ImGui::Button("Channels", channelButtonSize)) {
-        // Open modal with active group using MVP presenter
         g_channelsPresenter.OpenWithActiveGroup(
-            [&st](const elda::models::ChannelsGroup& group) {
-                // Callback when user confirms selection
-                // Group is already saved automatically by the service!
-                std::printf("[Channels Group] Configuration: %s\n", group.name.c_str());
-                std::printf("[Channels Group] Selected channels (%zu total, %zu selected):\n",
-                           group.channels.size(), group.getSelectedCount());
+            [&stateManager](const elda::models::ChannelsGroup& group) {
+                auto result = stateManager.SetChannelConfiguration(
+                    group.name,
+                    group.getSelectedChannels()
+                );
 
-                // Print selected channels
-                for (const auto& ch : group.channels) {
-                    if (ch.selected) {
-                        std::printf("  - %s (ID: %s, Color: %s)\n",
-                                   ch.name.c_str(), ch.id.c_str(), ch.color.c_str());
-                    }
+                if (result.IsSuccess()) {
+                    std::printf("[Channels] Configuration applied: %s (%zu channels)\n",
+                               group.name.c_str(), group.getSelectedCount());
+                } else {
+                    std::fprintf(stderr, "[Channels Error] %s\n", result.message.c_str());
                 }
-
-                // Optional: Update AppState with selected group
-                // st.currentChannelGroupName = group.name;
-                // st.selectedChannels = group.getSelectedChannels();
             }
         );
     }
@@ -183,8 +211,10 @@ float DrawToolbar(AppState& st) {
     ImGui::SameLine(x > 0 ? x : 0);
 
     // Monitoring text
-    ImGui::Text("%s", st.isMonitoring ? "MONITORING" : "IDLE");
-    ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
+    ImGui::Text("%s", monitoring ? "MONITORING" : "IDLE");
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
 
     // Status dot
     const float dotRadius = 5.5f;
@@ -193,16 +223,24 @@ float DrawToolbar(AppState& st) {
     ImGui::SameLine(0.0f, 6.0f);
 
     // Recording status text
-    if (st.isRecordingToFile) {
-        if (st.isPaused) ImGui::TextColored(orange, "PAUSED");
-        else             ImGui::TextColored(green,  "RECORDING");
+    if (stateManager.IsRecording()) {
+        if (currentlyPaused) {
+            ImGui::TextColored(orange, "PAUSED");
+        } else {
+            ImGui::TextColored(green, "RECORDING");
+        }
     } else {
         ImGui::TextDisabled("NOT RECORDING");
     }
 
-    ImGui::SameLine(); ImGui::TextDisabled("|"); ImGui::SameLine();
+    ImGui::SameLine();
+    ImGui::TextDisabled("|");
+    ImGui::SameLine();
+
+    // Frame rate and sample rate
     ImGui::Text("%.0f Hz", SAMPLE_RATE_HZ);
-    ImGui::SameLine(); ImGui::Text("%.0f FPS", ImGui::GetIO().Framerate);
+    ImGui::SameLine();
+    ImGui::Text("%.0f FPS", ImGui::GetIO().Framerate);
 
     ImGui::EndChild();
 
