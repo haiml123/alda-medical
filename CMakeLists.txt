@@ -55,6 +55,16 @@ set(VIEWS
         views/monitoring/monitoring_presenter.cpp
 )
 
+set(UI
+        UI/toolbar/toolbar.h
+        UI/toolbar/toolbar.cpp
+        UI/tabbar/tabbar.h
+        UI/tabbar/tabbar.cpp
+        UI/chart/chart.h
+        UI/chart/chart.cpp
+        UI/chart/chart_data.h
+)
+
 set(CORE
         ${CMAKE_CURRENT_SOURCE_DIR}/core/core.h
         ${CMAKE_CURRENT_SOURCE_DIR}/core/core.cpp
@@ -73,12 +83,8 @@ include_directories(
 add_executable(alda_medical
         main.cpp
         eeg_theme.h
-        UI/toolbar/toolbar.h
-        UI/toolbar/toolbar.cpp
-        UI/chart/chart.h
-        UI/chart/chart.cpp
-        UI/chart/chart_data.h
         ${CORE}
+        ${UI}
         ${MODELS}
         ${SERVICES}
         ${VIEWS}
