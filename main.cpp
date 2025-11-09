@@ -14,7 +14,7 @@
 
 #include "core/core.h"
 #include "eeg_theme.h"
-#include "eeg_toolbar.h"
+#include "UI/toolbar/toolbar.h"
 #include "eeg_chart.h"
 #include "core/app_state_manager.h"
 #include "services/channel_management_service.h"
@@ -179,7 +179,7 @@ int main() {
             ImGuiWindowFlags_NoBringToFrontOnFocus);
 
         // Toolbar
-        DrawToolbar(st, stateManager);
+        Toolbar(st, stateManager);
 
         // Chart
         DrawChart(st);

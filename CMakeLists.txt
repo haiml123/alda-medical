@@ -66,8 +66,8 @@ add_executable(alda_medical
         eeg_core.cpp.h.dist
         eeg_core.cpp.dist
         eeg_theme.h
-        eeg_toolbar.h
-        eeg_toolbar.cpp
+        UI/toolbar/toolbar.h
+        UI/toolbar/toolbar.cpp
         eeg_chart.h
         eeg_chart.cpp
         ${CORE}
