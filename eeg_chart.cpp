@@ -1,13 +1,11 @@
 // =============================================================================
-// FEATURE: Hover Highlight - Change Label Color on Waveform Hover
-// =============================================================================
-// When mouse hovers over a waveform, the corresponding channel label changes
-// to cyan (same color as waveform)
+// OPTIMIZED: Scan phase optimizations
+// - Remove floor() calls (use direct time comparisons)
+// - Reserve capacity (avoid reallocations)
+// - Better cache locality (early exit)
 // =============================================================================
 
 #include "eeg_chart.h"
-
-// GUI
 #include "imgui.h"
 #include "implot.h"
 
@@ -15,43 +13,14 @@
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
-#include <chrono>   // <-- added for perf timers
+#include <chrono>
 
-// ----------------------------- helpers -----------------------------
-static void sort_by_x(std::vector<float>& xs, std::vector<float>& ys) {
-    if (xs.size() < 2) return;
-    bool sorted = true;
-    for (size_t k = 1; k < xs.size(); ++k)
-        if (xs[k] < xs[k - 1]) { sorted = false; break; }
-    if (!sorted) {
-        std::vector<size_t> idx(xs.size());
-        std::iota(idx.begin(), idx.end(), 0);
-        std::stable_sort(idx.begin(), idx.end(),
-                         [&](size_t a, size_t b){ return xs[a] < xs[b]; });
-        std::vector<float> xs2(xs.size()), ys2(ys.size());
-        for (size_t k = 0; k < idx.size(); ++k) {
-            xs2[k] = xs[idx[k]];
-            ys2[k] = ys[idx[k]];
-        }
-        xs.swap(xs2); ys.swap(ys2);
-    }
-}
-
-// Small per-label nudge rightwards so text isn't on the frame
-static constexpr float kLabelInsetPx = 25.0f;
-
-// Label spacing (constant visual spacing at all time scales)
+static constexpr float kLabelInsetPx = 20.0f;
 static constexpr float kLabelSpacingPixels = 50.0f;
 
-// =============================================================================
-// Color constants for labels
-// =============================================================================
-static const ImVec4 kLabelColorNormal    = ImVec4(0.65f, 0.68f, 0.72f, 1.0f);  // Gray (default)
-static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);  // Cyan (waveform color)
+static const ImVec4 kLabelColorNormal    = ImVec4(0.65f, 0.68f, 0.72f, 1.0f);
+static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);
 
-// =============================================================================
-// PERFORMANCE DEBUGGER (added; no behavior changes)
-// =============================================================================
 struct PerfScope {
     std::chrono::steady_clock::time_point t0;
     double* out_ms;
@@ -65,19 +34,19 @@ struct PerfScope {
 };
 
 struct FrameStats {
-    // aggregates for this frame
     double total_ms        = 0.0;
     double label_width_ms  = 0.0;
-    double plotting_ms     = 0.0; // overall plotting section (includes hover, channels, wiper, labels loop wrapper)
-    double scan_ms         = 0.0; // building xsPrev/xsCur
-    double sort_ms         = 0.0; // sort_by_x both segments
-    double plot_lines_ms   = 0.0; // PlotLine calls
-    double wiper_ms        = 0.0; // wiper fill
-    double labels_ms       = 0.0; // PlotText labels at the end
+    double plotting_ms     = 0.0;
+    double scan_ms         = 0.0;
+    double plot_lines_ms   = 0.0;
+    double wiper_ms        = 0.0;
+    double labels_ms       = 0.0;
     int    points_rendered = 0;
+    int    points_scanned  = 0;
+    int    points_skipped  = 0;
 
     static int counter;
-    static constexpr int kLogEvery = 60; // frames
+    static constexpr int kLogEvery = 60;
 
     void Log() {
         if (++counter >= kLogEvery) {
@@ -86,11 +55,13 @@ struct FrameStats {
             std::printf("  Label Width:     %.3f ms\n", label_width_ms);
             std::printf("  Plotting Total:  %.3f ms\n", plotting_ms);
             std::printf("    Build (scan):  %.3f ms\n", scan_ms);
-            std::printf("    Sorting:       %.3f ms\n", sort_ms);
             std::printf("    Plot lines:    %.3f ms\n", plot_lines_ms);
             std::printf("    Wiper:         %.3f ms\n", wiper_ms);
             std::printf("  Draw Labels:     %.3f ms\n", labels_ms);
-            std::printf("  Points/Frame:    %d\n", points_rendered);
+            std::printf("  Samples Scanned: %d\n", points_scanned);
+            std::printf("  Samples Skipped: %d (%.1f%%)\n", points_skipped,
+                       points_scanned > 0 ? 100.0 * points_skipped / points_scanned : 0.0);
+            std::printf("  Points Rendered: %d\n", points_rendered);
             std::printf("  FPS:             %.1f\n", ImGui::GetIO().Framerate);
             std::printf("==============================\n\n");
             counter = 0;
@@ -99,20 +70,36 @@ struct FrameStats {
 };
 int FrameStats::counter = 0;
 
-// ----------------------------- main -----------------------------
+struct PlotBuffers {
+    std::vector<float> xsPrev, ysPrev, xsCur, ysCur;
+
+    PlotBuffers() {
+        const int maxSize = BUFFER_SIZE;
+        xsPrev.reserve(maxSize);
+        ysPrev.reserve(maxSize);
+        xsCur.reserve(maxSize);
+        ysCur.reserve(maxSize);
+    }
+
+    void clear() {
+        xsPrev.clear();
+        ysPrev.clear();
+        xsCur.clear();
+        ysCur.clear();
+    }
+};
+
 void DrawChart(AppState& st) {
     FrameStats fs;
+    static PlotBuffers plotBuffers;
+
     {
         PerfScope _total(&fs.total_ms);
 
-        // Vertical band spacing (plot units); keep consistent with your amplitude scaling
         const double rowHeight    = std::max(1.0, 1.2 * (double)st.ampPPuV());
-        const int    visibleCount = CHANNELS;                 // draw all channels
+        const int    visibleCount = CHANNELS;
         const double yTop         = rowHeight * (visibleCount + 1);
 
-        // ------------------------------------------------------------
-        // Dynamically compute left plot padding from the longest label
-        // ------------------------------------------------------------
         {
             PerfScope _lbl(&fs.label_width_ms);
             float maxLabelPx = 0.0f;
@@ -121,164 +108,157 @@ void DrawChart(AppState& st) {
                 std::snprintf(lbl, sizeof(lbl), "ch%02d", v + 1);
                 maxLabelPx = std::max(maxLabelPx, ImGui::CalcTextSize(lbl).x);
             }
-            (void)maxLabelPx; // (kept: not used in your current layout math)
+            (void)maxLabelPx;
         }
 
-        // Container that fills the remaining space
         ImGui::BeginChild("##eegchild", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar);
 
-        // Calculate pixel-based label padding
         const double windowSec = st.windowSec();
         const float plotWidthPixels = ImGui::GetContentRegionAvail().x;
         const double leftPaddingTime = (kLabelSpacingPixels / plotWidthPixels) * windowSec;
 
-        // Build the plot limits
         const double xMin = -leftPaddingTime;
         const double xMax = windowSec;
 
-        // Style tweaks
         ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
         ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(2, 2));
         ImPlot::PushStyleVar(ImPlotStyleVar_MinorGridSize, ImVec2(0, 0));
         ImPlot::PushStyleVar(ImPlotStyleVar_MajorGridSize, ImVec2(0, 0));
 
-        // Build the plot
-        ImPlotFlags plotFlags = ImPlotFlags_NoLegend
-                              | ImPlotFlags_NoMenus
-                              | ImPlotFlags_NoBoxSelect
-                              | ImPlotFlags_NoTitle
+        ImPlotFlags plotFlags = ImPlotFlags_NoLegend | ImPlotFlags_NoMenus
+                              | ImPlotFlags_NoBoxSelect | ImPlotFlags_NoTitle
                               | ImPlotFlags_NoMouseText;
 
-        ImPlotAxisFlags axFlags = ImPlotAxisFlags_NoLabel
-                                | ImPlotAxisFlags_NoTickLabels
-                                | ImPlotAxisFlags_NoTickMarks
-                                | ImPlotAxisFlags_Lock
+        ImPlotAxisFlags axFlags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels
+                                | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_Lock
                                 | ImPlotAxisFlags_NoHighlight;
 
         if (ImPlot::BeginPlot("##sweep", ImVec2(-1, -1), plotFlags)) {
-            // Set up axes
             ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, yTop, ImGuiCond_Always);
-
             ImPlot::SetupAxis(ImAxis_X1, nullptr, axFlags);
             ImPlot::SetupAxis(ImAxis_Y1, nullptr, axFlags);
-
-            // Lock the view
             ImPlot::SetupFinish();
 
-            // -------------- Plotting region timing wrapper --------------
             PerfScope _plotting(&fs.plotting_ms);
 
-            // FIXED: Use playheadSeconds instead of displayNowSmoothed
             const double smoothedCursor = st.playheadSeconds;
-
-            // Sweep timing
             const double cycleCur   = std::floor(smoothedCursor / windowSec);
             const double cycleStart = cycleCur * windowSec;
             const double cursorX    = smoothedCursor - cycleStart;
             const double eps        = 0.5 / SAMPLE_RATE_HZ;
 
-            // =============================================================================
-            // Detect which channel is being hovered
-            // =============================================================================
-            int hoveredChannel = -1;  // -1 means no hover
+            // OPTIMIZATION 1: Pre-calculate cycle boundaries (avoid floor() in loop)
+            const double prevCycleStart = (cycleCur - 1.0) * windowSec;
+            const double prevCycleEnd   = cycleCur * windowSec;
+            const double curCycleStart  = cycleCur * windowSec;
+            const double curCycleEnd    = (cycleCur + 1.0) * windowSec;
+            const double cursorAbsTime  = curCycleStart + cursorX;
 
+            int hoveredChannel = -1;
             if (ImPlot::IsPlotHovered()) {
                 ImPlotPoint mouse = ImPlot::GetPlotMousePos();
-
-                // Find which channel row the mouse is over
                 for (int v = 0; v < visibleCount; ++v) {
                     const double yBase = rowHeight * (visibleCount - v);
                     const double yMin = yBase - rowHeight * 0.5;
                     const double yMax = yBase + rowHeight * 0.5;
-
                     if (mouse.y >= yMin && mouse.y <= yMax) {
-                        hoveredChannel = v;  // Store which channel is hovered
+                        hoveredChannel = v;
                         break;
                     }
                 }
             }
 
-            // Draw channels (erase semantics across the cursor)
             const int N = st.ring.size();
-            std::vector<float> xsPrev, ysPrev, xsCur, ysCur;
 
             if (N > 0) {
                 for (int v = 0; v < visibleCount; ++v) {
-                    const int    c     = v;
+                    const int c = v;
                     const double yBase = rowHeight * (visibleCount - v);
 
-                    xsPrev.clear(); ysPrev.clear();
-                    xsCur.clear();  ysCur.clear();
-                    xsPrev.reserve(N); ysPrev.reserve(N);
-                    xsCur.reserve(N);  ysCur.reserve(N);
+                    plotBuffers.clear();
 
-                    // -------- scan/build timing --------
+                    // OPTIMIZATION 2: Reserve capacity (avoid reallocations)
+                    const int estimatedPoints = (int)(windowSec * SAMPLE_RATE_HZ * 1.1);
+                    plotBuffers.xsCur.reserve(estimatedPoints);
+                    plotBuffers.ysCur.reserve(estimatedPoints);
+                    plotBuffers.xsPrev.reserve(estimatedPoints);
+                    plotBuffers.ysPrev.reserve(estimatedPoints);
+
                     {
                         PerfScope _scan(&fs.scan_ms);
-                        for (int i = 0; i < N; ++i) {
-                            const double t   = st.ring.tAbs[i];
-                            const double cyc = std::floor(t / windowSec);
-                            const double rx  = t - cyc * windowSec;
+
+                        const int startIdx = st.ring.filled ? st.ring.write : 0;
+                        const int totalSamples = st.ring.filled ? BUFFER_SIZE : st.ring.write;
+
+                        for (int offset = 0; offset < totalSamples; ++offset) {
+                            const int i = (startIdx + offset) % BUFFER_SIZE;
+                            const double t = st.ring.tAbs[i];
+
+                            fs.points_scanned++;
+
+                            // OPTIMIZATION 3: Early exit when past visible range
+                            if (t < prevCycleStart) {
+                                fs.points_skipped++;
+                                continue;
+                            }
+
+                            if (t > curCycleEnd) {
+                                fs.points_skipped += (totalSamples - offset);
+                                break; // All remaining samples are beyond visible range
+                            }
+
                             const double val = yBase + st.gainMul() * st.ring.data[c][i];
 
-                            if (cyc == cycleCur) {
-                                if (rx < cursorX - eps) {
-                                    xsCur.push_back((float)rx);
-                                    ysCur.push_back((float)val);
+                            // OPTIMIZATION 1: Direct time comparisons (no floor())
+                            if (t >= curCycleStart && t < curCycleEnd) {
+                                // Current cycle
+                                if (t < cursorAbsTime - eps) {
+                                    plotBuffers.xsCur.push_back((float)(t - curCycleStart));
+                                    plotBuffers.ysCur.push_back((float)val);
                                 }
                             }
-                            else if (cyc == cycleCur - 1.0) {
+                            else if (t >= prevCycleStart && t < prevCycleEnd) {
+                                // Previous cycle
+                                const float rx = (float)(t - prevCycleStart);
                                 if (rx >= cursorX - eps) {
-                                    xsPrev.push_back((float)rx);
-                                    ysPrev.push_back((float)val);
+                                    plotBuffers.xsPrev.push_back(rx);
+                                    plotBuffers.ysPrev.push_back((float)val);
                                 }
                             }
                         }
                     }
 
-                    // -------- sorting timing --------
-                    {
-                        PerfScope _sort(&fs.sort_ms);
-                        sort_by_x(xsPrev, ysPrev);
-                        sort_by_x(xsCur,  ysCur);
-                    }
-
-                    // -------- plot lines timing --------
                     {
                         PerfScope _plotLines(&fs.plot_lines_ms);
                         char idPrev[32], idCur[32];
                         std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", c + 1);
-                        std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        c + 1);
+                        std::snprintf(idCur, sizeof(idCur), "Ch%02d", c + 1);
 
-                        // Draw waveforms (color unchanged)
                         ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
-                        if (!xsPrev.empty()) {
-                            ImPlot::PlotLine(idPrev, xsPrev.data(), ysPrev.data(), (int)xsPrev.size());
-                            fs.points_rendered += (int)xsPrev.size();
+                        if (!plotBuffers.xsPrev.empty()) {
+                            ImPlot::PlotLine(idPrev, plotBuffers.xsPrev.data(), plotBuffers.ysPrev.data(), (int)plotBuffers.xsPrev.size());
+                            fs.points_rendered += (int)plotBuffers.xsPrev.size();
                         }
 
                         ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
-                        if (!xsCur.empty()) {
-                            ImPlot::PlotLine(idCur, xsCur.data(), ysCur.data(), (int)xsCur.size());
-                            fs.points_rendered += (int)xsCur.size();
+                        if (!plotBuffers.xsCur.empty()) {
+                            ImPlot::PlotLine(idCur, plotBuffers.xsCur.data(), plotBuffers.ysCur.data(), (int)plotBuffers.xsCur.size());
+                            fs.points_rendered += (int)plotBuffers.xsCur.size();
                         }
                     }
                 }
 
-                // Cursor wiper (FIXED WIDTH)
                 {
                     PerfScope _wiper(&fs.wiper_ms);
-                    ImDrawList* dl   = ImPlot::GetPlotDrawList();
-                    ImVec2      ppos = ImPlot::GetPlotPos();
-                    ImVec2      psz  = ImPlot::GetPlotSize();
+                    ImDrawList* dl = ImPlot::GetPlotDrawList();
+                    ImVec2 ppos = ImPlot::GetPlotPos();
+                    ImVec2 psz = ImPlot::GetPlotSize();
 
                     ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
                     int cx = (int)std::floor(pc.x);
 
-                    // Fixed pixel width - does not scale with window time
                     constexpr int wiperWidthPixels = 10;
-
                     int x0 = std::max((int)ppos.x, cx);
                     int x1 = std::min((int)(ppos.x + psz.x), cx + wiperWidthPixels);
 
@@ -298,30 +278,21 @@ void DrawChart(AppState& st) {
                 }
             }
 
-            // =============================================================================
-            // Channel labels with hover highlight
-            // =============================================================================
             {
                 PerfScope _lbls(&fs.labels_ms);
-                const ImPlotRect lim  = ImPlot::GetPlotLimits();
-                const double     xLeft = lim.X.Min;
+                const ImPlotRect lim = ImPlot::GetPlotLimits();
+                const double xLeft = lim.X.Min;
 
                 for (int v = 0; v < visibleCount; ++v) {
                     const double yBase = rowHeight * (visibleCount - v);
                     char label[16];
                     std::snprintf(label, sizeof(label), "ch%02d", v + 1);
 
-                    // Choose color based on hover state
                     ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
 
                     ImPlot::PushStyleColor(ImPlotCol_InlayText, labelColor);
-                    ImPlot::PlotText(
-                        label,
-                        xLeft, yBase,
-                        ImVec2(+kLabelInsetPx, 0.0f),
-                        ImPlotTextFlags_None
-                    );
-                    ImPlot::PopStyleColor();  // Restore color
+                    ImPlot::PlotText(label, xLeft, yBase, ImVec2(+kLabelInsetPx, 0.0f), ImPlotTextFlags_None);
+                    ImPlot::PopStyleColor();
                 }
             }
 
@@ -330,7 +301,7 @@ void DrawChart(AppState& st) {
 
         ImPlot::PopStyleVar(4);
         ImGui::EndChild();
-    } // end total timer scope
+    }
 
-    fs.Log(); // periodic console print
+    fs.Log();
 }
