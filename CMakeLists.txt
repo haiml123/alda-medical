@@ -53,6 +53,8 @@ set(VIEWS
         views/monitoring/monitoring_view.cpp
         views/monitoring/monitoring_presenter.h
         views/monitoring/monitoring_presenter.cpp
+        views/monitoring/monitoring_toolbar.h
+        views/monitoring/monitoring_toolbar.cpp
 )
 
 set(UI
