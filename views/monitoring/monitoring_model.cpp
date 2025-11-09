@@ -43,10 +43,18 @@ void MonitoringModel::resumeAcquisition() {
     std::cout << "[Model] Resume" << std::endl;
 }
 
-void MonitoringModel::update(float deltaTime) {
-    if (stateManager_.IsMonitoring() && !stateManager_.IsPaused()) {
-        generateSyntheticData(deltaTime);
+    void MonitoringModel::update(float deltaTime) {
+    if (stateManager_.IsMonitoring()) {
+        state_.tickDisplay(true);  // This advances playheadSeconds
         updateChartData();
+
+        // Only generate new data when NOT paused
+        if (!stateManager_.IsPaused()) {
+            generateSyntheticData(deltaTime);
+        }
+    } else {
+        // When not monitoring, freeze the playhead
+        state_.tickDisplay(false);
     }
 }
 
