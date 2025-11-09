@@ -1,5 +1,6 @@
 #include "core/core.h"
 #include "models/channel.h"
+#include "services/channel_management_service.h"
 
 // AppState constructor implementation
 AppState::AppState() {
@@ -12,6 +13,7 @@ AppState::AppState() {
 
     // Initialize available channels
     InitializeChannels();
+    InitializeGroupChannels();
 }
 
 // Initialize channels with default colors
@@ -38,5 +40,88 @@ void AppState::InitializeChannels() {
         const char* color = colors[i % colorCount];
 
         availableChannels.emplace_back(id, name, color);
+    }
+}
+
+void AppState::InitializeGroupChannels() {
+    auto& service = elda::services::ChannelManagementService::GetInstance();
+    availableGroups = service.GetAllChannelGroups();
+
+    // If we have less than 3 groups, create default groups
+    if (availableGroups.size() < 3) {
+        std::printf("[AppState] Only %zu groups found, creating default groups...\n",
+                   availableGroups.size());
+
+        CreateDefaultGroups();
+
+        // Reload groups after creating defaults
+        availableGroups = service.GetAllChannelGroups();
+
+        std::printf("[AppState] Now have %zu groups available\n", availableGroups.size());
+    }
+}
+
+void AppState::CreateDefaultGroups() {
+    auto& service = elda::services::ChannelManagementService::GetInstance();
+
+    // =========================================================================
+    // DEFAULT GROUP 1: All 64 Channels
+    // =========================================================================
+    if (!service.ChannelGroupExists("All Channels")) {
+        elda::models::ChannelsGroup allChannels("All Channels");
+        allChannels.description = "All 64 channels";
+
+        // Add all 64 channels
+        for (size_t i = 0; i < availableChannels.size(); ++i) {
+            auto ch = availableChannels[i];
+            ch.selected = true;
+            allChannels.channels.push_back(ch);
+        }
+
+        if (service.CreateChannelGroup(allChannels)) {
+            std::printf("[AppState] Created 'All Channels' group (%zu channels)\n",
+                       allChannels.getSelectedCount());
+        }
+    }
+
+    // =========================================================================
+    // DEFAULT GROUP 2: Frontal (First 16 channels)
+    // =========================================================================
+    if (!service.ChannelGroupExists("Frontal")) {
+        elda::models::ChannelsGroup frontal("Frontal");
+        frontal.description = "Frontal region (channels 1-16)";
+
+        // Add first 16 channels
+        for (int i = 0; i < 16 && i < static_cast<int>(availableChannels.size()); ++i) {
+            auto ch = availableChannels[i];
+            ch.selected = true;
+            frontal.channels.push_back(ch);
+        }
+
+        if (service.CreateChannelGroup(frontal)) {
+            std::printf("[AppState] Created 'Frontal' group (%zu channels)\n",
+                       frontal.getSelectedCount());
+        }
+    }
+
+    // =========================================================================
+    // DEFAULT GROUP 3: Posterior (Last 16 channels)
+    // =========================================================================
+    if (!service.ChannelGroupExists("Posterior")) {
+        elda::models::ChannelsGroup posterior("Posterior");
+        posterior.description = "Posterior region (channels 49-64)";
+
+        // Add last 16 channels
+        int startIdx = std::max(0, static_cast<int>(availableChannels.size()) - 16);
+        for (size_t i = startIdx; i < availableChannels.size(); ++i) {
+            auto ch = availableChannels[i];
+            ch.selected = true;
+            posterior.channels.push_back(ch);
+        }
+
+        if (service.CreateChannelGroup(posterior)) {
+            std::printf("[AppState] Created 'Posterior' group (%zu channels)\n",
+                       posterior.getSelectedCount());
+        }
     }
 }

@@ -1,6 +1,7 @@
 #include "monitoring_model.h"
 #include <cmath>
 #include <iostream>
+#include <algorithm>
 
 namespace elda {
 
@@ -43,7 +44,7 @@ void MonitoringModel::resumeAcquisition() {
     std::cout << "[Model] Resume" << std::endl;
 }
 
-    void MonitoringModel::update(float deltaTime) {
+void MonitoringModel::update(float deltaTime) {
     if (stateManager_.IsMonitoring()) {
         state_.tickDisplay(true);  // This advances playheadSeconds
         updateChartData();
@@ -218,6 +219,36 @@ ToolbarViewModel MonitoringModel::getToolbarViewModel() const {
     // FPS will be set by View from ImGui
 
     return vm;
+}
+
+// ============================================================================
+// TAB BAR SUPPORT (NEW!)
+// ============================================================================
+
+int MonitoringModel::getActiveGroupIndex() const {
+    // Get active group name from AppState (single source of truth)
+    const std::string& activeName = state_.currentChannelGroupName;
+
+    // Get available groups from AppState
+    const auto& groups = state_.availableGroups;
+
+    // Find which group is currently active
+    auto it = std::find_if(groups.begin(), groups.end(),
+        [&activeName](const elda::models::ChannelsGroup& g) {
+            return g.name == activeName;
+        });
+
+    if (it != groups.end()) {
+        int index = std::distance(groups.begin(), it);
+        return index;
+    }
+
+    // Not found - default to first group (0)
+    if (!activeName.empty()) {
+        std::fprintf(stderr, "[Model] Warning: Active group '%s' not found in availableGroups\n",
+                    activeName.c_str());
+    }
+    return 0;
 }
 
 } // namespace elda

@@ -37,27 +37,37 @@ namespace elda::ui {
      * Style configuration for TabBar
      */
     struct TabBarStyle {
-        // Colors
-        ImVec4 activeColor      = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);  // Active tab
-        ImVec4 inactiveColor    = ImVec4(0.16f, 0.16f, 0.17f, 1.00f);  // Inactive tab
-        ImVec4 hoverColor       = ImVec4(0.20f, 0.50f, 0.85f, 1.00f);  // Hover state
+        // Colors - Browser style theme
+        ImVec4 activeColor      = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);  // Active tab (darker)
+        ImVec4 inactiveColor    = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);  // Inactive tab
+        ImVec4 hoverColor       = ImVec4(0.21f, 0.21f, 0.21f, 1.00f);  // Hover state
         ImVec4 disabledColor    = ImVec4(0.10f, 0.10f, 0.10f, 0.50f);  // Disabled tab
         ImVec4 badgeColor       = ImVec4(0.89f, 0.33f, 0.30f, 1.00f);  // Badge background
         ImVec4 badgeTextColor   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);  // Badge text
+        ImVec4 borderColor      = ImVec4(0.25f, 0.25f, 0.25f, 1.00f);  // Tab border
+        ImVec4 backgroundColor  = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);  // Tab bar background
+        ImVec4 separatorColor   = ImVec4(0.23f, 0.23f, 0.23f, 1.00f);  // Bottom separator
 
         // Sizing
-        float height            = 40.0f;     // Tab bar height
-        float buttonPaddingX    = 16.0f;     // Horizontal padding inside tab
-        float buttonPaddingY    = 8.0f;      // Vertical padding inside tab
-        float spacing           = 8.0f;      // Space between tabs
-        float rounding          = 4.0f;      // Corner rounding
-        float badgeOffsetX      = 4.0f;      // Badge offset from label
+        float height            = 44.0f;     // Tab bar height (includes padding)
+        float buttonPaddingX    = 20.0f;     // Horizontal padding inside tab
+        float buttonPaddingY    = 10.0f;     // Vertical padding inside tab
+        float spacing           = 1.2f;      // Space between tabs (browser-style tight spacing)
+        float rounding          = 6.0f;      // Corner rounding (top corners only)
+        float badgeOffsetX      = 8.0f;      // Badge offset from label
         float separatorHeight   = 1.0f;      // Height of separator line below tabs
+        float borderThickness   = 1.0f;      // Border thickness around tabs
+        float tabBarPadding     = 4.0f;      // Padding around tab bar area
+        float addButtonIconSize = 0.3f;      // Size of + icon relative to button (0.1-0.5)
 
         // Layout
         bool showSeparator      = true;      // Show separator line below tabs
         bool autoSize           = false;     // Auto-size tabs to fill width
         bool showBadges         = true;      // Show badge counts
+        bool browserStyle       = true;      // Use browser-style (rounded top, square bottom)
+        bool showBorders        = true;      // Show borders around tabs
+        bool showBackground     = true;      // Show tab bar background
+        bool showAddButton      = false;     // Show add (+) button after tabs
 
         TabBarStyle() = default;
     };
@@ -68,6 +78,8 @@ namespace elda::ui {
     using TabClickCallback = std::function<void(int tabIndex, const Tab& tab)>;
     using TabHoverCallback = std::function<void(int tabIndex, const Tab& tab)>;
     using TabRightClickCallback = std::function<void(int tabIndex, const Tab& tab)>;
+    using TabDoubleClickCallback = std::function<void(int tabIndex, const Tab& tab)>;  // Double-click
+    using AddTabCallback = std::function<void()>;  // Called when add button clicked
 
     /**
      * Reusable TabBar Component
@@ -163,6 +175,16 @@ namespace elda::ui {
          */
         void setOnTabRightClick(TabRightClickCallback callback) { onTabRightClick_ = callback; }
 
+        /**
+         * Set callback for when a tab is double-clicked
+         */
+        void setOnTabDoubleClick(TabDoubleClickCallback callback) { onTabDoubleClick_ = callback; }
+
+        /**
+         * Set callback for when the add button is clicked
+         */
+        void setOnAddTab(AddTabCallback callback) { onAddTab_ = callback; }
+
         // ========================================================================
         // RENDERING
         // ========================================================================
@@ -197,12 +219,15 @@ namespace elda::ui {
         TabClickCallback onTabClick_;
         TabHoverCallback onTabHover_;
         TabRightClickCallback onTabRightClick_;
+        TabDoubleClickCallback onTabDoubleClick_;
+        AddTabCallback onAddTab_;
 
         // Internal state
         int hoveredTabIndex_;  // Currently hovered tab (-1 = none)
 
         // Helper methods
         void renderTab(int index, const Tab& tab, bool isActive);
+        void renderAddButton();
         void renderBadge(int badgeCount);
         ImVec2 calculateTabSize(const Tab& tab) const;
         void applyTabStyle(bool isActive, bool isHovered, bool isDisabled);

@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cstdio>
 
+#include "models/channels_group.h"
+
 namespace elda::models {
     struct Channel;
 }
@@ -118,6 +120,7 @@ struct AppState {
     std::vector<elda::models::Channel> selectedChannels;
     std::vector<elda::models::Channel> availableChannels;
 
+    std::vector<elda::models::ChannelsGroup> availableGroups;
     // ===== NEW: Recording timing (for state manager) =====
     double recordingStartTime = 0.0;
 
@@ -129,6 +132,12 @@ struct AppState {
 
     // Initialize available channels
     void InitializeChannels();
+
+    // Initialize available channel groups (loads from service, creates defaults if needed)
+    void InitializeGroupChannels();
+
+    // Create default channel groups if less than 3 exist (NEW!)
+    void CreateDefaultGroups();
 
     // Get current EEG time
     double currentEEGTime() const { return playheadSeconds; }

@@ -26,7 +26,7 @@ namespace elda {
         const ChartData& chartData = model_.getChartData();
         ToolbarViewModel toolbarVM = model_.getToolbarViewModel();
 
-        // Setup callbacks
+        // Setup callbacks for toolbar
         ToolbarCallbacks callbacks;
 
         callbacks.onToggleMonitoring = [this]() {
@@ -57,8 +57,12 @@ namespace elda {
             model_.applyChannelConfiguration(group);
         };
 
-        // Pass to view for rendering
-        view_.render(chartData, toolbarVM, callbacks);
+        // === NEW: Get tab bar data from model ===
+        const auto& groups = model_.getAvailableGroups();
+        int activeIndex = model_.getActiveGroupIndex();
+
+        // Pass everything to view for rendering (UPDATED signature)
+        view_.render(chartData, toolbarVM, callbacks, groups, activeIndex);
     }
 
 } // namespace elda

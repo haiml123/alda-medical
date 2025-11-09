@@ -64,6 +64,30 @@ namespace elda {
         const ChartData& getChartData() const { return chartData_; }
         ToolbarViewModel getToolbarViewModel() const;
 
+        // === TAB BAR SUPPORT (NEW!) ===
+
+        /**
+         * Get all available channel groups (from AppState)
+         * Returns reference to AppState.availableGroups - no caching!
+         */
+        const std::vector<elda::models::ChannelsGroup>& getAvailableGroups() const {
+            return state_.availableGroups;
+        }
+
+        /**
+         * Get currently active group name (from AppState)
+         * Returns AppState.currentChannelGroupName - single source of truth!
+         */
+        const std::string& getActiveGroupName() const {
+            return state_.currentChannelGroupName;
+        }
+
+        /**
+         * Get index of currently active group
+         * Finds which index in availableGroups matches currentChannelGroupName
+         */
+        int getActiveGroupIndex() const;
+
     private:
         // References to core state (Model layer only!)
         AppState& state_;
