@@ -22,11 +22,43 @@ namespace elda {
     }
 
     void MonitoringPresenter::render() {
-        // Get clean chart data from model
-        ChartData chartData = model_.getChartData();
+        // Get data from model
+        const ChartData& chartData = model_.getChartData();
+        ToolbarViewModel toolbarVM = model_.getToolbarViewModel();
+
+        // Setup callbacks
+        ToolbarCallbacks callbacks;
+
+        callbacks.onToggleMonitoring = [this]() {
+            model_.toggleMonitoring();
+        };
+
+        callbacks.onToggleRecording = [this]() {
+            model_.toggleRecording();
+        };
+
+        callbacks.onIncreaseWindow = [this]() {
+            model_.increaseWindow();
+        };
+
+        callbacks.onDecreaseWindow = [this]() {
+            model_.decreaseWindow();
+        };
+
+        callbacks.onIncreaseAmplitude = [this]() {
+            model_.increaseAmplitude();
+        };
+
+        callbacks.onDecreaseAmplitude = [this]() {
+            model_.decreaseAmplitude();
+        };
+
+        callbacks.onApplyChannelConfig = [this](const elda::models::ChannelsGroup& group) {
+            model_.applyChannelConfiguration(group);
+        };
 
         // Pass to view for rendering
-        view_.render(chartData);
+        view_.render(chartData, toolbarVM, callbacks);
     }
 
 } // namespace elda

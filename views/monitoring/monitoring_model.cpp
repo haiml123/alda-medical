@@ -4,106 +4,212 @@
 
 namespace elda {
 
-MonitoringModel::MonitoringModel() {
+MonitoringModel::MonitoringModel(AppState& state, elda::AppStateManager& stateManager)
+    : state_(state), stateManager_(stateManager) {
     initializeBuffers();
 }
 
 void MonitoringModel::initializeBuffers() {
-    // Initialize ChartData structure directly
-    chartData_.numChannels = state_.numChannels;
-    chartData_.sampleRateHz = (int)state_.sampleRateHz;
+    // Use CHANNELS constant from core.h
+    chartData_.numChannels = CHANNELS;
+    chartData_.sampleRateHz = (int)SAMPLE_RATE_HZ;
     chartData_.bufferSize = kBufferSize;
-    chartData_.amplitudePPuV = state_.amplitudePPuV;
-    chartData_.windowSeconds = state_.windowSeconds;
-    chartData_.gainMultiplier = state_.gainMultiplier;
+    chartData_.amplitudePPuV = state_.ampPPuV();
+    chartData_.windowSeconds = state_.windowSec();
+    chartData_.gainMultiplier = state_.gainMul();
     chartData_.playheadSeconds = 0.0;
 
-    // Allocate ring buffer once
-    chartData_.ring.tAbs.resize(kBufferSize);
-    chartData_.ring.data.resize(state_.numChannels);
-    for (auto& ch : chartData_.ring.data) {
-        ch.resize(kBufferSize);
-    }
+    // Initialize empty buffers
+    chartData_.ring.tAbs.clear();
+    chartData_.ring.data.clear();
     chartData_.ring.write = 0;
     chartData_.ring.filled = false;
 }
 
 void MonitoringModel::startAcquisition() {
     std::cout << "[Model] Start acquisition" << std::endl;
-    state_.isRunning = true;
-    state_.isPaused = false;
-    currentTime_ = 0.0;
-    chartData_.ring.write = 0;
-    chartData_.ring.filled = false;
+    // Don't reset here - we'll reset when monitoring actually starts
 }
 
 void MonitoringModel::stopAcquisition() {
     std::cout << "[Model] Stop acquisition" << std::endl;
-    state_.isRunning = false;
-    state_.isPaused = false;
 }
 
 void MonitoringModel::pauseAcquisition() {
     std::cout << "[Model] Pause" << std::endl;
-    state_.isPaused = true;
 }
 
 void MonitoringModel::resumeAcquisition() {
     std::cout << "[Model] Resume" << std::endl;
-    state_.isPaused = false;
 }
 
 void MonitoringModel::update(float deltaTime) {
-    if (state_.isRunning && !state_.isPaused) {
+    if (stateManager_.IsMonitoring() && !stateManager_.IsPaused()) {
         generateSyntheticData(deltaTime);
-        currentTime_ += deltaTime;
         updateChartData();
     }
 }
 
-void MonitoringModel::generateSyntheticData(float deltaTime) {
-    int samplesThisFrame = (int)(state_.sampleRateHz * deltaTime);
+void MonitoringModel::generateSyntheticData(float /*deltaTime*/) {
+    // Generate samples using AppState's sampler and generator
+    static SynthEEG synthGen;
+    std::vector<float> sample(CHANNELS);
 
-    for (int sample = 0; sample < samplesThisFrame; ++sample) {
-        double t = currentTime_ + (sample / state_.sampleRateHz);
+    int samplesThisFrame = state_.sampler.due();
 
-        int idx = chartData_.ring.write;
-        chartData_.ring.tAbs[idx] = t;
+    for (int i = 0; i < samplesThisFrame; ++i) {
+        // Generate one sample
+        synthGen.next(sample);
 
-        for (int ch = 0; ch < state_.numChannels; ++ch) {
-            double value = 50.0 * std::sin(2.0 * M_PI * 10.0 * t + ch * 0.1);
-            value += 20.0 * std::sin(2.0 * M_PI * 20.0 * t + ch * 0.2);
-            value += 10.0 * std::sin(2.0 * M_PI * 2.0 * t);
-            value += ((rand() % 100 - 50) / 10.0);
-
-            chartData_.ring.data[ch][idx] = value;
+        // Apply noise/artifact scaling
+        for (int ch = 0; ch < CHANNELS; ++ch) {
+            sample[ch] *= state_.noiseScale;
+            // Could also apply artifactScale if needed
         }
 
-        chartData_.ring.write = (chartData_.ring.write + 1) % kBufferSize;
-        if (chartData_.ring.write == 0) {
-            chartData_.ring.filled = true;
-        }
+        // Push to AppState's ring buffer
+        state_.ring.push(sample);
     }
 }
 
 void MonitoringModel::updateChartData() {
-    // Update display settings (might change via UI)
-    chartData_.amplitudePPuV = state_.amplitudePPuV;
-    chartData_.windowSeconds = state_.windowSeconds;
-    chartData_.gainMultiplier = state_.gainMultiplier;
-    chartData_.playheadSeconds = currentTime_;
+    // Copy data from AppState.ring to chartData_.ring for rendering
+    chartData_.amplitudePPuV = state_.ampPPuV();
+    chartData_.windowSeconds = state_.windowSec();
+    chartData_.gainMultiplier = state_.gainMul();
+    chartData_.playheadSeconds = state_.ring.now;
+
+    // Convert from float (AppState) to double (ChartData)
+    chartData_.ring.tAbs.resize(BUFFER_SIZE);
+    chartData_.ring.data.resize(CHANNELS);
+
+    for (int i = 0; i < BUFFER_SIZE; ++i) {
+        chartData_.ring.tAbs[i] = static_cast<double>(state_.ring.tAbs[i]);
+    }
+
+    for (int ch = 0; ch < CHANNELS; ++ch) {
+        chartData_.ring.data[ch].resize(BUFFER_SIZE);
+        for (int i = 0; i < BUFFER_SIZE; ++i) {
+            chartData_.ring.data[ch][i] = static_cast<double>(state_.ring.data[ch][i]);
+        }
+    }
+
+    chartData_.ring.write = state_.ring.write;
+    chartData_.ring.filled = state_.ring.filled;
+    chartData_.bufferSize = BUFFER_SIZE;
 }
 
-void MonitoringModel::setWindowSeconds(double seconds) {
-    state_.windowSeconds = seconds;
+// ============================================================================
+// TOOLBAR BUSINESS LOGIC (delegated to AppStateManager)
+// ============================================================================
+
+void MonitoringModel::toggleMonitoring() {
+    const bool monitoring = stateManager_.IsMonitoring();
+    std::printf("[Model] toggleMonitoring called - current state: %s\n",
+               monitoring ? "MONITORING" : "IDLE");
+
+    auto result = stateManager_.SetMonitoring(!monitoring);
+    if (!result.IsSuccess()) {
+        std::fprintf(stderr, "[Model] Monitor toggle failed: %s\n", result.message.c_str());
+    } else {
+        std::printf("[Model] Monitor toggle SUCCESS - new state: %s\n",
+                   !monitoring ? "MONITORING" : "IDLE");
+
+        // Reset the ring buffer and timing when starting monitoring
+        if (!monitoring) {  // We just turned monitoring ON
+            std::printf("[Model] Resetting ring buffer and timing\n");
+            state_.ring.reset();
+            state_.playheadSeconds = 0.0;
+
+            // Also reset the sample clock to prevent jumping
+            state_.sampler = SampleClock(SAMPLE_RATE_HZ);
+        }
+    }
 }
 
-void MonitoringModel::setAmplitude(double ppuV) {
-    state_.amplitudePPuV = ppuV;
+void MonitoringModel::toggleRecording() {
+    const bool recordingActive = stateManager_.IsRecording() && !stateManager_.IsPaused();
+    const bool currentlyPaused = stateManager_.IsRecording() && stateManager_.IsPaused();
+
+    if (recordingActive) {
+        // Pause recording
+        auto result = stateManager_.PauseRecording();
+        if (!result.IsSuccess()) {
+            std::fprintf(stderr, "[Model] Pause failed: %s\n", result.message.c_str());
+        }
+    } else {
+        // Start or resume recording
+        elda::StateChangeError result;
+        if (currentlyPaused) {
+            result = stateManager_.ResumeRecording();
+        } else {
+            result = stateManager_.StartRecording();
+            if (result.result == elda::StateChangeResult::ImpedanceCheckRequired) {
+                std::fprintf(stderr, "[Model] Recording requires impedance check first\n");
+            }
+        }
+
+        if (!result.IsSuccess()) {
+            std::fprintf(stderr, "[Model] Record toggle failed: %s\n", result.message.c_str());
+        }
+    }
 }
 
-void MonitoringModel::setGain(double gain) {
-    state_.gainMultiplier = gain;
+void MonitoringModel::increaseWindow() {
+    if (state_.winIdx < WINDOW_COUNT - 1) {
+        stateManager_.SetDisplayWindow(state_.winIdx + 1);
+    }
+}
+
+void MonitoringModel::decreaseWindow() {
+    if (state_.winIdx > 0) {
+        stateManager_.SetDisplayWindow(state_.winIdx - 1);
+    }
+}
+
+void MonitoringModel::increaseAmplitude() {
+    if (state_.ampIdx < AMP_COUNT - 1) {
+        stateManager_.SetDisplayAmplitude(state_.ampIdx + 1);
+    }
+}
+
+void MonitoringModel::decreaseAmplitude() {
+    if (state_.ampIdx > 0) {
+        stateManager_.SetDisplayAmplitude(state_.ampIdx - 1);
+    }
+}
+
+void MonitoringModel::applyChannelConfiguration(const elda::models::ChannelsGroup& group) {
+    auto result = stateManager_.SetChannelConfiguration(group.name, group.channels);
+
+    if (result.IsSuccess()) {
+        std::printf("[Model] Channel config applied: %s (%zu channels)\n",
+                   group.name.c_str(), group.getSelectedCount());
+    } else {
+        std::fprintf(stderr, "[Model] Channel config failed: %s\n", result.message.c_str());
+    }
+}
+
+ToolbarViewModel MonitoringModel::getToolbarViewModel() const {
+    ToolbarViewModel vm;
+
+    // Button states
+    vm.monitoring = stateManager_.IsMonitoring();
+    vm.canRecord = vm.monitoring;
+    vm.recordingActive = stateManager_.IsRecording() && !stateManager_.IsPaused();
+    vm.currentlyPaused = stateManager_.IsRecording() && stateManager_.IsPaused();
+
+    // Display values
+    vm.windowSeconds = (int)stateManager_.GetWindowSeconds();
+    vm.amplitudeMicroVolts = stateManager_.GetAmplitudeMicroVolts();
+    vm.winIdx = state_.winIdx;
+    vm.ampIdx = state_.ampIdx;
+
+    // System info
+    vm.sampleRateHz = SAMPLE_RATE_HZ;
+    // FPS will be set by View from ImGui
+
+    return vm;
 }
 
 } // namespace elda

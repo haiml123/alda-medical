@@ -3,10 +3,16 @@
 
 namespace elda {
 
-    MonitoringScreen::MonitoringScreen() {
+    MonitoringScreen::MonitoringScreen(AppState& state, elda::AppStateManager& stateManager) {
         std::cout << "[MonitoringScreen] Constructor" << std::endl;
-        model_ = std::make_unique<MonitoringModel>();
+
+        // Model gets AppState access
+        model_ = std::make_unique<MonitoringModel>(state, stateManager);
+
+        // View has no AppState access
         view_ = std::make_unique<MonitoringView>();
+
+        // Presenter orchestrates
         presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_);
     }
 
