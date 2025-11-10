@@ -21,7 +21,8 @@ namespace elda::channels_group {
         const std::vector<models::Channel>& channels,
         int selectedCount,
         int totalCount,
-        bool canConfirm
+        bool canConfirm,
+        bool isNewGroup
     ) {
         if (!isVisible_) return;
 
@@ -37,7 +38,7 @@ namespace elda::channels_group {
         if (ImGui::Begin("Channel Selector", &open, flags)) {
             RenderHeader(groupName);
             RenderChannelsList(channels, selectedCount, totalCount);
-            RenderFooter(canConfirm);
+            RenderFooter(canConfirm, isNewGroup);
         }
         ImGui::End();
 
@@ -123,11 +124,12 @@ namespace elda::channels_group {
         ImGui::EndChild();
     }
 
-    void ChannelsGroupView::RenderFooter(bool canConfirm) {
+    void ChannelsGroupView::RenderFooter(bool canConfirm, bool isNewGroup) {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
+        // Confirm button
         if (!canConfirm) {
             ImGui::BeginDisabled();
         }
@@ -140,6 +142,31 @@ namespace elda::channels_group {
 
         if (!canConfirm) {
             ImGui::EndDisabled();
+        }
+
+        // Delete or Cancel button (to the right of Confirm)
+        ImGui::SameLine();
+
+        if (isNewGroup) {
+            // Show Cancel button for new groups
+            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                if (callbacks_.onCancel) {
+                    callbacks_.onCancel();
+                }
+            }
+        } else {
+            // Show Delete button for existing groups
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.9f, 0.3f, 0.3f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
+
+            if (ImGui::Button("Delete", ImVec2(120, 0))) {
+                if (callbacks_.onDelete) {
+                    callbacks_.onDelete();
+                }
+            }
+
+            ImGui::PopStyleColor(3);
         }
     }
 

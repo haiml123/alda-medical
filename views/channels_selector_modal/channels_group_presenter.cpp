@@ -5,7 +5,8 @@ namespace elda::channels_group {
     ChannelsGroupPresenter::ChannelsGroupPresenter()
         : model_(std::make_unique<ChannelsGroupModel>())
         , view_(std::make_unique<ChannelsGroupView>())
-        , onConfirmCallback_(nullptr) {
+        , onConfirmCallback_(nullptr)
+        , onDeleteCallback_(nullptr) {
 
         SetupViewCallbacks();
     }
@@ -14,8 +15,11 @@ namespace elda::channels_group {
     // PUBLIC API
     // ========================================================================
 
-    void ChannelsGroupPresenter::Open(const std::string& groupName, OnConfirmCallback callback) {
+    void ChannelsGroupPresenter::Open(const std::string& groupName,
+                                      OnConfirmCallback callback,
+                                      OnDeleteCallback deleteCallback) {
         onConfirmCallback_ = callback;
+        onDeleteCallback_ = deleteCallback;
 
         if (model_->LoadChannelGroup(groupName)) {
             view_->SetVisible(true);
@@ -29,8 +33,10 @@ namespace elda::channels_group {
         }
     }
 
-    void ChannelsGroupPresenter::OpenWithActiveGroup(OnConfirmCallback callback) {
+    void ChannelsGroupPresenter::OpenWithActiveGroup(OnConfirmCallback callback,
+                                                     OnDeleteCallback deleteCallback) {
         onConfirmCallback_ = callback;
+        onDeleteCallback_ = deleteCallback;
 
         // Load active group from service via model
         if (model_->LoadActiveChannelGroup()) {
@@ -46,9 +52,11 @@ namespace elda::channels_group {
 
     void ChannelsGroupPresenter::OpenWithChannels(
         const std::vector<models::Channel>& channels,
-        OnConfirmCallback callback
+        OnConfirmCallback callback,
+        OnDeleteCallback deleteCallback
     ) {
         onConfirmCallback_ = callback;
+        onDeleteCallback_ = deleteCallback;
         model_->Clear();
         model_->SetChannels(channels);
         view_->SetVisible(true);
@@ -59,6 +67,7 @@ namespace elda::channels_group {
         view_->SetVisible(false);
         model_->Clear();
         onConfirmCallback_ = nullptr;
+        onDeleteCallback_ = nullptr;
     }
 
     void ChannelsGroupPresenter::Render(ImVec2 buttonPos) {
@@ -71,6 +80,7 @@ namespace elda::channels_group {
         // Get current state from model
         std::string errorMessage;
         bool canConfirm = model_->CanConfirm(errorMessage);
+        bool isNewGroup = model_->IsNewGroup();
 
         // Render view with current model state
         view_->Render(
@@ -78,7 +88,8 @@ namespace elda::channels_group {
             model_->GetChannels(),
             model_->GetSelectedCount(),
             model_->GetTotalCount(),
-            canConfirm
+            canConfirm,
+            isNewGroup
         );
     }
 
@@ -143,6 +154,25 @@ namespace elda::channels_group {
         Close();
     }
 
+    void ChannelsGroupPresenter::OnDelete() {
+        // User clicked Delete button
+        const std::string& groupName = model_->GetGroupName();
+
+        // Delete via model (proper MVP - business logic in Model, not Presenter)
+        if (model_->DeleteChannelGroup()) {
+            // Notify parent that group was deleted so it can refresh tabs/UI
+            if (onDeleteCallback_) {
+                onDeleteCallback_(groupName);
+            }
+
+            // Close the modal
+            Close();
+        } else {
+            // Delete failed - could show error
+            // For now, just don't close
+        }
+    }
+
     // ========================================================================
     // INTERNAL HELPERS
     // ========================================================================
@@ -175,6 +205,10 @@ namespace elda::channels_group {
 
         callbacks.onCancel = [this]() {
             OnCancel();
+        };
+
+        callbacks.onDelete = [this]() {
+            OnDelete();
         };
 
         view_->SetCallbacks(callbacks);

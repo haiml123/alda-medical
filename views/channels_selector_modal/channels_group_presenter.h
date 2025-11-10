@@ -17,6 +17,7 @@ namespace elda::channels_group {
     class ChannelsGroupPresenter {
     public:
         using OnConfirmCallback = std::function<void(const models::ChannelsGroup&)>;
+        using OnDeleteCallback = std::function<void(const std::string&)>;
 
         ChannelsGroupPresenter();
         ~ChannelsGroupPresenter() = default;
@@ -29,22 +30,29 @@ namespace elda::channels_group {
          * Open the modal with channels from a specific group
          * @param groupName Name of the group to load
          * @param callback Callback when user confirms
+         * @param deleteCallback Callback when user deletes (optional)
          */
-        void Open(const std::string& groupName, OnConfirmCallback callback = nullptr);
+        void Open(const std::string& groupName,
+                 OnConfirmCallback callback = nullptr,
+                 OnDeleteCallback deleteCallback = nullptr);
 
         /**
          * Open the modal with the active/last used group
          * @param callback Callback when user confirms
+         * @param deleteCallback Callback when user deletes (optional)
          */
-        void OpenWithActiveGroup(OnConfirmCallback callback = nullptr);
+        void OpenWithActiveGroup(OnConfirmCallback callback = nullptr,
+                                OnDeleteCallback deleteCallback = nullptr);
 
         /**
          * Open the modal with custom channels (not from service)
          * @param channels Channels to display
          * @param callback Callback when user confirms
+         * @param deleteCallback Callback when user deletes (optional)
          */
         void OpenWithChannels(const std::vector<models::Channel>& channels,
-                            OnConfirmCallback callback = nullptr);
+                            OnConfirmCallback callback = nullptr,
+                            OnDeleteCallback deleteCallback = nullptr);
 
         /**
          * Close the modal
@@ -72,6 +80,7 @@ namespace elda::channels_group {
         void OnSelectAllChannels(bool selected);
         void OnConfirm();
         void OnCancel();
+        void OnDelete();
 
         // ========================================================================
         // INTERNAL HELPERS
@@ -87,6 +96,7 @@ namespace elda::channels_group {
         std::unique_ptr<ChannelsGroupModel> model_;
         std::unique_ptr<ChannelsGroupView> view_;
         OnConfirmCallback onConfirmCallback_;
+        OnDeleteCallback onDeleteCallback_;
     };
 
 } // namespace elda::channels_group

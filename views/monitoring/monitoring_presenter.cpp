@@ -121,7 +121,7 @@ void MonitoringPresenter::render() {
         ImVec2 modalSize = ImVec2(300, 550);
 
         if (useCustomModalPosition_) {
-            modalPos = calculateClampedModalPosition(channelModalPosition_, modalSize);
+            modalPos = channelModalPosition_;
         } else {
             modalPos = calculateDefaultModalPosition(modalSize);
         }
@@ -142,34 +142,6 @@ void MonitoringPresenter::refreshCachedState() {
     cachedState_.framesSinceUpdate = 0;
 }
 
-ImVec2 MonitoringPresenter::calculateClampedModalPosition(ImVec2 desiredPos, ImVec2 modalSize) const {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 result = desiredPos;
-
-    // Clamp X position
-    if (result.x < viewport->Pos.x) {
-        result.x = viewport->Pos.x + 10.0f;
-    }
-    if (result.x + modalSize.x > viewport->Pos.x + viewport->Size.x) {
-        result.x = viewport->Pos.x + viewport->Size.x - modalSize.x - 10.0f;
-    }
-
-    // Clamp Y position
-    if (result.y < viewport->Pos.y) {
-        result.y = viewport->Pos.y + 10.0f;
-    }
-    if (result.y + modalSize.y > viewport->Pos.y + viewport->Size.y) {
-        // If modal would go below screen, position it above the tab instead
-        result.y = desiredPos.y - modalSize.y - 10.0f;
-
-        // Still too high? Center it on screen
-        if (result.y < viewport->Pos.y) {
-            result.y = viewport->Pos.y + (viewport->Size.y - modalSize.y) * 0.5f;
-        }
-    }
-
-    return result;
-}
 
 ImVec2 MonitoringPresenter::calculateDefaultModalPosition(ImVec2 modalSize) const {
     // Default positioning (near top-center of screen)

@@ -79,6 +79,13 @@ namespace elda::channels_group {
     }
 
     bool ChannelsGroupModel::SaveChannelGroup() {
+        // TODO: This should go through AppStateManager for:
+        // - State validation
+        // - Audit logging
+        // - Observer notifications
+        // - Medical device compliance
+        // See APPSTATE_INTEGRATION.cpp for implementation options
+
         models::ChannelsGroup group(groupName_);
         group.channels = channels_;
 
@@ -97,6 +104,22 @@ namespace elda::channels_group {
         return channelService_.SaveActiveChannelGroup(group);
     }
 
+    bool ChannelsGroupModel::DeleteChannelGroup() {
+        if (groupName_.empty()) {
+            return false;
+        }
+
+        // TODO: This should go through AppStateManager for:
+        // - State validation
+        // - Audit logging
+        // - Observer notifications
+        // - Medical device compliance
+        // See APPSTATE_INTEGRATION.cpp for implementation options
+
+        // Delete from channel service
+        return channelService_.DeleteChannelGroup(groupName_);
+    }
+
     std::vector<std::string> ChannelsGroupModel::GetAvailableGroupNames() const {
         auto groups = channelService_.GetAllChannelGroups();
         std::vector<std::string> names;
@@ -112,6 +135,13 @@ namespace elda::channels_group {
     void ChannelsGroupModel::Clear() {
         channels_.clear();
         groupName_.clear();
+    }
+
+    bool ChannelsGroupModel::IsNewGroup() const {
+        if (groupName_.empty()) {
+            return true;
+        }
+        return !channelService_.ChannelGroupExists(groupName_);
     }
 
 } // namespace elda::channels_group

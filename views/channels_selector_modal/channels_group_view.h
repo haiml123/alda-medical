@@ -18,6 +18,7 @@ namespace elda::channels_group {
         std::function<void(bool)> onSelectAllChannels;
         std::function<void()> onConfirm;
         std::function<void()> onCancel;
+        std::function<void()> onDelete;
     };
 
     /**
@@ -57,19 +58,21 @@ namespace elda::channels_group {
          * @param selectedCount Number of selected channels
          * @param totalCount Total number of channels
          * @param canConfirm Whether confirm button should be enabled
+         * @param isNewGroup Whether this is a new group (affects Delete/Cancel button)
          */
         void Render(
             const std::string& groupName,
             const std::vector<models::Channel>& channels,
             int selectedCount,
             int totalCount,
-            bool canConfirm
+            bool canConfirm,
+            bool isNewGroup
         );
 
     private:
         void RenderHeader(const std::string& groupName);
         void RenderChannelsList(const std::vector<models::Channel>& channels, int selectedCount, int totalCount);
-        void RenderFooter(bool canConfirm);
+        void RenderFooter(bool canConfirm, bool isNewGroup);
 
         // Custom checkbox rendering
         bool RenderCustomCheckbox(const char* label, bool value);

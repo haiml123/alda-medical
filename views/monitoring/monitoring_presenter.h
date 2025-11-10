@@ -73,11 +73,6 @@ namespace elda {
         void refreshCachedState();
 
         /**
-         * Calculate modal position clamped to viewport bounds
-         */
-        ImVec2 calculateClampedModalPosition(ImVec2 desiredPos, ImVec2 modalSize) const;
-
-        /**
          * Calculate default centered modal position
          */
         ImVec2 calculateDefaultModalPosition(ImVec2 modalSize) const;

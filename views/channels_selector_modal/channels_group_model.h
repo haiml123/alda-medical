@@ -65,6 +65,12 @@ namespace elda::channels_group {
         bool SaveChannelGroup();
 
         /**
+         * Delete the current channel group from the service
+         * @return true if deleted successfully
+         */
+        bool DeleteChannelGroup();
+
+        /**
          * Get all available channel group names
          * @return Vector of group names
          */
@@ -74,6 +80,12 @@ namespace elda::channels_group {
          * Clear current data (reset state)
          */
         void Clear();
+
+        /**
+         * Check if this is a new group (doesn't exist in service yet)
+         * @return true if group doesn't exist or name is empty
+         */
+        bool IsNewGroup() const;
 
     private:
         std::vector<models::Channel> channels_;
