@@ -16,10 +16,8 @@ void MonitoringView::render(const MonitoringViewData& data, const MonitoringView
                  ImGuiWindowFlags_NoResize |
                  ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    // Render toolbar using separate component
     MonitoringToolbar(data, callbacks);
 
-    // Render tab bar
     renderTabBar(data, callbacks);
 
     // Render chart

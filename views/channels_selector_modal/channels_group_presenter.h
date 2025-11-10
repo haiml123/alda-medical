@@ -54,9 +54,8 @@ namespace elda::channels_group {
         /**
          * Render the modal (call every frame)
          * @param buttonPos Position to place the modal (typically below a button)
-         * @param buttonSize Size reference for positioning
          */
-        void Render(ImVec2 buttonPos, ImVec2 buttonSize);
+        void Render(ImVec2 buttonPos);
 
         /**
          * Check if modal is currently open

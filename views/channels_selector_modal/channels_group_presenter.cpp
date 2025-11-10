@@ -61,11 +61,11 @@ namespace elda::channels_group {
         onConfirmCallback_ = nullptr;
     }
 
-    void ChannelsGroupPresenter::Render(ImVec2 buttonPos, ImVec2 buttonSize) {
+    void ChannelsGroupPresenter::Render(ImVec2 buttonPos) {
         if (!view_->IsVisible()) return;
 
         // Calculate position below button
-        ImVec2 modalPos = ImVec2(buttonPos.x, buttonPos.y + buttonSize.y + 2.0f);
+        ImVec2 modalPos = ImVec2(buttonPos.x, buttonPos.y + 2.0f);
         view_->SetPosition(modalPos);
 
         // Get current state from model

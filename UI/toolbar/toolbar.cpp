@@ -245,7 +245,7 @@ float Toolbar(AppState& st, elda::AppStateManager& stateManager) {
     ImGui::EndChild();
 
     // CRITICAL: Render the presenter every frame (even when modal is closed)
-    g_channelsPresenter.Render(channelButtonPos, channelButtonSize);
+    // g_channelsPresenter.Render(channelButtonPos);
 
     return header_h;
 }

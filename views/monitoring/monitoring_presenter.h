@@ -3,10 +3,12 @@
 
 #include "views/channels_selector_modal/channels_group_presenter.h"
 #include "imgui.h"
+#include "monitoring_view.h"
 
 namespace elda {
     class MonitoringModel;
     class MonitoringView;
+    struct MonitoringViewCallbacks;
 }
 
 namespace elda {
@@ -28,9 +30,62 @@ namespace elda {
         MonitoringView& view_;
         elda::channels_group::ChannelsGroupPresenter& channelsPresenter_;
 
-        // Modal positioning
+        // ========================================================================
+        // CACHED STATE - Avoid redundant queries
+        // ========================================================================
+        struct CachedViewState {
+            // Values that rarely change - refresh periodically
+            int windowSeconds = -1;
+            int amplitudeMicroVolts = -1;
+            double sampleRateHz = -1;
+            int activeGroupIndex = -1;
+
+            // Frame counter for periodic refresh
+            int framesSinceUpdate = 0;
+
+            // Refresh interval (frames)
+            static constexpr int REFRESH_INTERVAL = 10;
+
+            bool needsRefresh() const {
+                return framesSinceUpdate >= REFRESH_INTERVAL || windowSeconds == -1;
+            }
+        };
+        CachedViewState cachedState_;
+
+        // ========================================================================
+        // PRE-BUILT CALLBACKS - Avoid lambda allocation every frame
+        // ========================================================================
+        MonitoringViewCallbacks callbacks_;
+
+        // ========================================================================
+        // MODAL POSITIONING
+        // ========================================================================
         ImVec2 channelModalPosition_;
         bool useCustomModalPosition_ = false;
+
+        // ========================================================================
+        // HELPER METHODS
+        // ========================================================================
+
+        /**
+         * Refresh cached state from model
+         */
+        void refreshCachedState();
+
+        /**
+         * Calculate modal position clamped to viewport bounds
+         */
+        ImVec2 calculateClampedModalPosition(ImVec2 desiredPos, ImVec2 modalSize) const;
+
+        /**
+         * Calculate default centered modal position
+         */
+        ImVec2 calculateDefaultModalPosition(ImVec2 modalSize) const;
+
+        /**
+         * Setup all callbacks (called once in constructor)
+         */
+        void setupCallbacks();
     };
 
 } // namespace elda
