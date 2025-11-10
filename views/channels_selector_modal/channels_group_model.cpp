@@ -64,13 +64,13 @@ namespace elda::channels_group {
             groupId_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
             groupName_ = group->name;
 
-            // ✅ UPDATED: Resolve channel IDs to full Channel objects
-            channels_.clear();
-            for (const auto& channelId : group->channelIds) {
-                auto channel = channelService_.GetChannel(channelId);
-                if (channel.has_value()) {
-                    channels_.push_back(channel.value());
-                }
+            channels_ = channelService_.GetAllChannels();
+
+            // Mark channels that are in the group as selected
+            for (auto& channel : channels_) {
+                channel.selected = std::find(group->channelIds.begin(),
+                                            group->channelIds.end(),
+                                            channel.GetId()) != group->channelIds.end();
             }
 
             return true;
@@ -84,12 +84,13 @@ namespace elda::channels_group {
             groupId_ = group->id;
             groupName_ = group->name;
 
-            channels_.clear();
-            for (const auto& channelId : group->channelIds) {
-                auto channel = channelService_.GetChannel(channelId);
-                if (channel.has_value()) {
-                    channels_.push_back(channel.value());
-                }
+            channels_ = channelService_.GetAllChannels();
+
+            // Mark channels that are in the group as selected
+            for (auto& channel : channels_) {
+                channel.selected = std::find(group->channelIds.begin(),
+                                            group->channelIds.end(),
+                                            channel.GetId()) != group->channelIds.end();
             }
 
             return true;
