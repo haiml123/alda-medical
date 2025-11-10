@@ -165,9 +165,20 @@ void MonitoringModel::decreaseAmplitude() {
     }
 }
 
+void MonitoringModel::refreshAvailableGroups() {
+    // Reload all available groups from the service
+    // This ensures the UI reflects any create/edit/delete operations
+    auto& service = elda::services::ChannelManagementService::GetInstance();
+    state_.availableGroups = service.GetAllChannelGroups();
+
+    std::printf("[MonitoringModel] ✓ Available groups refreshed, total: %zu\n",
+               state_.availableGroups.size());
+}
+
 void MonitoringModel::applyChannelConfiguration(const elda::models::ChannelsGroup& group) {
     // auto result = stateManager_.SetChannelConfiguration(group.name, group.channels);
     //
+    refreshAvailableGroups();
     // if (result.IsSuccess()) {
     //     std::printf("[Model] Channel config applied: %s (%zu channels)\n",
     //                group.name.c_str(), group.getSelectedCount());

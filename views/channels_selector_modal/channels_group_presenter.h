@@ -2,6 +2,7 @@
 
 #include "channels_group_model.h"
 #include "channels_group_view.h"
+#include "../../core/app_state_manager.h"
 #include <memory>
 #include <functional>
 
@@ -14,14 +15,16 @@ namespace elda::channels_group {
      * - Updates View based on Model state
      * - Contains presentation logic
      *
-     * UPDATED: Now supports both ID-based and name-based opening for backward compatibility
+     * ✅ UPDATED: Now requires AppStateManager for MVPBaseModel integration
+     * ✅ UPDATED: Supports refresh callback for parent to reload groups
      */
     class ChannelsGroupPresenter {
     public:
         using OnConfirmCallback = std::function<void(const models::ChannelsGroup&)>;
         using OnDeleteCallback = std::function<void(const std::string&)>;
+        using OnGroupsChangedCallback = std::function<void()>;
 
-        ChannelsGroupPresenter();
+        explicit ChannelsGroupPresenter(elda::AppStateManager& stateManager);
         ~ChannelsGroupPresenter() = default;
 
         // ========================================================================
@@ -30,15 +33,22 @@ namespace elda::channels_group {
 
         /**
          * Open the modal with channels from a specific group (by ID)
-         * @param groupId ID of the group to load
+         * @param groupId ID of the group to load (empty = new group)
          * @param callback Callback when user confirms
          * @param deleteCallback Callback when user deletes (optional)
          */
         void Open(
-            const std::string& groupId = "",  // Empty = new group
+            const std::string& groupId = "",
             OnConfirmCallback callback = nullptr,
             OnDeleteCallback deleteCallback = nullptr
         );
+
+        /**
+         * Set callback to be invoked whenever groups list changes
+         * This allows parent to refresh its view of available groups
+         * @param callback Function to call when groups need refresh
+         */
+        void SetOnGroupsChangedCallback(OnGroupsChangedCallback callback);
 
         /**
          * Close the modal

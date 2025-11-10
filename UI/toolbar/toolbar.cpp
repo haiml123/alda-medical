@@ -38,7 +38,6 @@ static void DrawStatusDotInLastItem(bool recordingActive, bool paused, float rad
 float Toolbar(AppState& st, elda::AppStateManager& stateManager) {
     // Static presenter instance for MVP pattern
     using namespace elda::channels_group;
-    static ChannelsGroupPresenter g_channelsPresenter;
 
     const float header_h = 52.0f;
     ImGui::BeginChild("header", ImVec2(0, header_h), false, ImGuiWindowFlags_NoScrollbar);

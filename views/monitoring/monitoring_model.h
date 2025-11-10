@@ -6,6 +6,7 @@
 #include "core/app_state_manager.h"
 #include "models/channels_group.h"
 #include "models/mvp_base_model.h"
+#include "services/channel_management_service.h"
 
 namespace elda {
 
@@ -27,6 +28,9 @@ namespace elda {
         void increaseAmplitude();
         void decreaseAmplitude();
         void applyChannelConfiguration(const elda::models::ChannelsGroup& group);
+
+        // ✅ NEW: Refresh available groups from service
+        void refreshAvailableGroups();
 
         // Getters (Presenter collects this data for View)
         const ChartData& getChartData() const { return chartData_; }

@@ -3,8 +3,10 @@
 
 namespace elda::channels_group {
 
-    ChannelsGroupModel::ChannelsGroupModel()
-        : channelService_(services::ChannelManagementService::GetInstance()) {
+    ChannelsGroupModel::ChannelsGroupModel(elda::AppStateManager& stateManager)
+        : MVPBaseModel(stateManager)
+        , channelService_(services::ChannelManagementService::GetInstance())
+        , onGroupsChangedCallback_(nullptr) {
     }
 
     // ========================================================================
@@ -109,23 +111,29 @@ namespace elda::channels_group {
         std::vector<std::string> selectedChannelIds;
         for (const auto& channel : channels_) {
             if (channel.selected) {
-                selectedChannelIds.push_back(channel.GetId());
+                selectedChannelIds.push_back(channel.id);
             }
         }
+
+        bool success = false;
 
         if (groupId_.empty()) {
             // CREATE: New group
             models::ChannelsGroup group(groupName_);
             group.channelIds = selectedChannelIds;
-
             group.OnCreate();
 
-            if (!channelService_.CreateChannelGroup(group)) {
-                return false;
-            }
+            if (channelService_.CreateChannelGroup(group)) {
+                // Remember the ID for future operations
+                groupId_ = group.id;
+                success = true;
 
-            // Remember the ID for future operations
-            groupId_ = group.id;
+                std::printf("[ChannelsGroupModel] ✓ Created group: %s (ID: %s)\n",
+                           groupName_.c_str(), groupId_.c_str());
+            } else {
+                std::fprintf(stderr, "[ChannelsGroupModel] ✗ Failed to create group: %s\n",
+                            groupName_.c_str());
+            }
 
         } else {
             // UPDATE: Existing group - preserve ID, allow name change
@@ -133,15 +141,27 @@ namespace elda::channels_group {
             group.channelIds = selectedChannelIds;
             group.OnUpdate();
 
-            if (!channelService_.UpdateChannelGroup(group)) {
-                return false;
+            if (channelService_.UpdateChannelGroup(group)) {
+                success = true;
+
+                std::printf("[ChannelsGroupModel] ✓ Updated group: %s (ID: %s)\n",
+                           groupName_.c_str(), groupId_.c_str());
+            } else {
+                std::fprintf(stderr, "[ChannelsGroupModel] ✗ Failed to update group: %s\n",
+                            groupName_.c_str());
             }
         }
 
-        // Save as active group
-        models::ChannelsGroup activeGroup(groupId_, groupName_);
-        activeGroup.channelIds = selectedChannelIds;
-        return channelService_.SaveActiveChannelGroup(activeGroup);
+        if (success) {
+            // Save as active group
+            models::ChannelsGroup activeGroup(groupId_, groupName_);
+            activeGroup.channelIds = selectedChannelIds;
+            channelService_.SaveActiveChannelGroup(activeGroup);
+
+            NotifyGroupsChanged();
+        }
+
+        return success;
     }
 
     bool ChannelsGroupModel::DeleteChannelGroup() {
@@ -156,7 +176,18 @@ namespace elda::channels_group {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        return channelService_.DeleteChannelGroup(groupId_);
+        if (channelService_.DeleteChannelGroup(groupId_)) {
+            std::printf("[ChannelsGroupModel] ✓ Deleted group: %s (ID: %s)\n",
+                       groupName_.c_str(), groupId_.c_str());
+
+            NotifyGroupsChanged();
+
+            return true;
+        }
+
+        std::fprintf(stderr, "[ChannelsGroupModel] ✗ Failed to delete group: %s\n",
+                    groupName_.c_str());
+        return false;
     }
 
     std::vector<models::Channel> ChannelsGroupModel::GetAllChannels() const {
@@ -183,6 +214,17 @@ namespace elda::channels_group {
 
     bool ChannelsGroupModel::IsNewGroup() const {
         return groupId_.empty();
+    }
+
+    // ========================================================================
+    // INTERNAL HELPERS
+    // ========================================================================
+
+    void ChannelsGroupModel::NotifyGroupsChanged() {
+        if (onGroupsChangedCallback_) {
+            std::printf("[ChannelsGroupModel] Notifying parent of groups change\n");
+            onGroupsChangedCallback_();
+        }
     }
 
 } // namespace elda::channels_group

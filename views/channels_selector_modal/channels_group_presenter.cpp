@@ -2,8 +2,8 @@
 
 namespace elda::channels_group {
 
-    ChannelsGroupPresenter::ChannelsGroupPresenter()
-        : model_(std::make_unique<ChannelsGroupModel>())
+    ChannelsGroupPresenter::ChannelsGroupPresenter(elda::AppStateManager& stateManager)
+        : model_(std::make_unique<ChannelsGroupModel>(stateManager))
         , view_(std::make_unique<ChannelsGroupView>())
         , onConfirmCallback_(nullptr)
         , onDeleteCallback_(nullptr) {
@@ -16,17 +16,20 @@ namespace elda::channels_group {
     // ========================================================================
 
     void ChannelsGroupPresenter::Open(
-    const std::string& groupId,
-    OnConfirmCallback callback,
-    OnDeleteCallback deleteCallback
-) {
+        const std::string& groupId,
+        OnConfirmCallback callback,
+        OnDeleteCallback deleteCallback
+    ) {
         onConfirmCallback_ = callback;
         onDeleteCallback_ = deleteCallback;
 
         model_->Clear();  // Start fresh
 
         if (!groupId.empty()) {
+            // Edit existing group
             if (!model_->LoadChannelGroupById(groupId)) {
+                std::fprintf(stderr, "[ChannelsGroupPresenter] Failed to load group: %s\n",
+                            groupId.c_str());
                 model_->Clear();
             }
         } else {
@@ -36,6 +39,11 @@ namespace elda::channels_group {
 
         view_->SetVisible(true);
         UpdateView();
+    }
+
+    void ChannelsGroupPresenter::SetOnGroupsChangedCallback(OnGroupsChangedCallback callback) {
+        // Wire this callback through to the model
+        model_->SetOnGroupsChangedCallback(callback);
     }
 
     void ChannelsGroupPresenter::Close() {
@@ -102,16 +110,16 @@ namespace elda::channels_group {
         // Validate via model
         std::string errorMessage;
         if (!model_->CanConfirm(errorMessage)) {
-            // Could show error message in UI
-            // For now, just don't proceed
+            std::fprintf(stderr, "[ChannelsGroupPresenter] Validation failed: %s\n",
+                        errorMessage.c_str());
             return;
         }
 
         // Save to service via model
         // The model knows if this is create or update based on groupId_
+        // The model will automatically call NotifyGroupsChanged() on success
         if (model_->SaveChannelGroup()) {
             // Create group object for callback
-            // ✅ UPDATED: Extract IDs from selected channels
             models::ChannelsGroup group(model_->GetGroupId(), model_->GetGroupName());
 
             for (const auto& channel : model_->GetChannels()) {
@@ -120,7 +128,7 @@ namespace elda::channels_group {
                 }
             }
 
-            // Notify callback
+            // Notify callback (for immediate channel configuration)
             if (onConfirmCallback_) {
                 onConfirmCallback_(group);
             }
@@ -128,8 +136,7 @@ namespace elda::channels_group {
             // Close the modal
             Close();
         } else {
-            // Save failed - could show error
-            // For now, just don't close
+            std::fprintf(stderr, "[ChannelsGroupPresenter] Failed to save group\n");
         }
     }
 
@@ -143,6 +150,7 @@ namespace elda::channels_group {
         const std::string& groupId = model_->GetGroupId();
 
         // Delete via model (uses ID, not name!)
+        // The model will automatically call NotifyGroupsChanged() on success
         if (model_->DeleteChannelGroup()) {
             // Notify parent that group was deleted so it can refresh tabs/UI
             if (onDeleteCallback_) {
@@ -152,8 +160,8 @@ namespace elda::channels_group {
             // Close the modal
             Close();
         } else {
-            // Delete failed - could show error
-            // For now, just don't close
+            std::fprintf(stderr, "[ChannelsGroupPresenter] Failed to delete group: %s\n",
+                        groupId.c_str());
         }
     }
 
