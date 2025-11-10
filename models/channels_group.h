@@ -1,17 +1,14 @@
 #pragma once
-#include "channel.h"
 #include "base_model.h"
 #include <vector>
 #include <string>
-
-#include "base_model.h"
+#include <set>
 
 namespace elda::models {
 
-    // Option 1: Extend BaseModel (Recommended)
     struct ChannelsGroup : public BaseModel {
         std::string name;
-        std::vector<Channel> channels;
+        std::vector<std::string> channelIds;  // Store IDs only!
         std::string description;
         bool isDefault;
 
@@ -23,47 +20,26 @@ namespace elda::models {
         ChannelsGroup(const std::string& id_, const std::string& name_)
             : BaseModel(id_), name(name_), isDefault(false) {}
 
-        void addChannel(const Channel& channel) {
-            channels.push_back(channel);
+        void addChannelId(const std::string& channelId) {
+            channelIds.push_back(channelId);
             OnUpdate();
         }
 
-        size_t getSelectedCount() const {
-            size_t count = 0;
-            for (const auto& ch : channels) {
-                if (ch.selected) ++count;
-            }
-            return count;
+        void removeChannelId(const std::string& channelId) {
+            channelIds.erase(
+                std::remove(channelIds.begin(), channelIds.end(), channelId),
+                channelIds.end()
+            );
+            OnUpdate();
         }
 
-        std::vector<Channel> getSelectedChannels() const {
-            std::vector<Channel> selected;
-            for (const auto& ch : channels) {
-                if (ch.selected) {
-                    selected.push_back(ch);
-                }
-            }
-            return selected;
+        bool hasChannel(const std::string& channelId) const {
+            return std::find(channelIds.begin(), channelIds.end(), channelId)
+                   != channelIds.end();
         }
-    };
 
-    // Option 2: Create derived class from ChannelsGroup
-    struct CustomChannelsGroup : public ChannelsGroup {
-        std::string author;
-        bool isShared;
-
-        CustomChannelsGroup() : ChannelsGroup(), isShared(false) {}
-
-        explicit CustomChannelsGroup(const std::string& name_)
-            : ChannelsGroup(name_), isShared(false) {}
-    };
-
-    // Option 3: Specialized group types
-    struct PredefinedChannelsGroup : public ChannelsGroup {
-        std::string standard;  // e.g., "10-20", "10-10"
-
-        PredefinedChannelsGroup() : ChannelsGroup() {
-            isDefault = true;
+        size_t getChannelCount() const {
+            return channelIds.size();
         }
     };
 

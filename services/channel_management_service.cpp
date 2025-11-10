@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <set>
 
 namespace elda::services {
 
@@ -78,24 +79,15 @@ namespace elda::services {
                 std::ostringstream oss;
                 oss << groups.size() << "\n";
                 for (const auto& group : groups) {
-                    oss << group.name << "|"
+                    oss << group.id << "|"
+                        << group.name << "|"
                         << group.description << "|"
                         << group.isDefault << "|"
-                        << group.channels.size() << "\n";
+                        << group.channelIds.size() << "\n";
 
-                    // Serialize channels in group
-                    for (const auto& ch : group.channels) {
-                        oss << ch.GetId() << "|"
-                            << ch.name << "|"
-                            << ch.color << "|"
-                            << ch.selected << "|"
-                            << ch.amplifierChannel << "|"
-                            << ch.signalType << "|"
-                            << ch.sensorGain << "|"
-                            << ch.sensorOffset << "|"
-                            << ch.filtered << "|"
-                            << ch.highPassCutoff << "|"
-                            << ch.lowPassCutoff << "\n";
+                    // ✅ Serialize channel IDs only (not full objects)
+                    for (const auto& channelId : group.channelIds) {
+                        oss << channelId << "\n";
                     }
                 }
                 return oss.str();
@@ -120,38 +112,21 @@ namespace elda::services {
                         tokens.push_back(token);
                     }
 
-                    if (tokens.size() >= 4) {
-                        models::ChannelsGroup group(tokens[0]);
-                        group.description = tokens[1];
-                        group.isDefault = (tokens[2] == "1");
-                        size_t channelCount = std::stoul(tokens[3]);
+                    if (tokens.size() >= 5) {
+                        // ✅ Read: id, name, description, isDefault, channelCount
+                        models::ChannelsGroup group(tokens[0], tokens[1]);
+                        group.description = tokens[2];
+                        group.isDefault = (tokens[3] == "1");
+                        size_t channelCount = std::stoul(tokens[4]);
 
-                        // Read channels
+                        // ✅ Read channel IDs (one per line)
                         for (size_t j = 0; j < channelCount; ++j) {
-                            std::string chLine;
-                            if (!std::getline(iss, chLine)) break;
-
-                            std::istringstream chStream(chLine);
-                            std::vector<std::string> chTokens;
-                            std::string chToken;
-
-                            while (std::getline(chStream, chToken, '|')) {
-                                chTokens.push_back(chToken);
-                            }
-
-                            if (chTokens.size() >= 11) {
-                                models::Channel ch(chTokens[0], chTokens[1], chTokens[2]);
-                                ch.selected = (chTokens[3] == "1");
-                                ch.amplifierChannel = std::stoi(chTokens[4]);
-                                ch.signalType = chTokens[5];
-                                ch.sensorGain = std::stod(chTokens[6]);
-                                ch.sensorOffset = std::stod(chTokens[7]);
-                                ch.filtered = (chTokens[8] == "1");
-                                ch.highPassCutoff = std::stod(chTokens[9]);
-                                ch.lowPassCutoff = std::stod(chTokens[10]);
-                                group.addChannel(ch);
+                            std::string channelId;
+                            if (std::getline(iss, channelId)) {
+                                group.channelIds.push_back(channelId);
                             }
                         }
+
                         groups.push_back(group);
                     }
                 }
@@ -163,25 +138,17 @@ namespace elda::services {
         activeGroupStorage_ = std::make_unique<elda::services::SecureConfigManager<models::ChannelsGroup>>(
             "active_channel_group.dat",
             [](const models::ChannelsGroup& group) -> std::string {
-                // Serialize single group (reuse group serialization logic)
+                // Serialize single group
                 std::ostringstream oss;
-                oss << group.name << "|"
+                oss << group.id << "|"
+                    << group.name << "|"
                     << group.description << "|"
                     << group.isDefault << "|"
-                    << group.channels.size() << "\n";
+                    << group.channelIds.size() << "\n";
 
-                for (const auto& ch : group.channels) {
-                    oss << ch.GetId() << "|"
-                        << ch.name << "|"
-                        << ch.color << "|"
-                        << ch.selected << "|"
-                        << ch.amplifierChannel << "|"
-                        << ch.signalType << "|"
-                        << ch.sensorGain << "|"
-                        << ch.sensorOffset << "|"
-                        << ch.filtered << "|"
-                        << ch.highPassCutoff << "|"
-                        << ch.lowPassCutoff << "\n";
+                // ✅ Serialize channel IDs only
+                for (const auto& channelId : group.channelIds) {
+                    oss << channelId << "\n";
                 }
                 return oss.str();
             },
@@ -200,35 +167,19 @@ namespace elda::services {
                 }
 
                 models::ChannelsGroup group;
-                if (tokens.size() >= 4) {
-                    group.name = tokens[0];
-                    group.description = tokens[1];
-                    group.isDefault = (tokens[2] == "1");
-                    size_t channelCount = std::stoul(tokens[3]);
+                if (tokens.size() >= 5) {
+                    // ✅ Read: id, name, description, isDefault, channelCount
+                    group.id = tokens[0];
+                    group.name = tokens[1];
+                    group.description = tokens[2];
+                    group.isDefault = (tokens[3] == "1");
+                    size_t channelCount = std::stoul(tokens[4]);
 
+                    // ✅ Read channel IDs (one per line)
                     for (size_t i = 0; i < channelCount; ++i) {
-                        std::string chLine;
-                        if (!std::getline(iss, chLine)) break;
-
-                        std::istringstream chStream(chLine);
-                        std::vector<std::string> chTokens;
-                        std::string chToken;
-
-                        while (std::getline(chStream, chToken, '|')) {
-                            chTokens.push_back(chToken);
-                        }
-
-                        if (chTokens.size() >= 11) {
-                            models::Channel ch(chTokens[0], chTokens[1], chTokens[2]);
-                            ch.selected = (chTokens[3] == "1");
-                            ch.amplifierChannel = std::stoi(chTokens[4]);
-                            ch.signalType = chTokens[5];
-                            ch.sensorGain = std::stod(chTokens[6]);
-                            ch.sensorOffset = std::stod(chTokens[7]);
-                            ch.filtered = (chTokens[8] == "1");
-                            ch.highPassCutoff = std::stod(chTokens[9]);
-                            ch.lowPassCutoff = std::stod(chTokens[10]);
-                            group.addChannel(ch);
+                        std::string channelId;
+                        if (std::getline(iss, channelId)) {
+                            group.channelIds.push_back(channelId);
                         }
                     }
                 }
@@ -304,7 +255,8 @@ namespace elda::services {
 
     bool ChannelManagementService::CreateChannelGroup(const models::ChannelsGroup& group) {
         if (group.name.empty()) return false;
-        if (ChannelGroupExists(group.name)) return false;
+        if (group.id.empty()) return false;
+        if (ChannelGroupExists(group.id)) return false;
 
         std::string errorMessage;
         if (!ValidateChannelGroup(group, errorMessage)) return false;
@@ -314,7 +266,15 @@ namespace elda::services {
         return true;
     }
 
-    std::optional<models::ChannelsGroup> ChannelManagementService::GetChannelGroup(const std::string& name) const {
+    std::optional<models::ChannelsGroup> ChannelManagementService::GetChannelGroup(const std::string& id) const {
+        auto it = FindGroupById(id);
+        if (it != channelGroups_.end()) {
+            return *it;
+        }
+        return std::nullopt;
+    }
+
+    std::optional<models::ChannelsGroup> ChannelManagementService::GetChannelGroupByName(const std::string& name) const {
         auto it = FindGroupByName(name);
         if (it != channelGroups_.end()) {
             return *it;
@@ -327,7 +287,7 @@ namespace elda::services {
     }
 
     bool ChannelManagementService::UpdateChannelGroup(const models::ChannelsGroup& group) {
-        auto it = FindGroupByName(group.name);
+        auto it = FindGroupById(group.id);
         if (it == channelGroups_.end()) return false;
 
         std::string errorMessage;
@@ -338,8 +298,32 @@ namespace elda::services {
         return true;
     }
 
-    bool ChannelManagementService::DeleteChannelGroup(const std::string& name) {
-        auto it = FindGroupByName(name);
+    int ChannelManagementService::DeleteAllChannelGroups() {
+        int deletedCount = 0;
+
+        // Iterate backwards to safely erase while iterating
+        for (auto it = channelGroups_.begin(); it != channelGroups_.end(); ) {
+            if (!it->isDefault) {
+                it = channelGroups_.erase(it);  // erase returns iterator to next element
+                deletedCount++;
+            } else {
+                ++it;  // Skip default groups
+            }
+        }
+
+        if (deletedCount > 0) {
+            // Clear active group if it was deleted
+            // (Active group could have been one of the deleted groups)
+            activeGroupStorage_->SaveAsLastUsed(models::ChannelsGroup());
+
+            SaveToStorage();
+        }
+
+        return deletedCount;
+    }
+
+    bool ChannelManagementService::DeleteChannelGroup(const std::string& id) {
+        auto it = FindGroupById(id);
         if (it == channelGroups_.end()) return false;
 
         // Don't allow deleting default groups
@@ -350,7 +334,11 @@ namespace elda::services {
         return true;
     }
 
-    bool ChannelManagementService::ChannelGroupExists(const std::string& name) const {
+    bool ChannelManagementService::ChannelGroupExists(const std::string& id) const {
+        return FindGroupById(id) != channelGroups_.end();
+    }
+
+    bool ChannelManagementService::ChannelGroupExistsByName(const std::string& name) const {
         return FindGroupByName(name) != channelGroups_.end();
     }
 
@@ -380,14 +368,13 @@ namespace elda::services {
             return false;
         }
 
-        // Check for duplicate channel IDs within the group
-        std::vector<std::string> channelIds;
-        for (const auto& ch : group.channels) {
-            if (std::find(channelIds.begin(), channelIds.end(), ch.GetId()) != channelIds.end()) {
-                errorMessage = "Duplicate channel ID found: " + ch.GetId();
+        // ✅ Check for duplicate channel IDs within the group
+        std::set<std::string> uniqueIds;
+        for (const auto& channelId : group.channelIds) {
+            if (!uniqueIds.insert(channelId).second) {
+                errorMessage = "Duplicate channel ID found: " + channelId;
                 return false;
             }
-            channelIds.push_back(ch.GetId());
         }
 
         return true;
@@ -439,6 +426,16 @@ namespace elda::services {
             [&id](const models::Channel& ch) { return ch.GetId() == id; });
     }
 
+    std::vector<models::ChannelsGroup>::iterator ChannelManagementService::FindGroupById(const std::string& id) {
+        return std::find_if(channelGroups_.begin(), channelGroups_.end(),
+            [&id](const models::ChannelsGroup& g) { return g.id == id; });
+    }
+
+    std::vector<models::ChannelsGroup>::const_iterator ChannelManagementService::FindGroupById(const std::string& id) const {
+        return std::find_if(channelGroups_.begin(), channelGroups_.end(),
+            [&id](const models::ChannelsGroup& g) { return g.id == id; });
+    }
+
     std::vector<models::ChannelsGroup>::iterator ChannelManagementService::FindGroupByName(const std::string& name) {
         return std::find_if(channelGroups_.begin(), channelGroups_.end(),
             [&name](const models::ChannelsGroup& g) { return g.name == name; });
@@ -488,15 +485,15 @@ namespace elda::services {
 
         SaveToStorage();
 
-        // Create default group with all channels selected
-        models::ChannelsGroup defaultGroup("Standard 64-Channel");
-        defaultGroup.channels = channels_;
-        for (auto& ch : defaultGroup.channels) {
-            ch.selected = true;
-        }
-
-        CreateChannelGroup(defaultGroup);
-        SaveActiveChannelGroup(defaultGroup);
+        // // ✅ Create default group with all channel IDs
+        // models::ChannelsGroup defaultGroup("default_group", "Standard 64-Channel");
+        // for (const auto& channel : channels_) {
+        //     defaultGroup.addChannelId(channel.id);
+        // }
+        // defaultGroup.isDefault = true;
+        //
+        // CreateChannelGroup(defaultGroup);
+        // SaveActiveChannelGroup(defaultGroup);
 
         return true;
     }

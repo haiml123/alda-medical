@@ -184,24 +184,6 @@ float Toolbar(AppState& st, elda::AppStateManager& stateManager) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, purpleH);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, purpleH);
 
-    if (ImGui::Button("Channels", channelButtonSize)) {
-        g_channelsPresenter.OpenWithActiveGroup(
-            [&stateManager](const elda::models::ChannelsGroup& group) {
-                auto result = stateManager.SetChannelConfiguration(
-                    group.name,
-                    group.getSelectedChannels()
-                );
-
-                if (result.IsSuccess()) {
-                    std::printf("[Channels] Configuration applied: %s (%zu channels)\n",
-                               group.name.c_str(), group.getSelectedCount());
-                } else {
-                    std::fprintf(stderr, "[Channels Error] %s\n", result.message.c_str());
-                }
-            }
-        );
-    }
-
     ImGui::PopStyleColor(3);
 
     // ===== Right status area =====

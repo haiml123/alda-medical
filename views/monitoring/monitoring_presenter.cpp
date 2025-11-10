@@ -86,8 +86,8 @@ void MonitoringPresenter::render() {
         );
     };
 
-    callbacks_.onEditChannelGroup = [this](const std::string& groupName, const ui::TabBounds* bounds) {
-        std::cout << "[Presenter] Edit channel group: " << groupName << std::endl;
+    callbacks_.onEditChannelGroup = [this](const std::string& id, const ui::TabBounds* bounds) {
+        std::cout << "[Presenter] Edit channel group: " << id << std::endl;
 
         // Calculate modal position based on tab bounds
         if (bounds) {
@@ -104,7 +104,7 @@ void MonitoringPresenter::render() {
 
         // Open modal in edit mode
         channelsPresenter_.Open(
-            groupName,
+            id,
             [this](const elda::models::ChannelsGroup& editedGroup) {
                 model_.applyChannelConfiguration(editedGroup);
             }

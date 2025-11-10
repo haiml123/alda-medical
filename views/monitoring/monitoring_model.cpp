@@ -166,14 +166,14 @@ void MonitoringModel::decreaseAmplitude() {
 }
 
 void MonitoringModel::applyChannelConfiguration(const elda::models::ChannelsGroup& group) {
-    auto result = stateManager_.SetChannelConfiguration(group.name, group.channels);
-
-    if (result.IsSuccess()) {
-        std::printf("[Model] Channel config applied: %s (%zu channels)\n",
-                   group.name.c_str(), group.getSelectedCount());
-    } else {
-        std::fprintf(stderr, "[Model] Channel config failed: %s\n", result.message.c_str());
-    }
+    // auto result = stateManager_.SetChannelConfiguration(group.name, group.channels);
+    //
+    // if (result.IsSuccess()) {
+    //     std::printf("[Model] Channel config applied: %s (%zu channels)\n",
+    //                group.name.c_str(), group.getSelectedCount());
+    // } else {
+    //     std::fprintf(stderr, "[Model] Channel config failed: %s\n", result.message.c_str());
+    // }
 }
 
 // ============================================================================

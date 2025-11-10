@@ -22,7 +22,7 @@ namespace elda::channels_group {
         onDeleteCallback_ = deleteCallback;
 
         // Load by ID
-        if (model_->LoadChannelGroup(groupId)) {
+        if (model_->LoadChannelGroupById(groupId)) {
             view_->SetVisible(true);
             UpdateView();
         } else {
@@ -135,8 +135,14 @@ namespace elda::channels_group {
         // The model knows if this is create or update based on groupId_
         if (model_->SaveChannelGroup()) {
             // Create group object for callback
+            // ✅ UPDATED: Extract IDs from selected channels
             models::ChannelsGroup group(model_->GetGroupId(), model_->GetGroupName());
-            group.channels = model_->GetChannels();
+
+            for (const auto& channel : model_->GetChannels()) {
+                if (channel.selected) {
+                    group.channelIds.push_back(channel.GetId());
+                }
+            }
 
             // Notify callback
             if (onConfirmCallback_) {

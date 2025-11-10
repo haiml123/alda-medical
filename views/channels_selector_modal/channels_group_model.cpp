@@ -58,12 +58,21 @@ namespace elda::channels_group {
     // BUSINESS LOGIC
     // ========================================================================
 
-    bool ChannelsGroupModel::LoadChannelGroup(const std::string& groupName) {
-        auto group = channelService_.GetChannelGroup(groupName);
+    bool ChannelsGroupModel::LoadChannelGroupById(const std::string& id) {
+        auto group = channelService_.GetChannelGroup(id);
         if (group.has_value()) {
             groupId_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
             groupName_ = group->name;
-            channels_ = group->channels;
+
+            // ✅ UPDATED: Resolve channel IDs to full Channel objects
+            channels_.clear();
+            for (const auto& channelId : group->channelIds) {
+                auto channel = channelService_.GetChannel(channelId);
+                if (channel.has_value()) {
+                    channels_.push_back(channel.value());
+                }
+            }
+
             return true;
         }
         return false;
@@ -72,9 +81,17 @@ namespace elda::channels_group {
     bool ChannelsGroupModel::LoadActiveChannelGroup() {
         auto group = channelService_.LoadActiveChannelGroup();
         if (group.has_value()) {
-            groupId_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
+            groupId_ = group->id;
             groupName_ = group->name;
-            channels_ = group->channels;
+
+            channels_.clear();
+            for (const auto& channelId : group->channelIds) {
+                auto channel = channelService_.GetChannel(channelId);
+                if (channel.has_value()) {
+                    channels_.push_back(channel.value());
+                }
+            }
+
             return true;
         }
         return false;
@@ -88,13 +105,18 @@ namespace elda::channels_group {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        // ✅ CRITICAL FIX: Use groupId_ to determine create vs update
+        std::vector<std::string> selectedChannelIds;
+        for (const auto& channel : channels_) {
+            if (channel.selected) {
+                selectedChannelIds.push_back(channel.GetId());
+            }
+        }
+
         if (groupId_.empty()) {
             // CREATE: New group
             models::ChannelsGroup group(groupName_);
-            group.channels = channels_;
+            group.channelIds = selectedChannelIds;
 
-            // ✅ Initialize BaseModel fields
             group.OnCreate();
 
             if (!channelService_.CreateChannelGroup(group)) {
@@ -107,9 +129,7 @@ namespace elda::channels_group {
         } else {
             // UPDATE: Existing group - preserve ID, allow name change
             models::ChannelsGroup group(groupId_, groupName_);
-            group.channels = channels_;
-
-            // ✅ Update BaseModel timestamp
+            group.channelIds = selectedChannelIds;
             group.OnUpdate();
 
             if (!channelService_.UpdateChannelGroup(group)) {
@@ -119,7 +139,7 @@ namespace elda::channels_group {
 
         // Save as active group
         models::ChannelsGroup activeGroup(groupId_, groupName_);
-        activeGroup.channels = channels_;
+        activeGroup.channelIds = selectedChannelIds;
         return channelService_.SaveActiveChannelGroup(activeGroup);
     }
 
@@ -135,7 +155,6 @@ namespace elda::channels_group {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        // ✅ CRITICAL: Delete using ID, not name!
         return channelService_.DeleteChannelGroup(groupId_);
     }
 
@@ -154,11 +173,10 @@ namespace elda::channels_group {
     void ChannelsGroupModel::Clear() {
         channels_.clear();
         groupName_.clear();
-        groupId_.clear();  // ✅ CRITICAL: Also clear the ID
+        groupId_.clear();
     }
 
     bool ChannelsGroupModel::IsNewGroup() const {
-        // ✅ UPDATED: A group is "new" if it has no ID yet
         return groupId_.empty();
     }
 

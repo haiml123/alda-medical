@@ -47,8 +47,8 @@ void MonitoringView::renderTabBar(const MonitoringViewData& data, const Monitori
     for (const auto& group : groups) {
         elda::ui::Tab tab;
         tab.label = group.name;
-        tab.id = group.name;
-        tab.badge = static_cast<int>(group.getSelectedCount());
+        tab.id = group.id;
+        tab.badge = static_cast<int>(group.getChannelCount());
         tab.enabled = true;
         tabs.push_back(tab);
     }
@@ -74,7 +74,7 @@ void MonitoringView::renderTabBar(const MonitoringViewData& data, const Monitori
     tabBar_.setOnTabDoubleClick([&callbacks, &groups](int index, const ui::Tab& tab) {
         if (index >= 0 && index < static_cast<int>(groups.size())) {
             if (callbacks.onEditChannelGroup) {
-                callbacks.onEditChannelGroup(groups[index].name, tab.bounds);
+                callbacks.onEditChannelGroup(groups[index].id, tab.bounds);
             }
         }
     });

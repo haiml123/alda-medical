@@ -54,7 +54,7 @@ namespace elda::channels_group {
          * @param groupName Name of the group to load
          * @return true if loaded successfully
          */
-        bool LoadChannelGroup(const std::string& groupName);
+        bool LoadChannelGroupById(const std::string& groupName);
 
         /**
          * Load the active/last used channel group

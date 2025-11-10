@@ -111,6 +111,12 @@ namespace elda::services {
          */
         bool DeleteChannelGroup(const std::string& id);
 
+         /**
+         * Delete all non-default channel groups
+         * @return Number of groups deleted
+         */
+        int DeleteAllChannelGroups();
+
         /**
          * Check if a channel group exists by ID
          * @param id Group identifier
