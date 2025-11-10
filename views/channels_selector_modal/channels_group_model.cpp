@@ -159,6 +159,10 @@ namespace elda::channels_group {
         return channelService_.DeleteChannelGroup(groupId_);
     }
 
+    std::vector<models::Channel> ChannelsGroupModel::GetAllChannels() const {
+        return channelService_.GetAllChannels();
+    }
+
     std::vector<std::string> ChannelsGroupModel::GetAvailableGroupNames() const {
         auto groups = channelService_.GetAllChannelGroups();
         std::vector<std::string> names;

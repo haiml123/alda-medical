@@ -79,7 +79,7 @@ void MonitoringPresenter::render() {
 
     callbacks_.onCreateChannelGroup = [this]() {
         std::cout << "[Presenter] Create new channel group" << std::endl;
-        channelsPresenter_.OpenWithActiveGroup(
+        channelsPresenter_.Open("",
             [this](const elda::models::ChannelsGroup& newGroup) {
                 model_.applyChannelConfiguration(newGroup);
             }

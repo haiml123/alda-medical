@@ -15,49 +15,25 @@ namespace elda::channels_group {
     // PUBLIC API
     // ========================================================================
 
-    void ChannelsGroupPresenter::Open(const std::string& groupId,
-                                      OnConfirmCallback callback,
-                                      OnDeleteCallback deleteCallback) {
+    void ChannelsGroupPresenter::Open(
+    const std::string& groupId,
+    OnConfirmCallback callback,
+    OnDeleteCallback deleteCallback
+) {
         onConfirmCallback_ = callback;
         onDeleteCallback_ = deleteCallback;
 
-        // Load by ID
-        if (model_->LoadChannelGroupById(groupId)) {
-            view_->SetVisible(true);
-            UpdateView();
+        model_->Clear();  // Start fresh
+
+        if (!groupId.empty()) {
+            if (!model_->LoadChannelGroupById(groupId)) {
+                model_->Clear();
+            }
         } else {
-            // Group not found - show error or create new
-            model_->Clear();
-            view_->SetVisible(false);
+            // New group - just load all channels with none selected
+            model_->SetChannels(model_->GetAllChannels());
         }
-    }
 
-    void ChannelsGroupPresenter::OpenWithActiveGroup(OnConfirmCallback callback,
-                                                     OnDeleteCallback deleteCallback) {
-        onConfirmCallback_ = callback;
-        onDeleteCallback_ = deleteCallback;
-
-        // Load active group from service via model
-        if (model_->LoadActiveChannelGroup()) {
-            view_->SetVisible(true);
-            UpdateView();
-        } else {
-            // No active group - start with empty
-            model_->Clear();
-            view_->SetVisible(true);
-            UpdateView();
-        }
-    }
-
-    void ChannelsGroupPresenter::OpenWithChannels(
-        const std::vector<models::Channel>& channels,
-        OnConfirmCallback callback,
-        OnDeleteCallback deleteCallback
-    ) {
-        onConfirmCallback_ = callback;
-        onDeleteCallback_ = deleteCallback;
-        model_->Clear();  // Clear ensures groupId_ is empty = new group
-        model_->SetChannels(channels);
         view_->SetVisible(true);
         UpdateView();
     }

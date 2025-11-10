@@ -76,6 +76,12 @@ namespace elda::channels_group {
         bool DeleteChannelGroup();
 
         /**
+         * Get all available channels
+         * @return Vector of channels
+         */
+        std::vector<models::Channel> GetAllChannels() const;
+
+        /**
          * Get all available channel group names
          * @return Vector of group names
          */

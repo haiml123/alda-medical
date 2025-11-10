@@ -34,27 +34,11 @@ namespace elda::channels_group {
          * @param callback Callback when user confirms
          * @param deleteCallback Callback when user deletes (optional)
          */
-        void Open(const std::string& groupId,
-                 OnConfirmCallback callback = nullptr,
-                 OnDeleteCallback deleteCallback = nullptr);
-
-        /**
-         * Open the modal with the active/last used group
-         * @param callback Callback when user confirms
-         * @param deleteCallback Callback when user deletes (optional)
-         */
-        void OpenWithActiveGroup(OnConfirmCallback callback = nullptr,
-                                OnDeleteCallback deleteCallback = nullptr);
-
-        /**
-         * Open the modal with custom channels (not from service)
-         * @param channels Channels to display
-         * @param callback Callback when user confirms
-         * @param deleteCallback Callback when user deletes (optional)
-         */
-        void OpenWithChannels(const std::vector<models::Channel>& channels,
-                            OnConfirmCallback callback = nullptr,
-                            OnDeleteCallback deleteCallback = nullptr);
+        void Open(
+            const std::string& groupId = "",  // Empty = new group
+            OnConfirmCallback callback = nullptr,
+            OnDeleteCallback deleteCallback = nullptr
+        );
 
         /**
          * Close the modal
