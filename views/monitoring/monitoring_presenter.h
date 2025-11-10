@@ -2,6 +2,7 @@
 #define ELDA_MONITORING_PRESENTER_H
 
 #include "views/channels_selector_modal/channels_group_presenter.h"
+#include "imgui.h"
 
 namespace elda {
     class MonitoringModel;
@@ -26,6 +27,10 @@ namespace elda {
         MonitoringModel& model_;
         MonitoringView& view_;
         elda::channels_group::ChannelsGroupPresenter& channelsPresenter_;
+
+        // Modal positioning
+        ImVec2 channelModalPosition_;
+        bool useCustomModalPosition_ = false;
     };
 
 } // namespace elda

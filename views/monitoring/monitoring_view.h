@@ -46,7 +46,7 @@ namespace elda {
 
         // Tab actions
         std::function<void()> onCreateChannelGroup;
-        std::function<void(const std::string&)> onEditChannelGroup;
+        std::function<void(const std::string&, const ui::TabBounds*)> onEditChannelGroup;
     };
 
     /**

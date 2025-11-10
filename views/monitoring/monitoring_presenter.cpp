@@ -12,7 +12,9 @@ MonitoringPresenter::MonitoringPresenter(
     elda::channels_group::ChannelsGroupPresenter& channelsPresenter)
     : model_(model)
     , view_(view)
-    , channelsPresenter_(channelsPresenter) {
+    , channelsPresenter_(channelsPresenter)
+    , channelModalPosition_(0, 0)
+    , useCustomModalPosition_(false) {
 }
 
 void MonitoringPresenter::onEnter() {
@@ -73,6 +75,9 @@ void MonitoringPresenter::render() {
 
     // Channel group callbacks
     callbacks.onCreateChannelGroup = [this]() {
+        // Reset to default positioning for create mode
+        useCustomModalPosition_ = false;
+
         // Open modal in create mode
         channelsPresenter_.OpenWithChannels(
             elda::services::ChannelManagementService::GetInstance().GetAllChannels(),
@@ -82,7 +87,27 @@ void MonitoringPresenter::render() {
         );
     };
 
-    callbacks.onEditChannelGroup = [this](const std::string& groupName) {
+    callbacks.onEditChannelGroup = [this](const std::string& groupName, const ui::TabBounds* bounds) {
+        // Calculate modal position based on tab bounds
+        if (bounds) {
+            // Position modal centered below the tab
+            const float modalWidth = 300.0f;
+            const float modalSpacing = 10.0f;
+
+            channelModalPosition_ = ImVec2(
+                bounds->x + (bounds->width - modalWidth) * 0.5f,  // Center horizontally
+                bounds->y + bounds->height + modalSpacing          // Below tab with spacing
+            );
+            useCustomModalPosition_ = true;
+
+            std::cout << "[Presenter] Opening modal at tab position ("
+                      << channelModalPosition_.x << ", " << channelModalPosition_.y << ")" << std::endl;
+        } else {
+            // Fallback to default positioning
+            useCustomModalPosition_ = false;
+            std::cout << "[Presenter] Warning: No bounds provided, using default position" << std::endl;
+        }
+
         // Open modal in edit mode
         channelsPresenter_.Open(
             groupName,
@@ -95,11 +120,49 @@ void MonitoringPresenter::render() {
     // ===== RENDER VIEW =====
     view_.render(viewData, callbacks);
 
-    // ===== RENDER MODAL =====
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 modalPos = ImVec2(viewport->Pos.x + viewport->Size.x * 0.5f - 150,
-                             viewport->Pos.y + 100);
+    // ===== RENDER MODAL WITH SMART POSITIONING =====
+    ImVec2 modalPos;
     ImVec2 modalSize = ImVec2(300, 550);
+
+    if (useCustomModalPosition_) {
+        // Use the position calculated from tab bounds
+        modalPos = channelModalPosition_;
+
+        // Ensure modal stays within viewport bounds
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+        // Clamp X position
+        if (modalPos.x < viewport->Pos.x) {
+            modalPos.x = viewport->Pos.x + 10.0f;
+        }
+        if (modalPos.x + modalSize.x > viewport->Pos.x + viewport->Size.x) {
+            modalPos.x = viewport->Pos.x + viewport->Size.x - modalSize.x - 10.0f;
+        }
+
+        // Clamp Y position
+        if (modalPos.y < viewport->Pos.y) {
+            modalPos.y = viewport->Pos.y + 10.0f;
+        }
+        if (modalPos.y + modalSize.y > viewport->Pos.y + viewport->Size.y) {
+            // If modal would go below screen, position it above the tab instead
+            modalPos.y = channelModalPosition_.y - modalSize.y - 10.0f;
+
+            // Still too high? Center it on screen
+            if (modalPos.y < viewport->Pos.y) {
+                modalPos.y = viewport->Pos.y + (viewport->Size.y - modalSize.y) * 0.5f;
+            }
+        }
+    } else {
+        // Default positioning (center of screen)
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        modalPos = ImVec2(
+            viewport->Pos.x + (viewport->Size.x - modalSize.x) * 0.5f,
+            viewport->Pos.y + 100.0f
+        );
+    }
+
+    modalSize.y = 0;
+    modalSize.x = 0;
     channelsPresenter_.Render(modalPos, modalSize);
 }
 

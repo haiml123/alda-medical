@@ -8,6 +8,9 @@
 
 namespace elda::ui {
 
+    // Forward declare TabBounds
+    struct TabBounds;
+
     /**
      * Represents a single tab with label and optional metadata
      */
@@ -17,6 +20,7 @@ namespace elda::ui {
         int badge = -1;              // Badge count to show (e.g., channel count), -1 = no badge
         void* userData = nullptr;    // Optional user data pointer
         bool enabled = true;         // Whether tab is clickable
+        TabBounds* bounds = nullptr; // Bounds of the tab (updated after render)
 
         Tab() = default;
 
@@ -31,6 +35,39 @@ namespace elda::ui {
 
         Tab(const std::string& label_, int badge_, void* userData_)
             : label(label_), id(label_), badge(badge_), userData(userData_) {}
+    };
+
+    /**
+     * Stores the rendered bounds of a tab
+     */
+    struct TabBounds {
+        float x = 0.0f;
+        float y = 0.0f;
+        float width = 0.0f;
+        float height = 0.0f;
+
+        TabBounds() = default;
+        TabBounds(float x_, float y_, float w_, float h_)
+            : x(x_), y(y_), width(w_), height(h_) {}
+
+        // Check if a point is inside this tab
+        bool contains(float px, float py) const {
+            return px >= x && px <= (x + width) && py >= y && py <= (y + height);
+        }
+
+        // Get center point
+        ImVec2 center() const {
+            return ImVec2(x + width * 0.5f, y + height * 0.5f);
+        }
+
+        // Get min/max corners
+        ImVec2 min() const {
+            return ImVec2(x, y);
+        }
+
+        ImVec2 max() const {
+            return ImVec2(x + width, y + height);
+        }
     };
 
     /**
@@ -157,6 +194,27 @@ namespace elda::ui {
         void setTabEnabled(int tabIndex, bool enabled);
 
         // ========================================================================
+        // TAB BOUNDS QUERIES
+        // ========================================================================
+
+        /**
+         * Get the bounds of a specific tab (after render())
+         * Returns nullptr if index is invalid or render() hasn't been called yet
+         */
+        const TabBounds* getTabBounds(int index) const;
+
+        /**
+         * Get all tab bounds (after render())
+         */
+        const std::vector<TabBounds>& getAllTabBounds() const { return tabBounds_; }
+
+        /**
+         * Find which tab contains a screen position
+         * Returns tab index, or -1 if no tab at that position
+         */
+        int getTabAtPosition(float x, float y) const;
+
+        // ========================================================================
         // CALLBACKS
         // ========================================================================
 
@@ -214,6 +272,9 @@ namespace elda::ui {
         std::vector<Tab> tabs_;
         int activeTabIndex_;
         TabBarStyle style_;
+
+        // Tab bounds storage
+        std::vector<TabBounds> tabBounds_;  // Stored after each render
 
         // Callbacks
         TabClickCallback onTabClick_;

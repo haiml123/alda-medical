@@ -26,6 +26,12 @@ void TabBar::setTabs(const std::vector<Tab>& tabs) {
     if (activeTabIndex_ >= static_cast<int>(tabs_.size())) {
         activeTabIndex_ = std::max(0, static_cast<int>(tabs_.size()) - 1);
     }
+    // Clear bounds since tabs changed
+    tabBounds_.clear();
+    // Clear bounds pointers in tabs
+    for (auto& tab : tabs_) {
+        tab.bounds = nullptr;
+    }
 }
 
 void TabBar::setActiveTab(int index) {
@@ -50,12 +56,19 @@ void TabBar::removeTab(int index) {
         if (activeTabIndex_ >= static_cast<int>(tabs_.size())) {
             activeTabIndex_ = std::max(0, static_cast<int>(tabs_.size()) - 1);
         }
+
+        // Clear bounds since tabs changed (will be recalculated on next render)
+        tabBounds_.clear();
+        for (auto& tab : tabs_) {
+            tab.bounds = nullptr;
+        }
     }
 }
 
 void TabBar::clear() {
     tabs_.clear();
     activeTabIndex_ = 0;
+    tabBounds_.clear();
 }
 
 void TabBar::setBadge(int tabIndex, int badge) {
@@ -78,6 +91,26 @@ const Tab* TabBar::getTab(int index) const {
 }
 
 // ============================================================================
+// TAB BOUNDS QUERIES
+// ============================================================================
+
+const TabBounds* TabBar::getTabBounds(int index) const {
+    if (index >= 0 && index < static_cast<int>(tabBounds_.size())) {
+        return &tabBounds_[index];
+    }
+    return nullptr;
+}
+
+int TabBar::getTabAtPosition(float x, float y) const {
+    for (int i = 0; i < static_cast<int>(tabBounds_.size()); ++i) {
+        if (tabBounds_[i].contains(x, y)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// ============================================================================
 // RENDERING
 // ============================================================================
 
@@ -85,6 +118,15 @@ bool TabBar::render() {
     if (tabs_.empty()) {
         return false;
     }
+
+    // Clear previous bounds pointers
+    for (auto& tab : tabs_) {
+        tab.bounds = nullptr;
+    }
+
+    // Clear previous bounds
+    tabBounds_.clear();
+    tabBounds_.reserve(tabs_.size());
 
     bool tabChanged = false;
 
@@ -121,6 +163,12 @@ bool TabBar::render() {
 
         renderTab(static_cast<int>(i), tab, isActive);
 
+        // IMPORTANT: Assign bounds pointer immediately after renderTab stores it
+        // This ensures tab.bounds is valid when callbacks fire
+        if (i < tabBounds_.size()) {
+            tabs_[i].bounds = &tabBounds_[i];
+        }
+
         // Check for click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
             if (tab.enabled && !isActive) {
@@ -128,7 +176,7 @@ bool TabBar::render() {
                 tabChanged = true;
 
                 if (onTabClick_) {
-                    onTabClick_(static_cast<int>(i), tab);
+                    onTabClick_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
                 }
             }
         }
@@ -136,14 +184,14 @@ bool TabBar::render() {
         // Check for double-click
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) {
             if (tab.enabled && onTabDoubleClick_) {
-                onTabDoubleClick_(static_cast<int>(i), tab);
+                onTabDoubleClick_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
             }
         }
 
         // Check for right-click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
             if (tab.enabled && onTabRightClick_) {
-                onTabRightClick_(static_cast<int>(i), tab);
+                onTabRightClick_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
             }
         }
 
@@ -151,7 +199,7 @@ bool TabBar::render() {
         if (ImGui::IsItemHovered()) {
             hoveredTabIndex_ = static_cast<int>(i);
             if (onTabHover_) {
-                onTabHover_(static_cast<int>(i), tab);
+                onTabHover_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
             }
         }
 
@@ -219,6 +267,9 @@ void TabBar::renderTab(int index, const Tab& tab, bool isActive) {
         actualSize.y = style_.height - style_.tabBarPadding;
     }
 
+    // Store tab bounds
+    tabBounds_.emplace_back(cursorPos.x, cursorPos.y, actualSize.x, actualSize.y);
+
     // Get draw list
     ImDrawList* drawList = ImGui::GetWindowDrawList();
 
@@ -250,93 +301,90 @@ void TabBar::renderTab(int index, const Tab& tab, bool isActive) {
         ImVec2 bottomRight = ImVec2(cursorPos.x + actualSize.x, cursorPos.y + actualSize.y);
         ImVec2 bottomLeft = ImVec2(cursorPos.x, cursorPos.y + actualSize.y);
 
-        // Build path for filled background with rounded top corners
-        drawList->PathLineTo(bottomLeft);  // Start at bottom-left corner
-        drawList->PathLineTo(ImVec2(topLeft.x, topLeft.y + rounding));  // Go up left edge to start of arc
+        // Build a custom path for browser-style tabs
+        // Start at bottom-left, go up to top-left, arc around top-left corner,
+        // go across to top-right, arc around top-right corner, go down to bottom-right,
+        // then straight back to bottom-left.
 
-        // Top-left rounded corner (180° to 270°)
+        drawList->PathClear();
+
+        // Bottom-left corner (square)
+        drawList->PathLineTo(bottomLeft);
+
+        // Left edge going up (leaving room for top-left arc)
+        drawList->PathLineTo(ImVec2(topLeft.x, topLeft.y + rounding));
+
+        // Top-left arc (π to 1.5π, or 180° to 270°)
         drawList->PathArcTo(
-            ImVec2(topLeft.x + rounding, topLeft.y + rounding),  // Arc center
-            rounding,      // Radius
-            M_PI,          // Start angle: 180° (pointing left)
-            M_PI * 1.5f,   // End angle: 270° (pointing up)
-            8              // Number of segments
+            ImVec2(topLeft.x + rounding, topLeft.y + rounding),  // center
+            rounding,                                            // radius
+            M_PI,                                                // start angle (left)
+            M_PI * 1.5f,                                         // end angle (up)
+            8                                                    // segments
         );
 
-        drawList->PathLineTo(ImVec2(topRight.x - rounding, topRight.y));  // Top edge
+        // Top edge (from left arc to right arc)
+        drawList->PathLineTo(ImVec2(topRight.x - rounding, topRight.y));
 
-        // Top-right rounded corner (270° to 360°/0°)
+        // Top-right arc (1.5π to 2π, or 270° to 360°)
         drawList->PathArcTo(
-            ImVec2(topRight.x - rounding, topRight.y + rounding),  // Arc center
-            rounding,        // Radius
-            M_PI * 1.5f,     // Start angle: 270° (pointing up)
-            M_PI * 2.0f,     // End angle: 360°/0° (pointing right)
-            8                // Number of segments
+            ImVec2(topRight.x - rounding, topRight.y + rounding), // center
+            rounding,                                             // radius
+            M_PI * 1.5f,                                          // start angle (up)
+            M_PI * 2.0f,                                          // end angle (right)
+            8                                                     // segments
         );
 
-        drawList->PathLineTo(bottomRight);  // Go down right edge (square corner)
+        // Right edge going down (square bottom)
+        drawList->PathLineTo(bottomRight);
+
+        // Fill the path
         drawList->PathFillConvex(bgColorU32);
 
-        // Draw borders if enabled
+        // Draw borders if enabled (using individual line segments + arcs)
         if (style_.showBorders) {
-            float thickness = style_.borderThickness;
+            // Left border
+            drawList->AddLine(
+                bottomLeft,
+                ImVec2(topLeft.x, topLeft.y + rounding),
+                borderColorU32, style_.borderThickness
+            );
 
-            // Only draw left border on first tab to avoid double borders
-            if (index == 0) {
-                // Left border (bottom-left to top-left arc start)
-                drawList->AddLine(
-                    bottomLeft,
-                    ImVec2(topLeft.x, topLeft.y + rounding),
-                    borderColorU32, thickness
-                );
-            }
-
-            // Top-left arc border
+            // Top-left arc
             drawList->PathClear();
             drawList->PathArcTo(
                 ImVec2(topLeft.x + rounding, topLeft.y + rounding),
                 rounding, M_PI, M_PI * 1.5f, 8
             );
-            drawList->PathStroke(borderColorU32, false, thickness);
+            drawList->PathStroke(borderColorU32, false, style_.borderThickness);
 
             // Top border
             drawList->AddLine(
                 ImVec2(topLeft.x + rounding, topLeft.y),
                 ImVec2(topRight.x - rounding, topRight.y),
-                borderColorU32, thickness
+                borderColorU32, style_.borderThickness
             );
 
-            // Top-right arc border
+            // Top-right arc
             drawList->PathClear();
             drawList->PathArcTo(
                 ImVec2(topRight.x - rounding, topRight.y + rounding),
                 rounding, M_PI * 1.5f, M_PI * 2.0f, 8
             );
-            drawList->PathStroke(borderColorU32, false, thickness);
+            drawList->PathStroke(borderColorU32, false, style_.borderThickness);
 
-            // Right border - always draw (creates separator between tabs)
+            // Right border
             drawList->AddLine(
                 ImVec2(topRight.x, topRight.y + rounding),
                 bottomRight,
-                borderColorU32, thickness
+                borderColorU32, style_.borderThickness
             );
 
-            // Bottom border only for inactive tabs
-            // Active tabs don't have bottom border to connect with content
-            if (!isActive) {
-                drawList->AddLine(
-                    bottomLeft,
-                    bottomRight,
-                    borderColorU32, thickness
-                );
-            } else if (style_.showSeparator) {
-                // For active tab, draw a line in the background color to hide the separator
-                drawList->AddLine(
-                    ImVec2(bottomLeft.x, bottomLeft.y + 1),
-                    ImVec2(bottomRight.x, bottomRight.y + 1),
-                    bgColorU32, style_.separatorHeight + 1
-                );
-            }
+            // Bottom border
+            drawList->AddLine(
+                bottomLeft, bottomRight,
+                borderColorU32, style_.borderThickness
+            );
         }
     } else {
         // Regular rounded rectangle
@@ -401,7 +449,6 @@ void TabBar::renderAddButton() {
     ImVec2 bottomLeft = ImVec2(cursorPos.x, cursorPos.y + size.y);
 
     // Colors
-    bool isHovered = false;
     ImVec4 bgColor = style_.inactiveColor;
     ImU32 bgColorU32 = ImGui::GetColorU32(bgColor);
     ImU32 borderColorU32 = ImGui::GetColorU32(style_.borderColor);

@@ -17,7 +17,6 @@ namespace elda::channels_group {
     void ChannelsGroupPresenter::Open(const std::string& groupName, OnConfirmCallback callback) {
         onConfirmCallback_ = callback;
 
-        // Load group from service via model
         if (model_->LoadChannelGroup(groupName)) {
             view_->SetVisible(true);
             UpdateView();

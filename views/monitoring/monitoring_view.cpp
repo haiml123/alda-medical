@@ -67,16 +67,16 @@ void MonitoringView::renderTabBar(const MonitoringViewData& data, const Monitori
 
     // Single-click → Create
     tabBar_.setOnTabClick([&callbacks](int, const elda::ui::Tab&) {
-        if (callbacks.onCreateChannelGroup) {
-            callbacks.onCreateChannelGroup();
-        }
+        // if (callbacks.onCreateChannelGroup) {
+        //     callbacks.onCreateChannelGroup();
+        // }
     });
 
     // Double-click → Edit
-    tabBar_.setOnTabDoubleClick([&callbacks, &groups](int index, const elda::ui::Tab&) {
+    tabBar_.setOnTabDoubleClick([&callbacks, &groups](int index, const ui::Tab& tab) {
         if (index >= 0 && index < static_cast<int>(groups.size())) {
             if (callbacks.onEditChannelGroup) {
-                callbacks.onEditChannelGroup(groups[index].name);
+                callbacks.onEditChannelGroup(groups[index].name, tab.bounds);
             }
         }
     });
