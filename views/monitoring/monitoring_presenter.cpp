@@ -26,6 +26,9 @@ void MonitoringPresenter::onEnter() {
     cachedState_ = CachedViewState();
 
     model_.startAcquisition();
+    model_.addStateObserver([this](StateField field) {
+        std::cout << "[Presenter] Enter monitoring" << std::endl;
+   });
 }
 
 void MonitoringPresenter::onExit() {

@@ -1,29 +1,37 @@
 #pragma once
+#include "base_model.h"
 #include <string>
 
 namespace elda::models {
 
-    struct Channel {
-        std::string id;              // Unique identifier (e.g., "CH001")
-        std::string name;            // Display name (e.g., "Fp1")
-        std::string color;           // Hex color for visualization
-        bool selected;               // Whether channel is selected for display
+    struct Channel : public BaseModel {
+        std::string name;
+        std::string color;
+        bool selected;
 
-        // Hardware properties
-        int amplifierChannel;        // Physical channel on amplifier
-        std::string signalType;      // EEG, ECG, EMG, etc.
-        double sensorGain;           // Gain setting
-        double sensorOffset;         // Baseline offset
+        int amplifierChannel;
+        std::string signalType;
+        double sensorGain;
+        double sensorOffset;
 
-        // Filtering (if needed in model)
         bool filtered;
         double highPassCutoff;
         double lowPassCutoff;
 
-        Channel(const std::string& id_,
-                const std::string& name_,
-                const std::string& color_ = "#FFFFFF")
-            : id(id_)
+        Channel()
+            : BaseModel()
+            , color("#FFFFFF")
+            , selected(false)
+            , amplifierChannel(-1)
+            , signalType("EEG")
+            , sensorGain(1.0)
+            , sensorOffset(0.0)
+            , filtered(false)
+            , highPassCutoff(0.0)
+            , lowPassCutoff(0.0) {}
+
+        Channel(const std::string& name_, const std::string& color_ = "#FFFFFF")
+            : BaseModel()
             , name(name_)
             , color(color_)
             , selected(false)
@@ -34,6 +42,40 @@ namespace elda::models {
             , filtered(false)
             , highPassCutoff(0.0)
             , lowPassCutoff(0.0) {}
+
+        Channel(const std::string& id_, const std::string& name_, const std::string& color_ = "#FFFFFF")
+            : BaseModel(id_)
+            , name(name_)
+            , color(color_)
+            , selected(false)
+            , amplifierChannel(-1)
+            , signalType("EEG")
+            , sensorGain(1.0)
+            , sensorOffset(0.0)
+            , filtered(false)
+            , highPassCutoff(0.0)
+            , lowPassCutoff(0.0) {}
+
+        void SetSelected(bool isSelected) {
+            if (selected != isSelected) {
+                selected = isSelected;
+                OnUpdate();
+            }
+        }
+
+        void SetGain(double gain) {
+            if (sensorGain != gain) {
+                sensorGain = gain;
+                OnUpdate();
+            }
+        }
+
+        void SetFiltering(bool enable, double highPass = 0.0, double lowPass = 0.0) {
+            filtered = enable;
+            highPassCutoff = highPass;
+            lowPassCutoff = lowPass;
+            OnUpdate();
+        }
     };
 
-} // namespace elda
+} // namespace elda::models

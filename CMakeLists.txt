@@ -29,6 +29,8 @@ set(MODELS
         ${CMAKE_CURRENT_SOURCE_DIR}/models/channel.h
         ${CMAKE_CURRENT_SOURCE_DIR}/models/channels_group.h
         ${CMAKE_CURRENT_SOURCE_DIR}/models/patient.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/models/mvp_base_model.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/models/base_model.h
 )
 
 set(SERVICES

@@ -12,6 +12,9 @@ namespace elda::channels_group {
     /**
      * Model: Contains all data and business logic for channel selection
      * No UI dependencies - pure data and logic
+     *
+     * ✅ UPDATED: Now tracks groupId_ to distinguish edit vs create
+     * Works with BaseModel's automatic ID generation
      */
     class ChannelsGroupModel {
     public:
@@ -23,6 +26,7 @@ namespace elda::channels_group {
 
         const std::vector<models::Channel>& GetChannels() const { return channels_; }
         const std::string& GetGroupName() const { return groupName_; }
+        const std::string& GetGroupId() const { return groupId_; }  // ✅ NEW
         int GetSelectedCount() const;
         int GetTotalCount() const { return static_cast<int>(channels_.size()); }
 
@@ -60,6 +64,7 @@ namespace elda::channels_group {
 
         /**
          * Save the current selection as a new or updated channel group
+         * ✅ UPDATED: Now uses groupId_ to determine create vs update
          * @return true if saved successfully
          */
         bool SaveChannelGroup();
@@ -83,6 +88,7 @@ namespace elda::channels_group {
 
         /**
          * Check if this is a new group (doesn't exist in service yet)
+         * ✅ UPDATED: Now checks if groupId_ is empty
          * @return true if group doesn't exist or name is empty
          */
         bool IsNewGroup() const;
@@ -90,6 +96,7 @@ namespace elda::channels_group {
     private:
         std::vector<models::Channel> channels_;
         std::string groupName_;
+        std::string groupId_;  // ✅ NEW: Tracks the ID of the group being edited
         services::ChannelManagementService& channelService_;
     };
 

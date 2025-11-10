@@ -1,28 +1,33 @@
 #pragma once
 #include "channel.h"
+#include "base_model.h"
 #include <vector>
 #include <string>
 
+#include "base_model.h"
+
 namespace elda::models {
 
-    // Represents a group/montage of channels (similar to NeoRec profiles)
-    struct ChannelsGroup {
-        std::string name;                    // Group name (e.g., "10-20 System", "Custom Montage")
-        std::vector<Channel> channels;       // Channels in this group
-        std::string description;             // Optional description
-        bool isDefault;                      // Whether this is a default/system profile
+    // Option 1: Extend BaseModel (Recommended)
+    struct ChannelsGroup : public BaseModel {
+        std::string name;
+        std::vector<Channel> channels;
+        std::string description;
+        bool isDefault;
 
-        ChannelsGroup() : isDefault(false) {}
+        ChannelsGroup() : BaseModel(), isDefault(false) {}
 
         explicit ChannelsGroup(const std::string& name_)
-            : name(name_), isDefault(false) {}
+            : BaseModel(), name(name_), isDefault(false) {}
 
-        // Add channel to group
+        ChannelsGroup(const std::string& id_, const std::string& name_)
+            : BaseModel(id_), name(name_), isDefault(false) {}
+
         void addChannel(const Channel& channel) {
             channels.push_back(channel);
+            OnUpdate();
         }
 
-        // Get number of selected channels
         size_t getSelectedCount() const {
             size_t count = 0;
             for (const auto& ch : channels) {
@@ -31,7 +36,6 @@ namespace elda::models {
             return count;
         }
 
-        // Get all selected channels
         std::vector<Channel> getSelectedChannels() const {
             std::vector<Channel> selected;
             for (const auto& ch : channels) {
@@ -43,4 +47,24 @@ namespace elda::models {
         }
     };
 
-} // namespace elda
+    // Option 2: Create derived class from ChannelsGroup
+    struct CustomChannelsGroup : public ChannelsGroup {
+        std::string author;
+        bool isShared;
+
+        CustomChannelsGroup() : ChannelsGroup(), isShared(false) {}
+
+        explicit CustomChannelsGroup(const std::string& name_)
+            : ChannelsGroup(name_), isShared(false) {}
+    };
+
+    // Option 3: Specialized group types
+    struct PredefinedChannelsGroup : public ChannelsGroup {
+        std::string standard;  // e.g., "10-20", "10-10"
+
+        PredefinedChannelsGroup() : ChannelsGroup() {
+            isDefault = true;
+        }
+    };
+
+} // namespace elda::models

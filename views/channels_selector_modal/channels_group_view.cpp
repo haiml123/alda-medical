@@ -109,7 +109,7 @@ namespace elda::channels_group {
 
         for (size_t i = 0; i < channels.size(); ++i) {
             const auto& channel = channels[i];
-            ImGui::PushID(channel.id.c_str());
+            ImGui::PushID(channel.GetId().c_str());
 
             bool wasSelected = channel.selected;
             bool isSelected = RenderCustomCheckbox(channel.name.c_str(), channel.selected);

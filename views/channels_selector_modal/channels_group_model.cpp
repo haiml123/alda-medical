@@ -61,8 +61,9 @@ namespace elda::channels_group {
     bool ChannelsGroupModel::LoadChannelGroup(const std::string& groupName) {
         auto group = channelService_.GetChannelGroup(groupName);
         if (group.has_value()) {
-            channels_ = group->channels;
+            groupId_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
             groupName_ = group->name;
+            channels_ = group->channels;
             return true;
         }
         return false;
@@ -71,8 +72,9 @@ namespace elda::channels_group {
     bool ChannelsGroupModel::LoadActiveChannelGroup() {
         auto group = channelService_.LoadActiveChannelGroup();
         if (group.has_value()) {
-            channels_ = group->channels;
+            groupId_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
             groupName_ = group->name;
+            channels_ = group->channels;
             return true;
         }
         return false;
@@ -86,27 +88,44 @@ namespace elda::channels_group {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        models::ChannelsGroup group(groupName_);
-        group.channels = channels_;
+        // ✅ CRITICAL FIX: Use groupId_ to determine create vs update
+        if (groupId_.empty()) {
+            // CREATE: New group
+            models::ChannelsGroup group(groupName_);
+            group.channels = channels_;
 
-        // Check if group exists - update or create
-        if (channelService_.ChannelGroupExists(groupName_)) {
-            if (!channelService_.UpdateChannelGroup(group)) {
+            // ✅ Initialize BaseModel fields
+            group.OnCreate();
+
+            if (!channelService_.CreateChannelGroup(group)) {
                 return false;
             }
+
+            // Remember the ID for future operations
+            groupId_ = group.id;
+
         } else {
-            if (!channelService_.CreateChannelGroup(group)) {
+            // UPDATE: Existing group - preserve ID, allow name change
+            models::ChannelsGroup group(groupId_, groupName_);
+            group.channels = channels_;
+
+            // ✅ Update BaseModel timestamp
+            group.OnUpdate();
+
+            if (!channelService_.UpdateChannelGroup(group)) {
                 return false;
             }
         }
 
         // Save as active group
-        return channelService_.SaveActiveChannelGroup(group);
+        models::ChannelsGroup activeGroup(groupId_, groupName_);
+        activeGroup.channels = channels_;
+        return channelService_.SaveActiveChannelGroup(activeGroup);
     }
 
     bool ChannelsGroupModel::DeleteChannelGroup() {
-        if (groupName_.empty()) {
-            return false;
+        if (groupId_.empty()) {
+            return false;  // Can't delete a group that doesn't exist yet
         }
 
         // TODO: This should go through AppStateManager for:
@@ -116,8 +135,8 @@ namespace elda::channels_group {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        // Delete from channel service
-        return channelService_.DeleteChannelGroup(groupName_);
+        // ✅ CRITICAL: Delete using ID, not name!
+        return channelService_.DeleteChannelGroup(groupId_);
     }
 
     std::vector<std::string> ChannelsGroupModel::GetAvailableGroupNames() const {
@@ -135,13 +154,12 @@ namespace elda::channels_group {
     void ChannelsGroupModel::Clear() {
         channels_.clear();
         groupName_.clear();
+        groupId_.clear();  // ✅ CRITICAL: Also clear the ID
     }
 
     bool ChannelsGroupModel::IsNewGroup() const {
-        if (groupName_.empty()) {
-            return true;
-        }
-        return !channelService_.ChannelGroupExists(groupName_);
+        // ✅ UPDATED: A group is "new" if it has no ID yet
+        return groupId_.empty();
     }
 
 } // namespace elda::channels_group

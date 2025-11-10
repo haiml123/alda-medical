@@ -15,6 +15,9 @@ namespace elda::services {
      * Provides CRUD operations with persistent storage and validation.
      *
      * Similar to NeoRec's profile management where channels can be grouped into montages/profiles.
+     *
+     * IMPORTANT: All group operations use ID-based lookups, not name-based.
+     * This allows renaming groups without creating duplicates.
      */
     class ChannelManagementService {
     public:
@@ -64,22 +67,29 @@ namespace elda::services {
         bool ChannelExists(const std::string& id) const;
 
         // ============================================================================
-        // CHANNEL GROUP (MONTAGE) OPERATIONS
+        // CHANNEL GROUP (MONTAGE) OPERATIONS - ID-BASED
         // ============================================================================
 
         /**
          * Create a new channel group/montage
-         * @param group Channel group to create
+         * @param group Channel group to create (must have unique id)
          * @return true if created successfully
          */
         bool CreateChannelGroup(const models::ChannelsGroup& group);
 
         /**
-         * Get a channel group by name
+         * Get a channel group by ID
+         * @param id Group unique identifier
+         * @return Optional channel group if found
+         */
+        std::optional<models::ChannelsGroup> GetChannelGroup(const std::string& id) const;
+
+        /**
+         * Get a channel group by name (for backward compatibility)
          * @param name Group name
          * @return Optional channel group if found
          */
-        std::optional<models::ChannelsGroup> GetChannelGroup(const std::string& name) const;
+        std::optional<models::ChannelsGroup> GetChannelGroupByName(const std::string& name) const;
 
         /**
          * Get all channel groups
@@ -89,32 +99,31 @@ namespace elda::services {
 
         /**
          * Update an existing channel group
-         * @param group Channel group with updated data (must have valid name)
+         * @param group Channel group with updated data (must have valid id)
          * @return true if updated successfully
          */
         bool UpdateChannelGroup(const models::ChannelsGroup& group);
 
         /**
-         * Delete a channel group by name
-         * @param name Group name
+         * Delete a channel group by ID
+         * @param id Group identifier
          * @return true if deleted successfully
          */
-        bool DeleteChannelGroup(const std::string& name);
+        bool DeleteChannelGroup(const std::string& id);
 
         /**
-         * Check if a channel group exists
+         * Check if a channel group exists by ID
+         * @param id Group identifier
+         * @return true if group exists
+         */
+        bool ChannelGroupExists(const std::string& id) const;
+
+        /**
+         * Check if a channel group exists by name
          * @param name Group name
          * @return true if group exists
          */
-        bool ChannelGroupExists(const std::string& name) const;
-
-        /**
-         * Rename a channel group
-         * @param oldName Current group name
-         * @param newName New group name
-         * @return true if renamed successfully
-         */
-        bool RenameChannelGroup(const std::string& oldName, const std::string& newName);
+        bool ChannelGroupExistsByName(const std::string& name) const;
 
         // ============================================================================
         // LAST USED / ACTIVE MANAGEMENT
@@ -181,6 +190,12 @@ namespace elda::services {
         // Helper methods
         std::vector<models::Channel>::iterator FindChannelById(const std::string& id);
         std::vector<models::Channel>::const_iterator FindChannelById(const std::string& id) const;
+
+        // ID-based lookups (primary)
+        std::vector<models::ChannelsGroup>::iterator FindGroupById(const std::string& id);
+        std::vector<models::ChannelsGroup>::const_iterator FindGroupById(const std::string& id) const;
+
+        // Name-based lookups (for backward compatibility)
         std::vector<models::ChannelsGroup>::iterator FindGroupByName(const std::string& name);
         std::vector<models::ChannelsGroup>::const_iterator FindGroupByName(const std::string& name) const;
 

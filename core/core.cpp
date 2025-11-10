@@ -46,19 +46,6 @@ void AppState::InitializeChannels() {
 void AppState::InitializeGroupChannels() {
     auto& service = elda::services::ChannelManagementService::GetInstance();
     availableGroups = service.GetAllChannelGroups();
-
-    // If we have less than 3 groups, create default groups
-    if (availableGroups.size() < 3) {
-        std::printf("[AppState] Only %zu groups found, creating default groups...\n",
-                   availableGroups.size());
-
-        CreateDefaultGroups();
-
-        // Reload groups after creating defaults
-        availableGroups = service.GetAllChannelGroups();
-
-        std::printf("[AppState] Now have %zu groups available\n", availableGroups.size());
-    }
 }
 
 void AppState::CreateDefaultGroups() {

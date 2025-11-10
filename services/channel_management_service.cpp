@@ -19,7 +19,7 @@ namespace elda::services {
                 std::ostringstream oss;
                 oss << channels.size() << "\n";
                 for (const auto& ch : channels) {
-                    oss << ch.id << "|"
+                    oss << ch.GetId() << "|"
                         << ch.name << "|"
                         << ch.color << "|"
                         << ch.selected << "|"
@@ -85,7 +85,7 @@ namespace elda::services {
 
                     // Serialize channels in group
                     for (const auto& ch : group.channels) {
-                        oss << ch.id << "|"
+                        oss << ch.GetId() << "|"
                             << ch.name << "|"
                             << ch.color << "|"
                             << ch.selected << "|"
@@ -171,7 +171,7 @@ namespace elda::services {
                     << group.channels.size() << "\n";
 
                 for (const auto& ch : group.channels) {
-                    oss << ch.id << "|"
+                    oss << ch.GetId() << "|"
                         << ch.name << "|"
                         << ch.color << "|"
                         << ch.selected << "|"
@@ -256,8 +256,8 @@ namespace elda::services {
     // ============================================================================
 
     bool ChannelManagementService::CreateChannel(const models::Channel& channel) {
-        if (channel.id.empty()) return false;
-        if (ChannelExists(channel.id)) return false;
+        if (channel.GetId().empty()) return false;
+        if (ChannelExists(channel.GetId())) return false;
 
         channels_.push_back(channel);
         SaveToStorage();
@@ -277,7 +277,7 @@ namespace elda::services {
     }
 
     bool ChannelManagementService::UpdateChannel(const models::Channel& channel) {
-        auto it = FindChannelById(channel.id);
+        auto it = FindChannelById(channel.GetId());
         if (it == channels_.end()) return false;
 
         *it = channel;
@@ -354,21 +354,6 @@ namespace elda::services {
         return FindGroupByName(name) != channelGroups_.end();
     }
 
-    bool ChannelManagementService::RenameChannelGroup(const std::string& oldName, const std::string& newName) {
-        if (newName.empty()) return false;
-        if (ChannelGroupExists(newName)) return false;
-
-        auto it = FindGroupByName(oldName);
-        if (it == channelGroups_.end()) return false;
-
-        // Don't allow renaming default groups
-        if (it->isDefault) return false;
-
-        it->name = newName;
-        SaveToStorage();
-        return true;
-    }
-
     // ============================================================================
     // LAST USED / ACTIVE MANAGEMENT
     // ============================================================================
@@ -398,11 +383,11 @@ namespace elda::services {
         // Check for duplicate channel IDs within the group
         std::vector<std::string> channelIds;
         for (const auto& ch : group.channels) {
-            if (std::find(channelIds.begin(), channelIds.end(), ch.id) != channelIds.end()) {
-                errorMessage = "Duplicate channel ID found: " + ch.id;
+            if (std::find(channelIds.begin(), channelIds.end(), ch.GetId()) != channelIds.end()) {
+                errorMessage = "Duplicate channel ID found: " + ch.GetId();
                 return false;
             }
-            channelIds.push_back(ch.id);
+            channelIds.push_back(ch.GetId());
         }
 
         return true;
@@ -446,12 +431,12 @@ namespace elda::services {
 
     std::vector<models::Channel>::iterator ChannelManagementService::FindChannelById(const std::string& id) {
         return std::find_if(channels_.begin(), channels_.end(),
-            [&id](const models::Channel& ch) { return ch.id == id; });
+            [&id](const models::Channel& ch) { return ch.GetId() == id; });
     }
 
     std::vector<models::Channel>::const_iterator ChannelManagementService::FindChannelById(const std::string& id) const {
         return std::find_if(channels_.begin(), channels_.end(),
-            [&id](const models::Channel& ch) { return ch.id == id; });
+            [&id](const models::Channel& ch) { return ch.GetId() == id; });
     }
 
     std::vector<models::ChannelsGroup>::iterator ChannelManagementService::FindGroupByName(const std::string& name) {

@@ -5,9 +5,6 @@
 #include <functional>
 #include <string>
 #include <vector>
-#include <fstream>
-#include <chrono>
-#include <ctime>
 
 namespace elda {
 
@@ -46,6 +43,10 @@ enum class StateField {
 
 class AppStateManager {
 public:
+    // Observer handle type for registration/removal
+    using ObserverHandle = size_t;
+    using StateObserver = std::function<void(StateField)>;
+
     // Constructor
     explicit AppStateManager(AppState& state);
     ~AppStateManager();
@@ -143,6 +144,16 @@ public:
     StateChangeError SetDisplayAmplitude(int amplitudeIndex);
 
     /**
+     * Get current window index
+     */
+    int GetWindowIndex() const { return state_.winIdx; }
+
+    /**
+     * Get current amplitude index
+     */
+    int GetAmplitudeIndex() const { return state_.ampIdx; }
+
+    /**
      * Get current window size in seconds
      */
     float GetWindowSeconds() const { return state_.windowSec(); }
@@ -178,13 +189,19 @@ public:
 
     // === OBSERVER PATTERN ===
 
-    using StateObserver = std::function<void(StateField)>;
-
     /**
      * Register an observer for state changes
      * Observer will be called whenever state changes with the field that changed
+     * @param observer Callback function
+     * @return Handle to use for removing the observer
      */
-    void AddObserver(StateObserver observer);
+    ObserverHandle AddObserver(StateObserver observer);
+
+    /**
+     * Remove a specific observer by handle
+     * @param handle Handle returned from AddObserver
+     */
+    void RemoveObserver(ObserverHandle handle);
 
     /**
      * Clear all observers
@@ -204,20 +221,6 @@ public:
      */
     bool IsImpedanceCheckPassed() const { return impedanceCheckPassed_; }
 
-    // === AUDIT LOG ===
-
-    /**
-     * Enable or disable audit logging to file
-     * @param enable True to enable, false to disable
-     * @param logFilePath Path to log file (uses default if empty)
-     */
-    void EnableAuditLog(bool enable, const std::string& logFilePath = "");
-
-    /**
-     * Get current audit log file path
-     */
-    std::string GetAuditLogPath() const { return auditLogPath_; }
-
 private:
     // === VALIDATION HELPERS ===
 
@@ -228,31 +231,16 @@ private:
     bool ValidateAmplitudeIndex(int index, std::string& errorMsg);
     bool ValidateScale(float scale, const std::string& paramName, std::string& errorMsg);
 
-    // === LOGGING ===
-
-    void LogStateChange(const std::string& field, const std::string& oldValue,
-                       const std::string& newValue);
-    void LogStateChange(const std::string& field, bool oldValue, bool newValue);
-    void LogStateChange(const std::string& field, int oldValue, int newValue);
-    void LogStateChange(const std::string& field, float oldValue, float newValue);
-
-    void WriteToAuditLog(const std::string& message);
-    std::string GetTimestamp() const;
-
     // === OBSERVER NOTIFICATION ===
 
     void NotifyStateChanged(StateField field);
 
     // === MEMBERS ===
 
-    AppState& state_;                           // Reference to actual app state
-    std::vector<StateObserver> observers_;      // Registered observers
-    bool impedanceCheckPassed_{false};          // Impedance validation flag
-
-    // Audit logging
-    bool auditLogEnabled_{false};
-    std::string auditLogPath_;
-    std::ofstream auditLogFile_;
+    AppState& state_;                                           // Reference to actual app state
+    std::vector<std::pair<ObserverHandle, StateObserver>> observers_;  // Registered observers with handles
+    ObserverHandle nextHandle_{0};                              // Next observer handle to assign
+    bool impedanceCheckPassed_{false};                          // Impedance validation flag
 };
 
 } // namespace elda

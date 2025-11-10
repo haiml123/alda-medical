@@ -63,7 +63,7 @@ int main() {
     elda::AppStateManager stateManager(appState);
 
     // Enable audit logging (optional - for medical device compliance)
-    stateManager.EnableAuditLog("elda_audit.log");
+    // stateManager.EnableAuditLog("elda_audit.log");
 
     std::cout << "[Main] Application state initialized" << std::endl;
     std::cout << "[Main] Channels: " << CHANNELS << std::endl;

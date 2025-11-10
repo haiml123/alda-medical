@@ -6,7 +6,7 @@
 namespace elda {
 
 MonitoringModel::MonitoringModel(AppState& state, elda::AppStateManager& stateManager)
-    : state_(state), stateManager_(stateManager) {
+    : MVPBaseModel(stateManager), state_(state), stateManager_(stateManager) {
     initializeBuffers();
 }
 

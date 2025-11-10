@@ -15,21 +15,20 @@ namespace elda::channels_group {
     // PUBLIC API
     // ========================================================================
 
-    void ChannelsGroupPresenter::Open(const std::string& groupName,
+    void ChannelsGroupPresenter::Open(const std::string& groupId,
                                       OnConfirmCallback callback,
                                       OnDeleteCallback deleteCallback) {
         onConfirmCallback_ = callback;
         onDeleteCallback_ = deleteCallback;
 
-        if (model_->LoadChannelGroup(groupName)) {
+        // Load by ID
+        if (model_->LoadChannelGroup(groupId)) {
             view_->SetVisible(true);
             UpdateView();
         } else {
-            // Group not found - could show error or create new
+            // Group not found - show error or create new
             model_->Clear();
-            model_->SetGroupName(groupName);
-            view_->SetVisible(true);
-            UpdateView();
+            view_->SetVisible(false);
         }
     }
 
@@ -57,7 +56,7 @@ namespace elda::channels_group {
     ) {
         onConfirmCallback_ = callback;
         onDeleteCallback_ = deleteCallback;
-        model_->Clear();
+        model_->Clear();  // Clear ensures groupId_ is empty = new group
         model_->SetChannels(channels);
         view_->SetVisible(true);
         UpdateView();
@@ -103,6 +102,8 @@ namespace elda::channels_group {
 
     void ChannelsGroupPresenter::OnGroupNameChanged(const std::string& newName) {
         // User typed in the name field - update model
+        // IMPORTANT: This just changes the name, doesn't change the ID
+        // So renaming an existing group will UPDATE it, not create a duplicate
         model_->SetGroupName(newName);
         // View will be updated on next render cycle
     }
@@ -131,9 +132,10 @@ namespace elda::channels_group {
         }
 
         // Save to service via model
+        // The model knows if this is create or update based on groupId_
         if (model_->SaveChannelGroup()) {
             // Create group object for callback
-            models::ChannelsGroup group(model_->GetGroupName());
+            models::ChannelsGroup group(model_->GetGroupId(), model_->GetGroupName());
             group.channels = model_->GetChannels();
 
             // Notify callback
@@ -156,13 +158,13 @@ namespace elda::channels_group {
 
     void ChannelsGroupPresenter::OnDelete() {
         // User clicked Delete button
-        const std::string& groupName = model_->GetGroupName();
+        const std::string& groupId = model_->GetGroupId();
 
-        // Delete via model (proper MVP - business logic in Model, not Presenter)
+        // Delete via model (uses ID, not name!)
         if (model_->DeleteChannelGroup()) {
             // Notify parent that group was deleted so it can refresh tabs/UI
             if (onDeleteCallback_) {
-                onDeleteCallback_(groupName);
+                onDeleteCallback_(groupId);
             }
 
             // Close the modal

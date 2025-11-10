@@ -5,10 +5,11 @@
 #include "core/core.h"
 #include "core/app_state_manager.h"
 #include "models/channels_group.h"
+#include "models/mvp_base_model.h"
 
 namespace elda {
 
-    class MonitoringModel {
+    class MonitoringModel : public MVPBaseModel {
     public:
         MonitoringModel(AppState& state, elda::AppStateManager& stateManager);
         ~MonitoringModel() = default;

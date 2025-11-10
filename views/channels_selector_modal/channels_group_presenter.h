@@ -13,6 +13,8 @@ namespace elda::channels_group {
      * - Updates Model based on user input
      * - Updates View based on Model state
      * - Contains presentation logic
+     *
+     * UPDATED: Now supports both ID-based and name-based opening for backward compatibility
      */
     class ChannelsGroupPresenter {
     public:
@@ -27,12 +29,12 @@ namespace elda::channels_group {
         // ========================================================================
 
         /**
-         * Open the modal with channels from a specific group
-         * @param groupName Name of the group to load
+         * Open the modal with channels from a specific group (by ID)
+         * @param groupId ID of the group to load
          * @param callback Callback when user confirms
          * @param deleteCallback Callback when user deletes (optional)
          */
-        void Open(const std::string& groupName,
+        void Open(const std::string& groupId,
                  OnConfirmCallback callback = nullptr,
                  OnDeleteCallback deleteCallback = nullptr);
 
