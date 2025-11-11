@@ -114,3 +114,5 @@ else()
 endif()
 
 install(TARGETS alda_medical RUNTIME DESTINATION bin)
+
+set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*")

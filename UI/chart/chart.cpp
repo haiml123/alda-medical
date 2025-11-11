@@ -1,33 +1,24 @@
-// =============================================================================
-// OPTIMIZED: Scan phase optimizations
-// - Remove floor() calls (use direct time comparisons)
-// - Reserve capacity (avoid reallocations)
-// - Better cache locality (early exit)
-// =============================================================================
-
+// chart.cpp — Fixed time base, fixed gain (px/µV), pixel-locked Y BEFORE any locking calls
 #include "chart.h"
 #include "imgui.h"
 #include "implot.h"
-#include "models/channel.h"   // <-- use channel name/color
-
-#include <numeric>
+#include "models/channel.h"
 #include <algorithm>
-#include <cstdio>
 #include <cmath>
-#include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <string>
 #include <vector>
 
-static constexpr float kLabelInsetPx = 20.0f;
-static constexpr float kLabelSpacingPixels = 50.0f;
+static constexpr float kLeftLabelInsetPx  = 20.0f;
+static constexpr float kLeftSpacingPx     = 56.0f;
+static constexpr float kTopPadPx          = 8.0f;
+static constexpr float kPreferredRowPx    = 120.0f;
+static constexpr float kMinRowPx          = 8.0f;
+static constexpr int   kWiperWidthPx      = 10;
 
-static const ImVec4 kLabelColorNormal    = ImVec4(0.65f, 0.68f, 0.72f, 1.0f);
-static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);
+static const ImVec4 kLabelColorNormal = ImVec4(0.72f, 0.76f, 0.80f, 1.0f);
 
-// ----------------------------------------------------------------------------
-// Parse hex string color (#RGB, #RRGGBB, #RRGGBBAA) -> ImVec4. Fallback if bad.
-// ----------------------------------------------------------------------------
 static ImVec4 ParseHexColor(const std::string& hex, const ImVec4& fallback) {
     auto hv = [](char c)->int {
         if (c >= '0' && c <= '9') return c - '0';
@@ -35,369 +26,207 @@ static ImVec4 ParseHexColor(const std::string& hex, const ImVec4& fallback) {
         if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
         return 0;
     };
-
     if (hex.empty()) return fallback;
     const char* s = hex.c_str();
     if (*s == '#') ++s;
     const size_t n = std::strlen(s);
-
-    auto to01 = [&](int hi, int lo)->float { return float((hi << 4) | lo) / 255.0f; };
-
-    float r = fallback.x, g = fallback.y, b = fallback.z, a = fallback.w;
-
-    if (n == 3) { // #RGB
-        r = hv(s[0]) / 15.0f;
-        g = hv(s[1]) / 15.0f;
-        b = hv(s[2]) / 15.0f;
-        a = 1.0f;
-    } else if (n == 6 || n == 8) {
-        r = to01(hv(s[0]), hv(s[1]));
-        g = to01(hv(s[2]), hv(s[3]));
-        b = to01(hv(s[4]), hv(s[5]));
-        a = (n == 8) ? to01(hv(s[6]), hv(s[7])) : 1.0f;
+    auto to01 = [&](int hi, int lo)->float { return float((hi<<4)|lo)/255.0f; };
+    float r=fallback.x,g=fallback.y,b=fallback.z,a=fallback.w;
+    if (n==3){ r=hv(s[0])/15.f; g=hv(s[1])/15.f; b=hv(s[2])/15.f; a=1.f; }
+    else if (n==6||n==8){
+        r=to01(hv(s[0]),hv(s[1])); g=to01(hv(s[2]),hv(s[3]));
+        b=to01(hv(s[4]),hv(s[5])); a=(n==8)?to01(hv(s[6]),hv(s[7])):1.f;
     }
-    return ImVec4(r, g, b, a);
+    return ImVec4(r,g,b,a);
 }
-
-struct PerfScope {
-    std::chrono::steady_clock::time_point t0;
-    double* out_ms;
-    PerfScope(double* out=nullptr) : t0(std::chrono::steady_clock::now()), out_ms(out) {}
-    ~PerfScope() {
-        if (!out_ms) return;
-        const double ms = std::chrono::duration<double,std::milli>(
-            std::chrono::steady_clock::now() - t0).count();
-        *out_ms += ms;
-    }
-};
-
-struct FrameStats {
-    double total_ms        = 0.0;
-    double label_width_ms  = 0.0;
-    double plotting_ms     = 0.0;
-    double scan_ms         = 0.0;
-    double plot_lines_ms   = 0.0;
-    double wiper_ms        = 0.0;
-    double labels_ms       = 0.0;
-    int    points_rendered = 0;
-    int    points_scanned  = 0;
-    int    points_skipped  = 0;
-
-    static int counter;
-    static constexpr int kLogEvery = 60;
-
-    void Log() {
-        if (++counter >= kLogEvery) {
-            std::printf("\n=== EEG CHART PERFORMANCE ===\n");
-            std::printf("  Total Frame:     %.3f ms\n", total_ms);
-            std::printf("  Label Width:     %.3f ms\n", label_width_ms);
-            std::printf("  Plotting Total:  %.3f ms\n", plotting_ms);
-            std::printf("    Build (scan):  %.3f ms\n", scan_ms);
-            std::printf("    Plot lines:    %.3f ms\n", plot_lines_ms);
-            std::printf("    Wiper:         %.3f ms\n", wiper_ms);
-            std::printf("  Draw Labels:     %.3f ms\n", labels_ms);
-            std::printf("  Samples Scanned: %d\n", points_scanned);
-            std::printf("  Samples Skipped: %d (%.1f%%)\n", points_skipped,
-                       points_scanned > 0 ? 100.0 * points_skipped / points_scanned : 0.0);
-            std::printf("  Points Rendered: %d\n", points_rendered);
-            std::printf("  FPS:             %.1f\n", ImGui::GetIO().Framerate);
-            std::printf("==============================\n\n");
-            counter = 0;
-        }
-    }
-};
-int FrameStats::counter = 0;
 
 struct PlotBuffers {
     std::vector<float> xsPrev, ysPrev, xsCur, ysCur;
-
-    PlotBuffers() {
-        xsPrev.reserve(25000);
-        ysPrev.reserve(25000);
-        xsCur.reserve(25000);
-        ysCur.reserve(25000);
-    }
-
-    void clear() {
-        xsPrev.clear();
-        ysPrev.clear();
-        xsCur.clear();
-        ysCur.clear();
-    }
+    void clear(){ xsPrev.clear(); ysPrev.clear(); xsCur.clear(); ysCur.clear(); }
+    void reserve(int n){ xsPrev.reserve(n); ysPrev.reserve(n); xsCur.reserve(n); ysCur.reserve(n); }
 };
 
-// -----------------------------------------------------------------------------
-// NOTE: Same logic/design as your original. Changes:
-//   - Use selectedChannels.size() to decide visible rows (fallback to all if empty)
-//   - Label uses channel->name if present
-//   - Line color uses channel->color (hex) if present; fallback to cyan
-//   - Data index remap via channel->amplifierChannel (if valid), else row index
-// -----------------------------------------------------------------------------
+static inline int ResolveChannelIndex(
+    int v, const std::vector<const elda::models::Channel*>& selected,
+    const elda::ChartData& data) {
+    int c = v;
+    const elda::models::Channel* meta = (v < (int)selected.size()) ? selected[v] : nullptr;
+    if (meta && meta->amplifierChannel >= 0 &&
+        meta->amplifierChannel < (int)data.ring.data.size())
+        c = meta->amplifierChannel;
+    return c;
+}
+
 void DrawChart(const elda::ChartData& data,
                const std::vector<const elda::models::Channel*>& selectedChannels) {
-    FrameStats fs;
-    static PlotBuffers plotBuffers;
+    static PlotBuffers buf;
 
-    {
-        PerfScope _total(&fs.total_ms);
+    const bool useSelected  = !selectedChannels.empty();
+    const int  totalChans   = data.numChannels;
+    const int  visibleCount = useSelected ? (int)selectedChannels.size() : totalChans;
+    const int  rows         = std::max(1, visibleCount);
 
-        // Use the selection size if provided; fallback to all channels
-        const int visibleCount = !selectedChannels.empty()
-                               ? (int)selectedChannels.size()
-                               : data.numChannels;
+    ImGui::BeginChild("##eegchild", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar);
 
-        const double rowHeight = std::max(1.0, 1.2 * data.amplitudePPuV);
-        const double yTop = rowHeight * (visibleCount + 1);
+    // Fixed time base
+    const double windowSec       = data.windowSeconds;
+    const float  availW_gui      = ImGui::GetContentRegionAvail().x; // safe before setup
+    const float  availH_gui      = ImGui::GetContentRegionAvail().y; // we use this for Y limits
+    const double leftPaddingTime = (kLeftSpacingPx / std::max(1.0f, availW_gui)) * windowSec;
+    const double xMin            = -leftPaddingTime;
+    const double xMax            = windowSec;
 
-        {
-            PerfScope _lbl(&fs.label_width_ms);
-            float maxLabelPx = 0.0f;
-            for (int v = 0; v < visibleCount; ++v) {
-                // Use channel name if available, else ch%02d
-                const elda::models::Channel* meta =
-                    (v < (int)selectedChannels.size()) ? selectedChannels[v] : nullptr;
-                const char* lbl =
-                    (meta && !meta->name.empty()) ? meta->name.c_str() : nullptr;
+    // Style
+    ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding,     ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding,    ImVec2(2, 2));
+    ImPlot::PushStyleVar(ImPlotStyleVar_MajorGridSize,   ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_MinorGridSize,   ImVec2(0, 0));
+    ImPlot::PushStyleVar(ImPlotStyleVar_PlotBorderSize,  0.0f);
 
-                char fallback[16];
-                if (!lbl) {
-                    std::snprintf(fallback, sizeof(fallback), "ch%02d", v + 1);
-                    lbl = fallback;
+    ImPlotFlags plotFlags = ImPlotFlags_NoLegend | ImPlotFlags_NoMenus |
+                            ImPlotFlags_NoBoxSelect | ImPlotFlags_NoTitle |
+                            ImPlotFlags_NoMouseText;
+
+    ImPlotAxisFlags axFlags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels |
+                              ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_Lock |
+                              ImPlotAxisFlags_NoHighlight;
+
+    if (ImPlot::BeginPlot("##sweep", ImVec2(-1, -1), plotFlags)) {
+        // --------- ALL Setup* happen here, BEFORE any plotting/locking calls ---------
+        ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
+        // Pixel-locked Y using ImGui's available height (avoids calling GetPlotSize() pre-setup)
+        ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, (double)std::max(1.0f, availH_gui), ImGuiCond_Always);
+        ImPlot::SetupAxis(ImAxis_X1, nullptr, axFlags);
+        ImPlot::SetupAxis(ImAxis_Y1, nullptr, axFlags);
+        ImPlot::SetupFinish(); // ---- lock: no more Setup* below this line ----
+
+        // Row spacing (auto-pack to fit)
+        const double rowHeightPx = std::min<double>(
+            kPreferredRowPx,
+            std::max<double>(kMinRowPx, (availH_gui - kTopPadPx) / std::max(1, rows))
+        );
+
+        // Sweep timing
+        const double smoothedCursor = data.playheadSeconds;
+        const double cycleCur       = std::floor(smoothedCursor / windowSec);
+        const double cursorX        = smoothedCursor - cycleCur * windowSec;
+        const double eps            = 0.5 / std::max(1, data.sampleRateHz);
+
+        const double prevCycleStart = (cycleCur - 1.0) * windowSec;
+        const double prevCycleEnd   = cycleCur * windowSec;
+        const double curCycleStart  = cycleCur * windowSec;
+        const double curCycleEnd    = (cycleCur + 1.0) * windowSec;
+        const double cursorAbsTime  = curCycleStart + cursorX;
+
+        const int estPts = (int)(windowSec * data.sampleRateHz * 1.1);
+
+        // Plot channels (fixed gain px/µV)
+        for (int row = 0; row < rows; ++row) {
+            const int v = row;
+            const int c = useSelected ? ResolveChannelIndex(v, selectedChannels, data) : v;
+
+            const double yBase = kTopPadPx + (row + 0.5) * rowHeightPx;
+
+            buf.clear();
+            buf.reserve(estPts);
+
+            const int startIdx     = data.ring.filled ? data.ring.write : 0;
+            const int totalSamples = data.ring.filled ? data.bufferSize : data.ring.write;
+
+            for (int off = 0; off < totalSamples; ++off) {
+                const int i = (startIdx + off) % data.bufferSize;
+                const double t = data.ring.tAbs[i];
+                if (t < prevCycleStart) continue;
+                if (t > curCycleEnd)    break;
+
+                // FIXED gain: sample is µV; multiply by px/µV
+                const double y = yBase + data.gainMultiplier * data.ring.data[c][i];
+
+                if (t >= curCycleStart && t < curCycleEnd) {
+                    if (t < cursorAbsTime - eps) {
+                        buf.xsCur.push_back((float)(t - curCycleStart));
+                        buf.ysCur.push_back((float)y);
+                    }
+                } else if (t >= prevCycleStart && t < prevCycleEnd) {
+                    const float rx = (float)(t - prevCycleStart);
+                    if (rx >= cursorX - eps) {
+                        buf.xsPrev.push_back(rx);
+                        buf.ysPrev.push_back((float)y);
+                    }
                 }
-                maxLabelPx = std::max(maxLabelPx, ImGui::CalcTextSize(lbl).x);
             }
-            (void)maxLabelPx;
+
+            const elda::models::Channel* meta =
+                (useSelected && row < (int)selectedChannels.size()) ? selectedChannels[row] : nullptr;
+
+            const ImVec4 kCyan = ImVec4(0.10f, 0.80f, 0.95f, 1.0f);
+            ImVec4 lineColor = (meta && !meta->color.empty())
+                               ? ParseHexColor(meta->color, kCyan) : kCyan;
+
+            const char* baseName = (meta && !meta->name.empty()) ? meta->name.c_str() : nullptr;
+            char idPrev[64], idCur[64];
+            if (baseName) {
+                std::snprintf(idPrev, sizeof(idPrev), "##prev_%s", baseName);
+                std::snprintf(idCur,  sizeof(idCur),  "%s",       baseName);
+            } else {
+                std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", row + 1);
+                std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        row + 1);
+            }
+
+            ImPlot::SetNextLineStyle(lineColor, 1.0f);
+            if (!buf.xsPrev.empty())
+                ImPlot::PlotLine(idPrev, buf.xsPrev.data(), buf.ysPrev.data(),
+                                 (int)buf.xsPrev.size());
+
+            ImPlot::SetNextLineStyle(lineColor, 1.0f);
+            if (!buf.xsCur.empty())
+                ImPlot::PlotLine(idCur, buf.xsCur.data(), buf.ysCur.data(),
+                                 (int)buf.xsCur.size());
         }
 
-        ImGui::BeginChild("##eegchild", ImVec2(0, 0), false, ImGuiWindowFlags_NoScrollbar);
-
-        const double windowSec = data.windowSeconds;
-        const float plotWidthPixels = ImGui::GetContentRegionAvail().x;
-        const double leftPaddingTime = (kLabelSpacingPixels / plotWidthPixels) * windowSec;
-
-        const double xMin = -leftPaddingTime;
-        const double xMax = windowSec;
-
-        ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
-        ImPlot::PushStyleVar(ImPlotStyleVar_LabelPadding, ImVec2(2, 2));
-        ImPlot::PushStyleVar(ImPlotStyleVar_MinorGridSize, ImVec2(0, 0));
-        ImPlot::PushStyleVar(ImPlotStyleVar_MajorGridSize, ImVec2(0, 0));
-
-        ImPlotFlags plotFlags = ImPlotFlags_NoLegend | ImPlotFlags_NoMenus
-                              | ImPlotFlags_NoBoxSelect | ImPlotFlags_NoTitle
-                              | ImPlotFlags_NoMouseText;
-
-        ImPlotAxisFlags axFlags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels
-                                | ImPlotAxisFlags_NoTickMarks | ImPlotAxisFlags_Lock
-                                | ImPlotAxisFlags_NoHighlight;
-
-        if (ImPlot::BeginPlot("##sweep", ImVec2(-1, -1), plotFlags)) {
-            ImPlot::SetupAxisLimits(ImAxis_X1, xMin, xMax, ImGuiCond_Always);
-            ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, yTop, ImGuiCond_Always);
-            ImPlot::SetupAxis(ImAxis_X1, nullptr, axFlags);
-            ImPlot::SetupAxis(ImAxis_Y1, nullptr, axFlags);
-            ImPlot::SetupFinish();
-
-            PerfScope _plotting(&fs.plotting_ms);
-
-            const double smoothedCursor = data.playheadSeconds;
-            const double cycleCur = std::floor(smoothedCursor / windowSec);
-            const double cycleStart = cycleCur * windowSec;
-            const double cursorX = smoothedCursor - cycleStart;
-            const double eps = 0.5 / data.sampleRateHz;
-
-            const double prevCycleStart = (cycleCur - 1.0) * windowSec;
-            const double prevCycleEnd = cycleCur * windowSec;
-            const double curCycleStart = cycleCur * windowSec;
-            const double curCycleEnd = (cycleCur + 1.0) * windowSec;
-            const double cursorAbsTime = curCycleStart + cursorX;
-
-            int hoveredChannel = -1;
-            if (ImPlot::IsPlotHovered()) {
-                ImPlotPoint mouse = ImPlot::GetPlotMousePos();
-                for (int v = 0; v < visibleCount; ++v) {
-                    const double yBase = rowHeight * (visibleCount - v);
-                    const double yMin = yBase - rowHeight * 0.5;
-                    const double yMax = yBase + rowHeight * 0.5;
-                    if (mouse.y >= yMin && mouse.y <= yMax) {
-                        hoveredChannel = v;
-                        break;
-                    }
-                }
-            }
-
-            const int N = (int)data.ring.tAbs.size();
-
-            if (N > 0) {
-                for (int v = 0; v < visibleCount; ++v) {
-                    // Resolve the data channel index:
-                    //   If selected channel metadata present and amplifierChannel valid → use it,
-                    //   otherwise fallback to row index v.
-                    int c = v;
-                    const elda::models::Channel* meta =
-                        (v < (int)selectedChannels.size()) ? selectedChannels[v] : nullptr;
-                    if (meta && meta->amplifierChannel >= 0 &&
-                        meta->amplifierChannel < (int)data.ring.data.size()) {
-                        c = meta->amplifierChannel;
-                    }
-
-                    const double yBase = rowHeight * (visibleCount - v);
-
-                    plotBuffers.clear();
-
-                    const int estimatedPoints = (int)(windowSec * data.sampleRateHz * 1.1);
-                    plotBuffers.xsCur.reserve(estimatedPoints);
-                    plotBuffers.ysCur.reserve(estimatedPoints);
-                    plotBuffers.xsPrev.reserve(estimatedPoints);
-                    plotBuffers.ysPrev.reserve(estimatedPoints);
-
-                    {
-                        PerfScope _scan(&fs.scan_ms);
-
-                        const int startIdx = data.ring.filled ? data.ring.write : 0;
-                        const int totalSamples = data.ring.filled ? data.bufferSize : data.ring.write;
-
-                        for (int offset = 0; offset < totalSamples; ++offset) {
-                            const int i = (startIdx + offset) % data.bufferSize;
-                            const double t = data.ring.tAbs[i];
-
-                            fs.points_scanned++;
-
-                            if (t < prevCycleStart) {
-                                fs.points_skipped++;
-                                continue;
-                            }
-
-                            if (t > curCycleEnd) {
-                                fs.points_skipped += (totalSamples - offset);
-                                break;
-                            }
-
-                            const double val = yBase + data.gainMultiplier * data.ring.data[c][i];
-
-                            if (t >= curCycleStart && t < curCycleEnd) {
-                                if (t < cursorAbsTime - eps) {
-                                    plotBuffers.xsCur.push_back((float)(t - curCycleStart));
-                                    plotBuffers.ysCur.push_back((float)val);
-                                }
-                            }
-                            else if (t >= prevCycleStart && t < prevCycleEnd) {
-                                const float rx = (float)(t - prevCycleStart);
-                                if (rx >= cursorX - eps) {
-                                    plotBuffers.xsPrev.push_back(rx);
-                                    plotBuffers.ysPrev.push_back((float)val);
-                                }
-                            }
-                        }
-                    }
-
-                    {
-                        PerfScope _plotLines(&fs.plot_lines_ms);
-
-                        // ----- label: channel name if available, else fallback -----
-                        const char* baseName =
-                            (meta && !meta->name.empty()) ? meta->name.c_str() : nullptr;
-
-                        char idPrev[64], idCur[64], legend[64];
-                        if (baseName) {
-                            std::snprintf(idPrev, sizeof(idPrev), "##prev_%s", baseName);
-                            std::snprintf(idCur,  sizeof(idCur),  "%s",       baseName);
-                            std::snprintf(legend, sizeof(legend), "%s",       baseName);
-                        } else {
-                            std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", v + 1);
-                            std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        v + 1);
-                            std::snprintf(legend, sizeof(legend), "ch%02d",        v + 1);
-                        }
-
-                        // ----- color: channel hex if available, else original cyan -----
-                        const ImVec4 kCyan = ImVec4(0.10f, 0.80f, 0.95f, 1.0f);
-                        ImVec4 lineColor = kCyan;
-                        if (meta && !meta->color.empty()) {
-                            lineColor = ParseHexColor(meta->color, kCyan);
-                        }
-
-                        ImPlot::SetNextLineStyle(lineColor, 1.0f);
-                        if (!plotBuffers.xsPrev.empty()) {
-                            ImPlot::PlotLine(idPrev, plotBuffers.xsPrev.data(),
-                                           plotBuffers.ysPrev.data(),
-                                           (int)plotBuffers.xsPrev.size());
-                            fs.points_rendered += (int)plotBuffers.xsPrev.size();
-                        }
-
-                        ImPlot::SetNextLineStyle(lineColor, 1.0f);
-                        if (!plotBuffers.xsCur.empty()) {
-                            ImPlot::PlotLine(idCur, plotBuffers.xsCur.data(),
-                                           plotBuffers.ysCur.data(),
-                                           (int)plotBuffers.xsCur.size());
-                            fs.points_rendered += (int)plotBuffers.xsCur.size();
-                        }
-
-                        (void)legend; // not using a legend widget; left labels below
-                    }
-                }
-
-                {
-                    PerfScope _wiper(&fs.wiper_ms);
-                    ImDrawList* dl = ImPlot::GetPlotDrawList();
-                    ImVec2 ppos = ImPlot::GetPlotPos();
-                    ImVec2 psz = ImPlot::GetPlotSize();
-
-                    ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0)); // FIXED TYPE
-                    int cx = (int)std::floor(pc.x);
-
-                    constexpr int wiperWidthPixels = 10;
-                    int x0 = std::max((int)ppos.x, cx);
-                    int x1 = std::min((int)(ppos.x + psz.x), cx + wiperWidthPixels);
-
-                    if (x1 > x0) {
-                        ImVec4 mainBg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
-                        if (mainBg.w == 0.0f) {
-                            mainBg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
-                        }
-                        mainBg.w = 1.0f;
-
-                        dl->AddRectFilled(
-                            ImVec2((float)x0, ppos.y),
-                            ImVec2((float)x1, ppos.y + psz.y),
-                            ImGui::GetColorU32(mainBg)
-                        );
-                    }
-                }
-            }
-
-            {
-                PerfScope _lbls(&fs.labels_ms);
-                const ImPlotRect lim = ImPlot::GetPlotLimits();
-                const double xLeft = lim.X.Min;
-
-                for (int v = 0; v < visibleCount; ++v) {
-                    const double yBase = rowHeight * (visibleCount - v);
-
-                    // left label: use channel name if available
-                    const elda::models::Channel* meta =
-                        (v < (int)selectedChannels.size()) ? selectedChannels[v] : nullptr;
-
-                    char label[64];
-                    if (meta && !meta->name.empty()) {
-                        std::snprintf(label, sizeof(label), "%s", meta->name.c_str());
-                    } else {
-                        std::snprintf(label, sizeof(label), "ch%02d", v + 1);
-                    }
-
-                    ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
-
-                    ImPlot::PushStyleColor(ImPlotCol_InlayText, labelColor);
-                    ImPlot::PlotText(label, xLeft, yBase, ImVec2(+kLabelInsetPx, 0.0f), ImPlotTextFlags_None);
-                    ImPlot::PopStyleColor();
-                }
-            }
-
-            ImPlot::EndPlot();
+        // Wiper (OK to use plot queries; NO Setup* calls below)
+        ImDrawList* dl = ImPlot::GetPlotDrawList();
+        ImVec2 ppos = ImPlot::GetPlotPos();
+        ImVec2 psz  = ImPlot::GetPlotSize();
+        ImVec2 pc   = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
+        int cx      = (int)std::floor(pc.x);
+        int x0 = (int)std::max(ppos.x, (float)cx);
+        int x1 = (int)std::min(ppos.x + psz.x, (float)(cx + kWiperWidthPx));
+        if (x1 > x0) {
+            ImVec4 bg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
+            if (bg.w == 0.0f) bg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+            bg.w = 1.0f;
+            dl->AddRectFilled(ImVec2((float)x0, ppos.y),
+                              ImVec2((float)x1, ppos.y + psz.y),
+                              ImGui::GetColorU32(bg));
         }
 
-        ImPlot::PopStyleVar(4);
-        ImGui::EndChild();
+        // Left labels
+        const ImPlotRect lim = ImPlot::GetPlotLimits();
+        const double xLeft = lim.X.Min;
+        for (int row = 0; row < rows; ++row) {
+            const elda::models::Channel* meta =
+                (useSelected && row < (int)selectedChannels.size()) ? selectedChannels[row] : nullptr;
+
+            char label[64];
+            if (meta && !meta->name.empty())
+                std::snprintf(label, sizeof(label), "%s", meta->name.c_str());
+            else
+                std::snprintf(label, sizeof(label), "ch%02d", row + 1);
+
+            const double yBase = kTopPadPx + (row + 0.5) * std::min<double>(
+                kPreferredRowPx,
+                std::max<double>(kMinRowPx, (availH_gui - kTopPadPx) / std::max(1, rows))
+            );
+
+            ImPlot::PushStyleColor(ImPlotCol_InlayText, kLabelColorNormal);
+            ImPlot::PlotText(label, xLeft, yBase, ImVec2(+kLeftLabelInsetPx, 0.0f), ImPlotTextFlags_None);
+            ImPlot::PopStyleColor();
+        }
+
+        ImPlot::EndPlot();
     }
 
-    fs.Log();
+    ImPlot::PopStyleVar(5);
+    ImGui::EndChild();
 }

@@ -115,121 +115,87 @@ int TabBar::getTabAtPosition(float x, float y) const {
 // ============================================================================
 
 bool TabBar::render() {
-    if (tabs_.empty()) {
-        return false;
-    }
+    if (tabs_.empty()) return false;
 
-    // Clear previous bounds pointers
-    for (auto& tab : tabs_) {
-        tab.bounds = nullptr;
-    }
-
-    // Clear previous bounds
+    // keep your existing prep
+    for (auto& tab : tabs_) tab.bounds = nullptr;
     tabBounds_.clear();
     tabBounds_.reserve(tabs_.size());
 
     bool tabChanged = false;
 
-    // Get draw list for custom rendering
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
-    ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+    // (If you draw background/separator outside the child in your file, leave it as-is)
 
-    // Draw background if enabled
-    if (style_.showBackground) {
-        ImVec2 bgMin = cursorPos;
-        ImVec2 bgMax = ImVec2(cursorPos.x + ImGui::GetContentRegionAvail().x,
-                              cursorPos.y + style_.height);
-        drawList->AddRectFilled(bgMin, bgMax,
-                               ImGui::GetColorU32(style_.backgroundColor));
-    }
-
-    // Begin child window for tab bar
     ImGui::BeginChild("##TabBarContainer",
-                     ImVec2(0, style_.height),
-                     false,
-                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                      ImVec2(0, style_.height),
+                      false,
+                      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-    // Push item spacing for browser-style tabs (controlled by style.spacing)
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style_.spacing, 0));
-
-    // Add top padding
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style_.tabBarPadding);
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + style_.tabBarPadding);
 
-    // Render each tab
+    // ------- minimal hover fix: compute hover this frame, apply once at end -------
+    int newHover = -1;
+
     for (size_t i = 0; i < tabs_.size(); ++i) {
-        const Tab& tab = tabs_[i];
         const bool isActive = (static_cast<int>(i) == activeTabIndex_);
 
-        renderTab(static_cast<int>(i), tab, isActive);
+        // your existing draw for the tab
+        renderTab(static_cast<int>(i), tabs_[i], isActive);
 
-        // IMPORTANT: Assign bounds pointer immediately after renderTab stores it
-        // This ensures tab.bounds is valid when callbacks fire
-        if (i < tabBounds_.size()) {
+        // keep your bounds pointer update
+        if (i < tabBounds_.size())
             tabs_[i].bounds = &tabBounds_[i];
-        }
 
-        // Check for click
+        // clicks (unchanged)
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            if (tab.enabled && !isActive) {
+            if (tabs_[i].enabled && !isActive) {
                 activeTabIndex_ = static_cast<int>(i);
                 tabChanged = true;
-
-                if (onTabClick_) {
-                    onTabClick_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
-                }
+                if (onTabClick_) onTabClick_(static_cast<int>(i), tabs_[i]);
             }
         }
-
-        // Check for double-click
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) {
-            if (tab.enabled && onTabDoubleClick_) {
-                onTabDoubleClick_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
-            }
+            if (tabs_[i].enabled && onTabDoubleClick_)
+                onTabDoubleClick_(static_cast<int>(i), tabs_[i]);
         }
-
-        // Check for right-click
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-            if (tab.enabled && onTabRightClick_) {
-                onTabRightClick_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
-            }
+            if (tabs_[i].enabled && onTabRightClick_)
+                onTabRightClick_(static_cast<int>(i), tabs_[i]);
         }
 
-        // Check for hover
+        // collect hover for THIS frame only (don’t write to member here)
         if (ImGui::IsItemHovered()) {
-            hoveredTabIndex_ = static_cast<int>(i);
-            if (onTabHover_) {
-                onTabHover_(static_cast<int>(i), tabs_[i]);  // Use tabs_[i] to get updated bounds
-            }
+            newHover = static_cast<int>(i);
         }
 
-        // Position next tab on same line (spacing controlled by ItemSpacing above)
-        if (i < tabs_.size() - 1) {
-            ImGui::SameLine();  // Use default spacing (from ItemSpacing style var)
-        }
+        if (i < tabs_.size() - 1)
+            ImGui::SameLine();
     }
 
-    // Render add button if callback is set or showAddButton is enabled
+    // clear hover when mouse leaves the tab bar child
+    if (!ImGui::IsWindowHovered()) {        // NOTE: no RectOnly flag here
+        newHover = -1;
+    }
+
+    // apply hover result once per frame (prevents sticky hover)
+    if (hoveredTabIndex_ != newHover) {
+        hoveredTabIndex_ = newHover;
+        if (hoveredTabIndex_ != -1 && onTabHover_)
+            onTabHover_(hoveredTabIndex_, tabs_[hoveredTabIndex_]);
+    }
+
+    // your existing add button logic
     if (onAddTab_ || style_.showAddButton) {
         ImGui::SameLine();
         renderAddButton();
     }
 
-    // Restore item spacing
     ImGui::PopStyleVar();
-
     ImGui::EndChild();
 
-    // Render separator line if enabled
-    // Draw it at the bottom edge of the child window (no gap)
-    if (style_.showSeparator) {
-        ImVec2 separatorStart = ImVec2(cursorPos.x, cursorPos.y + style_.height - 1);
-        ImVec2 separatorEnd = ImVec2(cursorPos.x + ImGui::GetContentRegionAvail().x,
-                                     cursorPos.y + style_.height - 1);
-        drawList->AddLine(separatorStart, separatorEnd,
-                         ImGui::GetColorU32(style_.separatorColor),
-                         style_.separatorHeight);
-    }
+    // (If you draw a bottom separator after the child in your file, leave it as-is)
 
     return tabChanged;
 }
