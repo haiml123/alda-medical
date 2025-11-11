@@ -16,45 +16,49 @@ namespace elda {
         ~MonitoringModel() = default;
 
         // Lifecycle
-        void startAcquisition();
-        void stopAcquisition();
-        void update(float deltaTime);
+        void StartAcquisition();
+        void StopAcquisition();
+        void Update(float deltaTime);
 
         // Actions (called by Presenter)
-        void toggleMonitoring();
-        void toggleRecording();
-        void increaseWindow();
-        void decreaseWindow();
-        void increaseAmplitude();
-        void decreaseAmplitude();
-        void applyChannelConfiguration(const elda::models::ChannelsGroup& group);
+        void ToggleMonitoring() const;
+        void ToggleRecording() const;
+        void IncreaseWindow() const;
+        void DecreaseWindow() const;
+        void IncreaseAmplitude() const;
+        void DecreaseAmplitude() const;
+        void ApplyChannelConfiguration(const elda::models::ChannelsGroup& group) const;
 
         // ✅ NEW: Refresh available groups from service
-        void refreshAvailableGroups();
+        void RefreshAvailableGroups() const;
+
+        void OnGroupSelected(const models::ChannelsGroup &group) const;
+
+        std::vector<const models::Channel *>& GetSelectedChannels() const;
 
         // Getters (Presenter collects this data for View)
-        const ChartData& getChartData() const { return chartData_; }
-        bool isMonitoring() const { return stateManager_.IsMonitoring(); }
-        bool canRecord() const { return isMonitoring(); }
-        bool isRecordingActive() const {
+        const ChartData& GetChartData() const { return chartData_; }
+        bool IsMonitoring() const { return stateManager_.IsMonitoring(); }
+        bool CanRecord() const { return IsMonitoring(); }
+        bool IsRecordingActive() const {
             return stateManager_.IsRecording() && !stateManager_.IsPaused();
         }
-        bool isCurrentlyPaused() const {
+        bool IsCurrentlyPaused() const {
             return stateManager_.IsRecording() && stateManager_.IsPaused();
         }
-        int getWindowSeconds() const {
+        int GetWindowSeconds() const {
             return (int)stateManager_.GetWindowSeconds();
         }
-        int getAmplitudeMicroVolts() const {
+        int GetAmplitudeMicroVolts() const {
             return stateManager_.GetAmplitudeMicroVolts();
         }
-        double getSampleRateHz() const { return SAMPLE_RATE_HZ; }
+        double GetSampleRateHz() const { return SAMPLE_RATE_HZ; }
 
-        const std::vector<elda::models::ChannelsGroup>& getAvailableGroups() const {
+        const std::vector<elda::models::ChannelsGroup>& GetAvailableGroups() const {
             return state_.availableGroups;
         }
 
-        int getActiveGroupIndex() const;
+        int GetActiveGroupIndex() const;
 
     private:
         AppState& state_;
@@ -62,9 +66,9 @@ namespace elda {
         ChartData chartData_;
         static constexpr int kBufferSize = 25000;
 
-        void initializeBuffers();
-        void generateSyntheticData(float deltaTime);
-        void updateChartData();
+        void InitializeBuffers();
+        void GenerateSyntheticData(float deltaTime);
+        void UpdateChartData();
     };
 
 } // namespace elda

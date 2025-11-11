@@ -7,11 +7,10 @@ namespace elda {
 
 MonitoringModel::MonitoringModel(AppState& state, elda::AppStateManager& stateManager)
     : MVPBaseModel(stateManager), state_(state), stateManager_(stateManager) {
-    initializeBuffers();
+    InitializeBuffers();
 }
 
-void MonitoringModel::initializeBuffers() {
-    // Use CHANNELS constant from core.h
+void MonitoringModel::InitializeBuffers() {
     chartData_.numChannels = CHANNELS;
     chartData_.sampleRateHz = (int)SAMPLE_RATE_HZ;
     chartData_.bufferSize = kBufferSize;
@@ -20,35 +19,34 @@ void MonitoringModel::initializeBuffers() {
     chartData_.gainMultiplier = state_.gainMul();
     chartData_.playheadSeconds = 0.0;
 
-    // Initialize empty buffers
     chartData_.ring.tAbs.clear();
     chartData_.ring.data.clear();
     chartData_.ring.write = 0;
     chartData_.ring.filled = false;
 }
 
-void MonitoringModel::startAcquisition() {
+void MonitoringModel::StartAcquisition() {
     std::cout << "[Model] Start acquisition" << std::endl;
 }
 
-void MonitoringModel::stopAcquisition() {
+void MonitoringModel::StopAcquisition() {
     std::cout << "[Model] Stop acquisition" << std::endl;
 }
 
-void MonitoringModel::update(float deltaTime) {
+void MonitoringModel::Update(float deltaTime) {
     if (stateManager_.IsMonitoring()) {
         state_.tickDisplay(true);
-        updateChartData();
+        UpdateChartData();
 
         if (!stateManager_.IsPaused()) {
-            generateSyntheticData(deltaTime);
+            GenerateSyntheticData(deltaTime);
         }
     } else {
         state_.tickDisplay(false);
     }
 }
 
-void MonitoringModel::generateSyntheticData(float /*deltaTime*/) {
+void MonitoringModel::GenerateSyntheticData(float /*deltaTime*/) {
     static SynthEEG synthGen;
     std::vector<float> sample(CHANNELS);
 
@@ -65,7 +63,7 @@ void MonitoringModel::generateSyntheticData(float /*deltaTime*/) {
     }
 }
 
-void MonitoringModel::updateChartData() {
+void MonitoringModel::UpdateChartData() {
     chartData_.amplitudePPuV = state_.ampPPuV();
     chartData_.windowSeconds = state_.windowSec();
     chartData_.gainMultiplier = state_.gainMul();
@@ -94,9 +92,9 @@ void MonitoringModel::updateChartData() {
 // ACTIONS
 // ============================================================================
 
-void MonitoringModel::toggleMonitoring() {
+void MonitoringModel::ToggleMonitoring() const {
     const bool monitoring = stateManager_.IsMonitoring();
-    std::printf("[Model] toggleMonitoring - current: %s\n",
+    std::printf("[Model] ToggleMonitoring - current: %s\n",
                monitoring ? "MONITORING" : "IDLE");
 
     auto result = stateManager_.SetMonitoring(!monitoring);
@@ -115,7 +113,7 @@ void MonitoringModel::toggleMonitoring() {
     }
 }
 
-void MonitoringModel::toggleRecording() {
+void MonitoringModel::ToggleRecording() const {
     const bool recordingActive = stateManager_.IsRecording() && !stateManager_.IsPaused();
     const bool currentlyPaused = stateManager_.IsRecording() && stateManager_.IsPaused();
 
@@ -141,33 +139,31 @@ void MonitoringModel::toggleRecording() {
     }
 }
 
-void MonitoringModel::increaseWindow() {
+void MonitoringModel::IncreaseWindow() const {
     if (state_.winIdx < WINDOW_COUNT - 1) {
         stateManager_.SetDisplayWindow(state_.winIdx + 1);
     }
 }
 
-void MonitoringModel::decreaseWindow() {
+void MonitoringModel::DecreaseWindow() const {
     if (state_.winIdx > 0) {
         stateManager_.SetDisplayWindow(state_.winIdx - 1);
     }
 }
 
-void MonitoringModel::increaseAmplitude() {
+void MonitoringModel::IncreaseAmplitude() const {
     if (state_.ampIdx < AMP_COUNT - 1) {
         stateManager_.SetDisplayAmplitude(state_.ampIdx + 1);
     }
 }
 
-void MonitoringModel::decreaseAmplitude() {
+void MonitoringModel::DecreaseAmplitude() const {
     if (state_.ampIdx > 0) {
         stateManager_.SetDisplayAmplitude(state_.ampIdx - 1);
     }
 }
 
-void MonitoringModel::refreshAvailableGroups() {
-    // Reload all available groups from the service
-    // This ensures the UI reflects any create/edit/delete operations
+void MonitoringModel::RefreshAvailableGroups() const {
     auto& service = elda::services::ChannelManagementService::GetInstance();
     state_.availableGroups = service.GetAllChannelGroups();
 
@@ -175,23 +171,23 @@ void MonitoringModel::refreshAvailableGroups() {
                state_.availableGroups.size());
 }
 
-void MonitoringModel::applyChannelConfiguration(const elda::models::ChannelsGroup& group) {
-    // auto result = stateManager_.SetChannelConfiguration(group.name, group.channels);
-    //
-    refreshAvailableGroups();
-    // if (result.IsSuccess()) {
-    //     std::printf("[Model] Channel config applied: %s (%zu channels)\n",
-    //                group.name.c_str(), group.getSelectedCount());
-    // } else {
-    //     std::fprintf(stderr, "[Model] Channel config failed: %s\n", result.message.c_str());
-    // }
+void MonitoringModel::OnGroupSelected(const models::ChannelsGroup& group) const {
+    stateManager_.SetActiveChannelGroup(group);
+}
+
+std::vector<const models::Channel *>& MonitoringModel::GetSelectedChannels() const {
+    return stateManager_.GetSelectedChannels();
+}
+
+void MonitoringModel::ApplyChannelConfiguration(const elda::models::ChannelsGroup& group) const {
+    RefreshAvailableGroups();
 }
 
 // ============================================================================
 // TAB BAR SUPPORT
 // ============================================================================
 
-int MonitoringModel::getActiveGroupIndex() const {
+int MonitoringModel::GetActiveGroupIndex() const {
     const std::string& activeName = state_.currentChannelGroupName;
     const auto& groups = state_.availableGroups;
 

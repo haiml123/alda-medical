@@ -18,7 +18,7 @@ namespace elda {
         // ✅ CRITICAL: Set up callback to refresh groups when they change
         channelsPresenter->SetOnGroupsChangedCallback([this]() {
             std::printf("[MonitoringScreen] Groups changed, refreshing available groups\n");
-            model_->refreshAvailableGroups();
+            model_->RefreshAvailableGroups();
         });
 
         // Presenter orchestrates - needs all three

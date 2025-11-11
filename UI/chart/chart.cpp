@@ -8,18 +8,56 @@
 #include "chart.h"
 #include "imgui.h"
 #include "implot.h"
+#include "models/channel.h"   // <-- use channel name/color
 
 #include <numeric>
 #include <algorithm>
 #include <cstdio>
 #include <cmath>
 #include <chrono>
+#include <cstring>
+#include <string>
+#include <vector>
 
 static constexpr float kLabelInsetPx = 20.0f;
 static constexpr float kLabelSpacingPixels = 50.0f;
 
 static const ImVec4 kLabelColorNormal    = ImVec4(0.65f, 0.68f, 0.72f, 1.0f);
 static const ImVec4 kLabelColorHighlight = ImVec4(0.30f, 0.90f, 0.95f, 1.0f);
+
+// ----------------------------------------------------------------------------
+// Parse hex string color (#RGB, #RRGGBB, #RRGGBBAA) -> ImVec4. Fallback if bad.
+// ----------------------------------------------------------------------------
+static ImVec4 ParseHexColor(const std::string& hex, const ImVec4& fallback) {
+    auto hv = [](char c)->int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+        if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+        return 0;
+    };
+
+    if (hex.empty()) return fallback;
+    const char* s = hex.c_str();
+    if (*s == '#') ++s;
+    const size_t n = std::strlen(s);
+
+    auto to01 = [&](int hi, int lo)->float { return float((hi << 4) | lo) / 255.0f; };
+
+    float r = fallback.x, g = fallback.y, b = fallback.z, a = fallback.w;
+
+    if (n == 3) { // #RGB
+        r = hv(s[0]) / 15.0f;
+        g = hv(s[1]) / 15.0f;
+        b = hv(s[2]) / 15.0f;
+        a = 1.0f;
+    } else if (n == 6 || n == 8) {
+        r = to01(hv(s[0]), hv(s[1]));
+        g = to01(hv(s[2]), hv(s[3]));
+        b = to01(hv(s[4]), hv(s[5]));
+        a = (n == 8) ? to01(hv(s[6]), hv(s[7])) : 1.0f;
+    }
+    return ImVec4(r, g, b, a);
+}
 
 struct PerfScope {
     std::chrono::steady_clock::time_point t0;
@@ -88,23 +126,44 @@ struct PlotBuffers {
     }
 };
 
-void DrawChart(const elda::ChartData& data) {
+// -----------------------------------------------------------------------------
+// NOTE: Same logic/design as your original. Changes:
+//   - Use selectedChannels.size() to decide visible rows (fallback to all if empty)
+//   - Label uses channel->name if present
+//   - Line color uses channel->color (hex) if present; fallback to cyan
+//   - Data index remap via channel->amplifierChannel (if valid), else row index
+// -----------------------------------------------------------------------------
+void DrawChart(const elda::ChartData& data,
+               const std::vector<const elda::models::Channel*>& selectedChannels) {
     FrameStats fs;
     static PlotBuffers plotBuffers;
 
     {
         PerfScope _total(&fs.total_ms);
 
+        // Use the selection size if provided; fallback to all channels
+        const int visibleCount = !selectedChannels.empty()
+                               ? (int)selectedChannels.size()
+                               : data.numChannels;
+
         const double rowHeight = std::max(1.0, 1.2 * data.amplitudePPuV);
-        const int visibleCount = data.numChannels;
         const double yTop = rowHeight * (visibleCount + 1);
 
         {
             PerfScope _lbl(&fs.label_width_ms);
             float maxLabelPx = 0.0f;
             for (int v = 0; v < visibleCount; ++v) {
-                char lbl[16];
-                std::snprintf(lbl, sizeof(lbl), "ch%02d", v + 1);
+                // Use channel name if available, else ch%02d
+                const elda::models::Channel* meta =
+                    (v < (int)selectedChannels.size()) ? selectedChannels[v] : nullptr;
+                const char* lbl =
+                    (meta && !meta->name.empty()) ? meta->name.c_str() : nullptr;
+
+                char fallback[16];
+                if (!lbl) {
+                    std::snprintf(fallback, sizeof(fallback), "ch%02d", v + 1);
+                    lbl = fallback;
+                }
                 maxLabelPx = std::max(maxLabelPx, ImGui::CalcTextSize(lbl).x);
             }
             (void)maxLabelPx;
@@ -171,7 +230,17 @@ void DrawChart(const elda::ChartData& data) {
 
             if (N > 0) {
                 for (int v = 0; v < visibleCount; ++v) {
-                    const int c = v;
+                    // Resolve the data channel index:
+                    //   If selected channel metadata present and amplifierChannel valid → use it,
+                    //   otherwise fallback to row index v.
+                    int c = v;
+                    const elda::models::Channel* meta =
+                        (v < (int)selectedChannels.size()) ? selectedChannels[v] : nullptr;
+                    if (meta && meta->amplifierChannel >= 0 &&
+                        meta->amplifierChannel < (int)data.ring.data.size()) {
+                        c = meta->amplifierChannel;
+                    }
+
                     const double yBase = rowHeight * (visibleCount - v);
 
                     plotBuffers.clear();
@@ -224,25 +293,46 @@ void DrawChart(const elda::ChartData& data) {
 
                     {
                         PerfScope _plotLines(&fs.plot_lines_ms);
-                        char idPrev[32], idCur[32];
-                        std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", c + 1);
-                        std::snprintf(idCur, sizeof(idCur), "Ch%02d", c + 1);
 
-                        ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
+                        // ----- label: channel name if available, else fallback -----
+                        const char* baseName =
+                            (meta && !meta->name.empty()) ? meta->name.c_str() : nullptr;
+
+                        char idPrev[64], idCur[64], legend[64];
+                        if (baseName) {
+                            std::snprintf(idPrev, sizeof(idPrev), "##prev_%s", baseName);
+                            std::snprintf(idCur,  sizeof(idCur),  "%s",       baseName);
+                            std::snprintf(legend, sizeof(legend), "%s",       baseName);
+                        } else {
+                            std::snprintf(idPrev, sizeof(idPrev), "##prev_ch%02d", v + 1);
+                            std::snprintf(idCur,  sizeof(idCur),  "Ch%02d",        v + 1);
+                            std::snprintf(legend, sizeof(legend), "ch%02d",        v + 1);
+                        }
+
+                        // ----- color: channel hex if available, else original cyan -----
+                        const ImVec4 kCyan = ImVec4(0.10f, 0.80f, 0.95f, 1.0f);
+                        ImVec4 lineColor = kCyan;
+                        if (meta && !meta->color.empty()) {
+                            lineColor = ParseHexColor(meta->color, kCyan);
+                        }
+
+                        ImPlot::SetNextLineStyle(lineColor, 1.0f);
                         if (!plotBuffers.xsPrev.empty()) {
-                            ImPlot::PlotLine(idPrev, plotBuffers.xsPrev.data(), 
-                                           plotBuffers.ysPrev.data(), 
+                            ImPlot::PlotLine(idPrev, plotBuffers.xsPrev.data(),
+                                           plotBuffers.ysPrev.data(),
                                            (int)plotBuffers.xsPrev.size());
                             fs.points_rendered += (int)plotBuffers.xsPrev.size();
                         }
 
-                        ImPlot::SetNextLineStyle(ImVec4(0.10f, 0.80f, 0.95f, 1.0f), 1.0f);
+                        ImPlot::SetNextLineStyle(lineColor, 1.0f);
                         if (!plotBuffers.xsCur.empty()) {
-                            ImPlot::PlotLine(idCur, plotBuffers.xsCur.data(), 
-                                           plotBuffers.ysCur.data(), 
+                            ImPlot::PlotLine(idCur, plotBuffers.xsCur.data(),
+                                           plotBuffers.ysCur.data(),
                                            (int)plotBuffers.xsCur.size());
                             fs.points_rendered += (int)plotBuffers.xsCur.size();
                         }
+
+                        (void)legend; // not using a legend widget; left labels below
                     }
                 }
 
@@ -252,7 +342,7 @@ void DrawChart(const elda::ChartData& data) {
                     ImVec2 ppos = ImPlot::GetPlotPos();
                     ImVec2 psz = ImPlot::GetPlotSize();
 
-                    ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0));
+                    ImVec2 pc = ImPlot::PlotToPixels(ImPlotPoint(cursorX, 0.0)); // FIXED TYPE
                     int cx = (int)std::floor(pc.x);
 
                     constexpr int wiperWidthPixels = 10;
@@ -282,8 +372,17 @@ void DrawChart(const elda::ChartData& data) {
 
                 for (int v = 0; v < visibleCount; ++v) {
                     const double yBase = rowHeight * (visibleCount - v);
-                    char label[16];
-                    std::snprintf(label, sizeof(label), "ch%02d", v + 1);
+
+                    // left label: use channel name if available
+                    const elda::models::Channel* meta =
+                        (v < (int)selectedChannels.size()) ? selectedChannels[v] : nullptr;
+
+                    char label[64];
+                    if (meta && !meta->name.empty()) {
+                        std::snprintf(label, sizeof(label), "%s", meta->name.c_str());
+                    } else {
+                        std::snprintf(label, sizeof(label), "ch%02d", v + 1);
+                    }
 
                     ImVec4 labelColor = (v == hoveredChannel) ? kLabelColorHighlight : kLabelColorNormal;
 

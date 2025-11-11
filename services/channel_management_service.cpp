@@ -223,12 +223,12 @@ namespace elda::services {
         return std::nullopt;
     }
 
-    std::vector<models::Channel> ChannelManagementService::GetAllChannels() const {
+    const std::vector<models::Channel>& ChannelManagementService::GetAllChannels() const {
         return channels_;
     }
 
     bool ChannelManagementService::UpdateChannel(const models::Channel& channel) {
-        auto it = FindChannelById(channel.GetId());
+        auto it = FindChannelById(channel.id);
         if (it == channels_.end()) return false;
 
         *it = channel;

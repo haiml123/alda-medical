@@ -7,6 +7,8 @@
 #include <functional>
 #include <vector>
 
+#include "models/channel.h"
+
 namespace elda {
 
     /**
@@ -29,6 +31,7 @@ namespace elda {
         // Tab bar
         const std::vector<elda::models::ChannelsGroup>* groups = nullptr;
         int activeGroupIndex = 0;
+        const std::vector<const models::Channel*>* selectedChannels = nullptr;
     };
 
     /**
@@ -47,6 +50,7 @@ namespace elda {
         // Tab actions
         std::function<void()> onCreateChannelGroup;
         std::function<void(const std::string&, const ui::TabBounds*)> onEditChannelGroup;
+        std::function<void(const models::ChannelsGroup*)> onGroupSelected;
     };
 
     /**

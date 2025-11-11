@@ -26,7 +26,7 @@ void MonitoringView::render(const MonitoringViewData& data, const MonitoringView
                      false, ImGuiWindowFlags_NoScrollbar);
 
     if (data.chartData) {
-        DrawChart(*data.chartData);
+        DrawChart(*data.chartData, *data.selectedChannels);
     }
 
     ImGui::EndChild();
@@ -64,10 +64,12 @@ void MonitoringView::renderTabBar(const MonitoringViewData& data, const Monitori
     });
 
     // Single-click → Create
-    tabBar_.setOnTabClick([&callbacks](int, const elda::ui::Tab&) {
-        // if (callbacks.onCreateChannelGroup) {
-        //     callbacks.onCreateChannelGroup();
-        // }
+    tabBar_.setOnTabClick([&callbacks, &groups](int index, const ui::Tab& tab) {
+        if (index >= 0 && index < static_cast<int>(groups.size())) {
+            if (callbacks.onGroupSelected) {
+                callbacks.onGroupSelected(&groups[index]);
+            }
+          }
     });
 
     // Double-click → Edit

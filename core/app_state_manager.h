@@ -106,16 +106,12 @@ public:
     // === CHANNEL CONFIGURATION ===
 
     /**
-     * Set channel configuration
-     * Validates: cannot change during active recording, must have at least 1 channel
-     * @param groupName Name of the channel group
-     * @param channels Vector of selected channels
+     * Set active channel group and load its channels
+     * Updates both the group name and selected channels list
+     * @param group The channel group to activate
      * @return Result of state change
      */
-    StateChangeError SetChannelConfiguration(
-        const std::string& groupName,
-        const std::vector<models::Channel>& channels
-    );
+    StateChangeError SetActiveChannelGroup(const models::ChannelsGroup& group);
 
     /**
      * Get current channel configuration name
@@ -178,6 +174,8 @@ public:
      * @return Result of state change
      */
     StateChangeError SetArtifactScale(float scale);
+
+    std::vector<const models::Channel *>& GetSelectedChannels() const;
 
     // === READ-ONLY STATE ACCESS ===
 

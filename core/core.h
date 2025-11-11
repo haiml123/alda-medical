@@ -117,8 +117,8 @@ struct AppState {
 
     // ===== NEW: Channel configuration (for state manager) =====
     std::string currentChannelGroupName = "Default";
-    std::vector<elda::models::Channel> selectedChannels;
-    std::vector<elda::models::Channel> availableChannels;
+    std::vector<const elda::models::Channel*> selectedChannels;
+    const std::vector<elda::models::Channel>* availableChannels;
 
     std::vector<elda::models::ChannelsGroup> availableGroups;
     // ===== NEW: Recording timing (for state manager) =====

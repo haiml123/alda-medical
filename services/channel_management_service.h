@@ -43,7 +43,7 @@ namespace elda::services {
          * Get all channels
          * @return Vector of all channels
          */
-        std::vector<models::Channel> GetAllChannels() const;
+        const std::vector<models::Channel>& GetAllChannels() const;
 
         /**
          * Update an existing channel

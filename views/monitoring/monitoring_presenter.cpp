@@ -15,139 +15,70 @@ MonitoringPresenter::MonitoringPresenter(
     , channelModalPosition_(0, 0)
     , useCustomModalPosition_(false) {
 
-    // Setup callbacks once during construction
+    // Set handlers once
     setupCallbacks();
 }
 
 void MonitoringPresenter::onEnter() {
     std::cout << "[Presenter] Enter monitoring" << std::endl;
 
-    // Reset cache on screen enter
-    cachedState_ = CachedViewState();
+    model_.StartAcquisition();
 
-    model_.startAcquisition();
+    // if you still want notifications, keep the observer — but no cache/dirty flags
     model_.addStateObserver([this](StateField field) {
-        std::cout << "[Presenter] Enter monitoring" << std::endl;
-   });
+        std::cout << "[Presenter] State changed: " << static_cast<int>(field) << std::endl;
+    });
 }
 
 void MonitoringPresenter::onExit() {
     std::cout << "[Presenter] Exit monitoring" << std::endl;
-    model_.stopAcquisition();
+    model_.StopAcquisition();
 }
 
 void MonitoringPresenter::update(float deltaTime) {
-    model_.update(deltaTime);
+    model_.Update(deltaTime);
 }
 
 void MonitoringPresenter::render() {
     // =========================================================================
-    // STEP 1: COLLECT DATA FROM MODEL (optimized with caching)
+    // STEP 1: COLLECT DATA FRESH EVERY FRAME (no caching)
     // =========================================================================
     MonitoringViewData viewData;
 
-    // Always get the chart data pointer (this is fast)
-    viewData.chartData = &model_.getChartData();
+    // heavy data as pointer/refs (no copies)
+    viewData.chartData          = &model_.GetChartData();
+    viewData.groups             = &model_.GetAvailableGroups();
 
-    // Get frequently-changing state (these need to be checked every frame)
-    viewData.monitoring = model_.isMonitoring();
-    viewData.canRecord = model_.canRecord();
-    viewData.recordingActive = model_.isRecordingActive();
-    viewData.currentlyPaused = model_.isCurrentlyPaused();
-
-    // Use cached values for rarely-changing state
-    if (cachedState_.needsRefresh()) {
-        refreshCachedState();
-    }
-
-    viewData.windowSeconds = cachedState_.windowSeconds;
-    viewData.amplitudeMicroVolts = cachedState_.amplitudeMicroVolts;
-    viewData.sampleRateHz = cachedState_.sampleRateHz;
-    viewData.activeGroupIndex = cachedState_.activeGroupIndex;
-
-    // Groups pointer (fast, just a pointer)
-    viewData.groups = &model_.getAvailableGroups();
-
-    // Increment frame counter
-    cachedState_.framesSinceUpdate++;
+    // simple scalars/booleans — fetch every frame (cost is trivial)
+    viewData.monitoring         = model_.IsMonitoring();
+    viewData.canRecord          = model_.CanRecord();
+    viewData.recordingActive    = model_.IsRecordingActive();
+    viewData.currentlyPaused    = model_.IsCurrentlyPaused();
+    viewData.windowSeconds      = model_.GetWindowSeconds();
+    viewData.amplitudeMicroVolts= model_.GetAmplitudeMicroVolts();
+    viewData.sampleRateHz       = model_.GetSampleRateHz();
+    viewData.activeGroupIndex   = model_.GetActiveGroupIndex();
+    viewData.selectedChannels   = &model_.GetSelectedChannels();
 
     // =========================================================================
-    // STEP 2: UPDATE DYNAMIC CALLBACKS (only those that capture local state)
-    // =========================================================================
-    // Most callbacks are already set up in constructor.
-    // Only these two need to be updated because they capture view-specific state:
-
-    callbacks_.onCreateChannelGroup = [this]() {
-        std::cout << "[Presenter] Create new channel group" << std::endl;
-        channelsPresenter_.Open("",
-            [this](const elda::models::ChannelsGroup& newGroup) {
-                model_.applyChannelConfiguration(newGroup);
-            }
-        );
-    };
-
-    callbacks_.onEditChannelGroup = [this](const std::string& id, const ui::TabBounds* bounds) {
-        std::cout << "[Presenter] Edit channel group: " << id << std::endl;
-
-        // Calculate modal position based on tab bounds
-        if (bounds) {
-            useCustomModalPosition_ = true;
-            channelModalPosition_.x = bounds->x;
-            channelModalPosition_.y = bounds->y + bounds->height;
-            std::cout << "[Presenter] Using tab position: ("
-                      << channelModalPosition_.x << ", "
-                      << channelModalPosition_.y << ")" << std::endl;
-        } else {
-            useCustomModalPosition_ = false;
-            std::cout << "[Presenter] Warning: No bounds provided, using default position" << std::endl;
-        }
-
-        // Open modal in edit mode
-        channelsPresenter_.Open(
-            id,
-            [this](const elda::models::ChannelsGroup& editedGroup) {
-                model_.applyChannelConfiguration(editedGroup);
-            }
-        );
-    };
-
-    // =========================================================================
-    // STEP 3: RENDER VIEW
+    // STEP 2: RENDER VIEW
     // =========================================================================
     view_.render(viewData, callbacks_);
 
     // =========================================================================
-    // STEP 4: RENDER MODAL (only if open - optimization!)
+    // STEP 3: RENDER MODAL IF OPEN
     // =========================================================================
     if (channelsPresenter_.IsOpen()) {
-        ImVec2 modalPos;
         ImVec2 modalSize = ImVec2(300, 550);
-
-        if (useCustomModalPosition_) {
-            modalPos = channelModalPosition_;
-        } else {
-            modalPos = calculateDefaultModalPosition(modalSize);
-        }
+        ImVec2 modalPos = useCustomModalPosition_
+            ? channelModalPosition_
+            : calculateDefaultModalPosition(modalSize);
 
         channelsPresenter_.Render(modalPos);
     }
 }
 
-// =============================================================================
-// PRIVATE HELPER METHODS
-// =============================================================================
-
-void MonitoringPresenter::refreshCachedState() {
-    cachedState_.windowSeconds = model_.getWindowSeconds();
-    cachedState_.amplitudeMicroVolts = model_.getAmplitudeMicroVolts();
-    cachedState_.sampleRateHz = model_.getSampleRateHz();
-    cachedState_.activeGroupIndex = model_.getActiveGroupIndex();
-    cachedState_.framesSinceUpdate = 0;
-}
-
-
 ImVec2 MonitoringPresenter::calculateDefaultModalPosition(ImVec2 modalSize) const {
-    // Default positioning (near top-center of screen)
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     return ImVec2(
         viewport->Pos.x + (viewport->Size.x - modalSize.x) * 0.5f,
@@ -156,43 +87,45 @@ ImVec2 MonitoringPresenter::calculateDefaultModalPosition(ImVec2 modalSize) cons
 }
 
 void MonitoringPresenter::setupCallbacks() {
-    // =========================================================================
-    // TOOLBAR CALLBACKS (static, set once)
-    // =========================================================================
-    callbacks_.onToggleMonitoring = [this]() {
-        model_.toggleMonitoring();
+    // toolbar
+    callbacks_.onToggleMonitoring   = [this]() { model_.ToggleMonitoring();   };
+    callbacks_.onToggleRecording    = [this]() { model_.ToggleRecording();    };
+    callbacks_.onIncreaseWindow     = [this]() { model_.IncreaseWindow();     };
+    callbacks_.onDecreaseWindow     = [this]() { model_.DecreaseWindow();     };
+    callbacks_.onIncreaseAmplitude  = [this]() { model_.IncreaseAmplitude();  };
+    callbacks_.onDecreaseAmplitude  = [this]() { model_.DecreaseAmplitude();  };
+
+    callbacks_.onCreateChannelGroup = [this]() {
+        channelsPresenter_.Open("",
+            [this](const models::ChannelsGroup& newGroup) {
+                model_.ApplyChannelConfiguration(newGroup);
+                model_.OnGroupSelected(newGroup);
+            }
+        );
     };
 
-    callbacks_.onToggleRecording = [this]() {
-        model_.toggleRecording();
+    callbacks_.onGroupSelected = [this](const models::ChannelsGroup* group) {
+        if (!group) return;
+        model_.OnGroupSelected(*group);
     };
 
-    callbacks_.onIncreaseWindow = [this]() {
-        model_.increaseWindow();
-        // Invalidate cache since window size changed
-        cachedState_.windowSeconds = -1;
-    };
+    callbacks_.onEditChannelGroup = [this](const std::string& id, const ui::TabBounds* bounds) {
+        if (bounds) {
+            useCustomModalPosition_ = true;
+            channelModalPosition_.x = bounds->x;
+            channelModalPosition_.y = bounds->y + bounds->height;
+        } else {
+            useCustomModalPosition_ = false;
+        }
 
-    callbacks_.onDecreaseWindow = [this]() {
-        model_.decreaseWindow();
-        // Invalidate cache since window size changed
-        cachedState_.windowSeconds = -1;
+        channelsPresenter_.Open(
+            id,
+            [this](const elda::models::ChannelsGroup& editedGroup) {
+                model_.ApplyChannelConfiguration(editedGroup);
+                model_.OnGroupSelected(editedGroup);
+            }
+        );
     };
-
-    callbacks_.onIncreaseAmplitude = [this]() {
-        model_.increaseAmplitude();
-        // Invalidate cache since amplitude changed
-        cachedState_.amplitudeMicroVolts = -1;
-    };
-
-    callbacks_.onDecreaseAmplitude = [this]() {
-        model_.decreaseAmplitude();
-        // Invalidate cache since amplitude changed
-        cachedState_.amplitudeMicroVolts = -1;
-    };
-
-    // Note: onCreateChannelGroup and onEditChannelGroup are set in render()
-    // because they need to capture view-specific state (modal positioning)
 }
 
 } // namespace elda
