@@ -6,13 +6,10 @@
 
 namespace elda::impedance_viewer::helper {
 
-static ImU32 kPalette[6] = {
+static ImU32 kPalette[3] = {
     IM_COL32( 40, 160,  85, 255), // green
     IM_COL32(240, 210,  70, 255), // yellow
     IM_COL32(200,  70,  50, 255), // red
-    IM_COL32(230, 230, 230, 255), // white-ish
-    IM_COL32( 70,  90, 200, 255), // blue
-    IM_COL32(215, 135,  55, 255)  // orange
 };
 
 static uint32_t Hash32(const void* data, size_t len) {
@@ -24,7 +21,7 @@ static uint32_t Hash32(const void* data, size_t len) {
 
 ImU32 ChannelColorFromId(const std::string& channelId) {
     if (channelId.empty()) return IM_COL32(200,200,200,255);
-    return kPalette[Hash32(channelId.data(), channelId.size()) % 6];
+    return kPalette[Hash32(channelId.data(), channelId.size()) % 3];
 }
 
 ImVec2 CapNormalizedToScreen(const ImVec2& center, float radius, float x, float y) {

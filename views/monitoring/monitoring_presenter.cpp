@@ -78,6 +78,10 @@ void MonitoringPresenter::render() {
 
         channelsPresenter_->Render(modalPos);
     }
+
+    if (impedanceScreen_ && impedanceScreen_->isOpen()) {
+        impedanceScreen_->render();
+    }
 }
 
 ImVec2 MonitoringPresenter::calculateDefaultModalPosition(ImVec2 modalSize) const {
@@ -107,10 +111,10 @@ void MonitoringPresenter::setupCallbacks() {
         );
     };
 
-    callbacks_.onOpenImpedanceViewer = [&](){
+    callbacks_.onOpenImpedanceViewer = [this](){
         // open your impedance viewer
         std::cout << "Open impedance viewer" << std::endl;
-        impedanceScreen_->render();
+        impedanceScreen_->open();
     };
 
     callbacks_.onGroupSelected = [this](const models::ChannelsGroup* group) {

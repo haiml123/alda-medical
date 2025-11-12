@@ -24,7 +24,8 @@ namespace elda {
     private:
         std::unique_ptr<MonitoringModel> model_;
         std::unique_ptr<MonitoringView> view_;
-        std::unique_ptr<elda::channels_group::ChannelsGroupPresenter> channelsPresenter_;
+        std::unique_ptr<channels_group::ChannelsGroupPresenter> channelsPresenter_;
+        std::unique_ptr<impedance_viewer::ImpedanceViewerScreen> impedanceScreen_;
         std::unique_ptr<MonitoringPresenter> presenter_;
     };
 

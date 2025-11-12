@@ -27,6 +27,7 @@ namespace elda {
 
         // Store channelsPresenter so it doesn't get destroyed
         channelsPresenter_ = std::move(channelsPresenter);
+        impedanceScreen_ = std::move(impedancePresenter);
     }
 
     void MonitoringScreen::onEnter() {

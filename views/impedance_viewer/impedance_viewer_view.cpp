@@ -23,7 +23,7 @@ void ImpedanceViewerView::Render(bool* isOpen,
     if (!isOpen) return;  // don't draw if closed
 
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 size(viewport->WorkSize.x * 0.40f, viewport->WorkSize.y * 0.70f);
+    ImVec2 size(viewport->WorkSize.x * 0.40f, viewport->WorkSize.y * 0.90f);
     ImVec2 pos (viewport->WorkPos.x + (viewport->WorkSize.x - size.x) * 0.5f,
                 viewport->WorkPos.y + (viewport->WorkSize.y - size.y) * 0.5f);
 
@@ -52,7 +52,7 @@ void ImpedanceViewerView::Render(bool* isOpen,
         // Note: CloseCurrentPopup() is for popups only, not normal windows.
     };
 
-    elda::impedance_viewer::ui::RenderImpedanceViewerHeader("Impedance Viewer", hcb, 44.0f);
+    elda::impedance_viewer::ui::RenderImpedanceViewerHeader("Impedance Viewer", hcb, 30.0f);
     RenderBody_(electrodes, availableChannels, selectedElectrodeIndex, callbacks);
 
     ImGui::EndChild();

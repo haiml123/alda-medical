@@ -16,10 +16,12 @@ namespace elda::impedance_viewer {
         void onExit();
         void update(float dt);
         void render();
+        void open() { isOpen_ = true; }
+        void close() { isOpen_ = false; }
         bool isOpen() const { return isOpen_; }
 
     private:
-        bool isOpen_ = true;
+        bool isOpen_ = false;
         std::unique_ptr<ImpedanceViewerPresenter> presenter_;
     };
 
