@@ -28,6 +28,11 @@ static const int AMP_PP_UV_OPTIONS[] = {10, 20, 50, 100, 200, 500, 1000};
 static constexpr int AMP_COUNT = sizeof(AMP_PP_UV_OPTIONS)/sizeof(AMP_PP_UV_OPTIONS[0]);
 static constexpr float AMP_REF_PP_UV = 100.0f;       // 100 µV pp => gain 1.0
 
+enum class RecordingState {
+    None = 0,
+    Recording,
+    Paused
+};
 // Pause mark structure
 struct PauseMark {
     double timeSeconds;
@@ -91,6 +96,7 @@ struct AppState {
     bool isRecordingToFile  = false;   // RECORD (F7) toggles writing
     bool isPaused           = false;   // PAUSE (F8) pauses file writing; screen continues
     bool showSettingsPopup  = false;   // Settings popup toggle
+    RecordingState recordingState = RecordingState::None; // NEW unified recording state
 
     // Display choices
     int   winIdx    = 2;               // default 10s

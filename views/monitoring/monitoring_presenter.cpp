@@ -6,18 +6,18 @@
 namespace elda {
 
 MonitoringPresenter::MonitoringPresenter(
-    MonitoringModel& model,
-    MonitoringView& view,
-    elda::channels_group::ChannelsGroupPresenter& channelsPresenter)
-    : model_(model)
-    , view_(view)
-    , channelsPresenter_(channelsPresenter)
-    , channelModalPosition_(0, 0)
-    , useCustomModalPosition_(false) {
-
-    // Set handlers once
-    setupCallbacks();
-}
+        MonitoringModel& model,
+        MonitoringView& view,
+        channels_group::ChannelsGroupPresenter& channelsPresenter,
+        impedance_viewer::ImpedanceViewerScreen& impedanceScreen)
+        : model_(model)
+        , view_(view)
+        , channelsPresenter_(&channelsPresenter)
+        , impedanceScreen_(&impedanceScreen)
+        , channelModalPosition_(0, 0)
+        , useCustomModalPosition_(false) {
+        setupCallbacks();
+    }
 
 void MonitoringPresenter::onEnter() {
     std::cout << "[Presenter] Enter monitoring" << std::endl;
@@ -53,6 +53,8 @@ void MonitoringPresenter::render() {
     viewData.monitoring         = model_.IsMonitoring();
     viewData.canRecord          = model_.CanRecord();
     viewData.recordingActive    = model_.IsRecordingActive();
+    viewData.recordingState     = model_.GetRecordingState();
+    viewData.currentlyRecording = model_.IsCurrentlyRecording();
     viewData.currentlyPaused    = model_.IsCurrentlyPaused();
     viewData.windowSeconds      = model_.GetWindowSeconds();
     viewData.amplitudeMicroVolts= model_.GetAmplitudeMicroVolts();
@@ -68,13 +70,13 @@ void MonitoringPresenter::render() {
     // =========================================================================
     // STEP 3: RENDER MODAL IF OPEN
     // =========================================================================
-    if (channelsPresenter_.IsOpen()) {
+    if (channelsPresenter_->IsOpen()) {
         ImVec2 modalSize = ImVec2(300, 550);
         ImVec2 modalPos = useCustomModalPosition_
             ? channelModalPosition_
             : calculateDefaultModalPosition(modalSize);
 
-        channelsPresenter_.Render(modalPos);
+        channelsPresenter_->Render(modalPos);
     }
 }
 
@@ -90,18 +92,25 @@ void MonitoringPresenter::setupCallbacks() {
     // toolbar
     callbacks_.onToggleMonitoring   = [this]() { model_.ToggleMonitoring();   };
     callbacks_.onToggleRecording    = [this]() { model_.ToggleRecording();    };
+    callbacks_.onStopRecording      = [this]() { model_.StopRecording();      };
     callbacks_.onIncreaseWindow     = [this]() { model_.IncreaseWindow();     };
     callbacks_.onDecreaseWindow     = [this]() { model_.DecreaseWindow();     };
     callbacks_.onIncreaseAmplitude  = [this]() { model_.IncreaseAmplitude();  };
     callbacks_.onDecreaseAmplitude  = [this]() { model_.DecreaseAmplitude();  };
 
     callbacks_.onCreateChannelGroup = [this]() {
-        channelsPresenter_.Open("",
+        channelsPresenter_->Open("",
             [this](const models::ChannelsGroup& newGroup) {
                 model_.ApplyChannelConfiguration(newGroup);
                 model_.OnGroupSelected(newGroup);
             }
         );
+    };
+
+    callbacks_.onOpenImpedanceViewer = [&](){
+        // open your impedance viewer
+        std::cout << "Open impedance viewer" << std::endl;
+        impedanceScreen_->render();
     };
 
     callbacks_.onGroupSelected = [this](const models::ChannelsGroup* group) {
@@ -118,7 +127,7 @@ void MonitoringPresenter::setupCallbacks() {
             useCustomModalPosition_ = false;
         }
 
-        channelsPresenter_.Open(
+        channelsPresenter_->Open(
             id,
             [this](const elda::models::ChannelsGroup& editedGroup) {
                 model_.ApplyChannelConfiguration(editedGroup);

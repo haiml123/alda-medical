@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 
+file(COPY ${CMAKE_SOURCE_DIR}/external/imgui/misc/fonts/
+        DESTINATION ${CMAKE_BINARY_DIR}/fonts)
+
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/imgui)
 set(IMPLOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/external/implot)
 
@@ -57,6 +60,19 @@ set(VIEWS
         views/monitoring/monitoring_presenter.cpp
         views/monitoring/monitoring_toolbar.h
         views/monitoring/monitoring_toolbar.cpp
+
+        views/impedance_viewer/impedance_viewer_model.h
+        views/impedance_viewer/impedance_viewer_model.cpp
+        views/impedance_viewer/impedance_viewer_presenter.h
+        views/impedance_viewer/impedance_viewer_presenter.cpp
+        views/impedance_viewer/impedance_viewer_view.h
+        views/impedance_viewer/impedance_viewer_view.cpp
+        views/impedance_viewer/impedance_viewer_screen.h
+        views/impedance_viewer/impedance_viewer_screen.cpp
+        views/impedance_viewer/impedance_viewer_helper.h
+        views/impedance_viewer/impedance_viewer_helper.cpp
+        views/impedance_viewer/impedance_viewer_header.h
+        views/impedance_viewer/impedance_viewer_header.cpp
 )
 
 set(UI
@@ -67,6 +83,8 @@ set(UI
         UI/chart/chart.h
         UI/chart/chart.cpp
         UI/chart/chart_data.h
+        UI/impedance_range/impedance_range.cpp
+        UI/impedance_range/impedance_range.h
 )
 
 set(CORE

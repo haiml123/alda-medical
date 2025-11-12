@@ -93,15 +93,20 @@ public:
      */
     StateChangeError ResumeRecording();
 
+    bool IsRecordingActive() const { return state_.isRecordingToFile; }
+
     /**
      * Check if recording is currently active
      */
-    bool IsRecording() const { return state_.isRecordingToFile; }
+    bool IsRecording() const { return state_.recordingState == RecordingState::Recording; }
 
+    RecordingState GetRecordingState() const { return state_.recordingState; }
     /**
      * Check if recording is paused
      */
-    bool IsPaused() const { return state_.isPaused; }
+    bool IsPaused() const { return state_.recordingState == RecordingState::Paused; }
+
+    bool IsStopped() const { return !state_.isRecordingToFile && state_.recordingState == RecordingState::None; }
 
     // === CHANNEL CONFIGURATION ===
 

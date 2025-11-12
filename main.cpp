@@ -50,6 +50,21 @@ int main() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.IniFilename = nullptr;
 
+    // -------------- FONT LOADING (Do this ONCE here) ----------------
+    io.Fonts->AddFontDefault();
+
+    ImFontConfig cfg;
+    cfg.MergeMode = true;
+    static const ImWchar greek_range[] = { 0x0370, 0x03FF, 0 }; // Greek & Coptic
+
+    // Load your Roboto font from your path (use absolute path or copy to runtime dir)
+    const char* fontPath = "fonts/Roboto-Medium.ttf";
+    ImFont* merged = io.Fonts->AddFontFromFileTTF(fontPath, 16.0f, &cfg, greek_range);
+    if (!merged) {
+        std::fprintf(stderr, "[Fonts] Could not load %s — Ω may render as '?'\n", fontPath);
+    }
+
+    // -------------- Init backends after fonts ----------------
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
@@ -73,6 +88,7 @@ int main() {
     // Create Screens (pass AppState & StateManager)
     // ========================================================================
     auto monitoringScreen = std::make_unique<elda::MonitoringScreen>(appState, stateManager);
+    // auto impedanceScreen  = std::make_unique<elda::impedance_viewer::ImpedanceViewerScreen>(appState, stateManager);
 
     // TODO: Add other screens when ready
     // auto idleScreen = std::make_unique<elda::IdleScreen>(appState, stateManager);
@@ -150,6 +166,8 @@ int main() {
             case AppMode::MONITORING:
                 monitoringScreen->update(deltaTime);
                 monitoringScreen->render();
+                // impedanceScreen->update(deltaTime);
+                // impedanceScreen->render();
                 break;
 
             case AppMode::IDLE:

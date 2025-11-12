@@ -7,7 +7,8 @@
 enum class AppMode {
     IDLE,           // Welcome screen
     MONITORING,     // Live EEG view (your current main screen)
-    SETTINGS        // Settings dialog (modal style)
+    SETTINGS,
+    IMPEDANCE_VIEWER// Settings dialog (modal style)
 };
 
 // Convert mode to string for debugging

@@ -12,17 +12,18 @@ namespace elda {
         // View has no AppState access
         view_ = std::make_unique<MonitoringView>();
 
-        // ✅ UPDATED: Create channels presenter with AppStateManager
         auto channelsPresenter = std::make_unique<elda::channels_group::ChannelsGroupPresenter>(stateManager);
 
-        // ✅ CRITICAL: Set up callback to refresh groups when they change
         channelsPresenter->SetOnGroupsChangedCallback([this]() {
             std::printf("[MonitoringScreen] Groups changed, refreshing available groups\n");
             model_->RefreshAvailableGroups();
         });
 
+        auto impedancePresenter = std::make_unique<elda::impedance_viewer::ImpedanceViewerScreen>(state, stateManager);
+
+
         // Presenter orchestrates - needs all three
-        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channelsPresenter);
+        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channelsPresenter, *impedancePresenter);
 
         // Store channelsPresenter so it doesn't get destroyed
         channelsPresenter_ = std::move(channelsPresenter);

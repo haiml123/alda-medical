@@ -6,7 +6,7 @@
 namespace elda {
 
 MonitoringModel::MonitoringModel(AppState& state, elda::AppStateManager& stateManager)
-    : MVPBaseModel(stateManager), state_(state), stateManager_(stateManager) {
+    : models::MVPBaseModel(stateManager), state_(state), stateManager_(stateManager) {
     InitializeBuffers();
 }
 
@@ -37,10 +37,7 @@ void MonitoringModel::Update(float deltaTime) {
     if (stateManager_.IsMonitoring()) {
         state_.tickDisplay(true);
         UpdateChartData();
-
-        if (!stateManager_.IsPaused()) {
-            GenerateSyntheticData(deltaTime);
-        }
+        GenerateSyntheticData(deltaTime);
     } else {
         state_.tickDisplay(false);
     }
@@ -113,11 +110,15 @@ void MonitoringModel::ToggleMonitoring() const {
     }
 }
 
-void MonitoringModel::ToggleRecording() const {
-    const bool recordingActive = stateManager_.IsRecording() && !stateManager_.IsPaused();
-    const bool currentlyPaused = stateManager_.IsRecording() && stateManager_.IsPaused();
+void MonitoringModel::StopRecording() const {
+    stateManager_.StopRecording();
+}
 
-    if (recordingActive) {
+void MonitoringModel::ToggleRecording() const {
+    const bool recordingActive = stateManager_.IsRecording();
+    const bool currentlyPaused = stateManager_.IsPaused();
+
+    if (recordingActive && !currentlyPaused) {
         auto result = stateManager_.PauseRecording();
         if (!result.IsSuccess()) {
             std::fprintf(stderr, "[Model] Pause failed: %s\n", result.message.c_str());

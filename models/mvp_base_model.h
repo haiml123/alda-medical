@@ -2,7 +2,7 @@
 
 #include "../core/app_state_manager.h"
 
-namespace elda {
+namespace elda::models {
 
     /**
      * Abstract base class for all MVP models

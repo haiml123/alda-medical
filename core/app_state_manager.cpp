@@ -47,6 +47,8 @@ namespace elda {
             return {StateChangeResult::InvalidTransition, "Already recording"};
         }
 
+        state_.recordingState = RecordingState::Recording;
+
         std::string errorMsg;
         if (!ValidateCanStartRecording(errorMsg)) {
             if (!impedanceCheckPassed_) {
@@ -56,7 +58,6 @@ namespace elda {
         }
 
         state_.isRecordingToFile = true;
-        state_.isPaused = false;
         state_.recordingStartTime = state_.currentEEGTime();
 
         NotifyStateChanged(StateField::Recording);
@@ -71,8 +72,8 @@ namespace elda {
             return {StateChangeResult::InvalidTransition, "Not currently recording"};
         }
 
+        state_.recordingState = RecordingState::None;
         state_.isRecordingToFile = false;
-        state_.isPaused = false;
 
         NotifyStateChanged(StateField::Recording);
 
@@ -90,7 +91,8 @@ namespace elda {
             return {StateChangeResult::InvalidTransition, "Already paused"};
         }
 
-        state_.isPaused = true;
+        state_.recordingState = RecordingState::Paused;
+
         state_.pauseMarks.push_back({state_.currentEEGTime()});
 
         NotifyStateChanged(StateField::Paused);
@@ -103,11 +105,11 @@ namespace elda {
             return {StateChangeResult::InvalidTransition, "Not currently recording"};
         }
 
+        state_.recordingState = RecordingState::Recording;
+
         if (!state_.isPaused) {
             return {StateChangeResult::InvalidTransition, "Not currently paused"};
         }
-
-        state_.isPaused = false;
 
         NotifyStateChanged(StateField::Paused);
 

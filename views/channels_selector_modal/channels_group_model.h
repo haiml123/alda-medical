@@ -19,7 +19,7 @@ namespace elda::channels_group {
      * ✅ UPDATED: Tracks groupId_ to distinguish edit vs create
      * ✅ UPDATED: Notifies parent when groups change via callback
      */
-    class ChannelsGroupModel : public elda::MVPBaseModel {
+    class ChannelsGroupModel : public elda::models::MVPBaseModel {
     public:
         // Callback to notify parent when available groups need refresh
         using OnGroupsChangedCallback = std::function<void()>;

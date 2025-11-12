@@ -10,7 +10,7 @@
 
 namespace elda {
 
-    class MonitoringModel : public MVPBaseModel {
+    class MonitoringModel : public models::MVPBaseModel {
     public:
         MonitoringModel(AppState& state, elda::AppStateManager& stateManager);
         ~MonitoringModel() = default;
@@ -22,6 +22,9 @@ namespace elda {
 
         // Actions (called by Presenter)
         void ToggleMonitoring() const;
+
+        void StopRecording() const;
+
         void ToggleRecording() const;
         void IncreaseWindow() const;
         void DecreaseWindow() const;
@@ -41,11 +44,17 @@ namespace elda {
         bool IsMonitoring() const { return stateManager_.IsMonitoring(); }
         bool CanRecord() const { return IsMonitoring(); }
         bool IsRecordingActive() const {
-            return stateManager_.IsRecording() && !stateManager_.IsPaused();
+            return stateManager_.IsRecordingActive() && stateManager_.IsMonitoring();
         }
+
+        RecordingState GetRecordingState() const { return stateManager_.GetRecordingState(); }
         bool IsCurrentlyPaused() const {
-            return stateManager_.IsRecording() && stateManager_.IsPaused();
+            return stateManager_.IsPaused() && stateManager_.IsMonitoring();
         }
+        bool IsCurrentlyRecording() const {
+            return stateManager_.IsRecording() && stateManager_.IsMonitoring();
+        }
+        bool IsStopped() const { return stateManager_.IsStopped(); }
         int GetWindowSeconds() const {
             return (int)stateManager_.GetWindowSeconds();
         }

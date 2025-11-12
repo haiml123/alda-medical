@@ -7,7 +7,9 @@
 #include <functional>
 #include <vector>
 
+#include "core/core.h"
 #include "models/channel.h"
+
 
 namespace elda {
 
@@ -23,10 +25,12 @@ namespace elda {
         bool monitoring = false;
         bool canRecord = false;
         bool recordingActive = false;
+        bool currentlyRecording = false;
         bool currentlyPaused = false;
         int windowSeconds = 10;
         int amplitudeMicroVolts = 100;
         double sampleRateHz = 1000.0;
+        RecordingState recordingState;
 
         // Tab bar
         const std::vector<elda::models::ChannelsGroup>* groups = nullptr;
@@ -46,6 +50,8 @@ namespace elda {
         std::function<void()> onDecreaseWindow;
         std::function<void()> onIncreaseAmplitude;
         std::function<void()> onDecreaseAmplitude;
+        std::function<void()> onOpenImpedanceViewer;
+        std::function<void()> onStopRecording;
 
         // Tab actions
         std::function<void()> onCreateChannelGroup;
