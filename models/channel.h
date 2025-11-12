@@ -8,6 +8,7 @@ namespace elda::models {
         std::string name;
         std::string color;
         bool selected;
+        std::string position;  // 10-20 system position (e.g., "Fp1", "C3", "Pz")
 
         int amplifierChannel;
         std::string signalType;
@@ -22,6 +23,7 @@ namespace elda::models {
             : BaseModel()
             , color("#FFFFFF")
             , selected(false)
+            , position("")
             , amplifierChannel(-1)
             , signalType("EEG")
             , sensorGain(1.0)
@@ -35,6 +37,7 @@ namespace elda::models {
             , name(name_)
             , color(color_)
             , selected(false)
+            , position("")
             , amplifierChannel(-1)
             , signalType("EEG")
             , sensorGain(1.0)
@@ -48,6 +51,7 @@ namespace elda::models {
             , name(name_)
             , color(color_)
             , selected(false)
+            , position("")
             , amplifierChannel(-1)
             , signalType("EEG")
             , sensorGain(1.0)
@@ -55,6 +59,14 @@ namespace elda::models {
             , filtered(false)
             , highPassCutoff(0.0)
             , lowPassCutoff(0.0) {}
+
+        // Add a setter for position
+        void SetPosition(const std::string& pos) {
+            if (position != pos) {
+                position = pos;
+                OnUpdate();
+            }
+        }
 
         void SetSelected(bool isSelected) {
             if (selected != isSelected) {

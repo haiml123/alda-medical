@@ -6,6 +6,9 @@ namespace elda::impedance_viewer::ui {
                                      const HeaderCallbacks& callbacks,
                                      float height_px)
     {
+        // Chart grid background color (matches ImPlotCol_PlotBg from theme)
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.06f, 0.07f, 0.08f, 1.0f));
+
         ImGui::BeginChild("impedance_viewer_header",
                           ImVec2(0, height_px),
                           false,
@@ -42,6 +45,7 @@ namespace elda::impedance_viewer::ui {
         }
 
         ImGui::EndChild();
+        ImGui::PopStyleColor(); // Pop ChildBg color
     }
 
 } // namespace elda::impedance_viewer::ui

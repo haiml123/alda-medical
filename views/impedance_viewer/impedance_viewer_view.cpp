@@ -23,7 +23,7 @@ void ImpedanceViewerView::Render(bool* isOpen,
     if (!isOpen) return;  // don't draw if closed
 
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 size(viewport->WorkSize.x * 0.40f, viewport->WorkSize.y * 0.90f);
+    ImVec2 size(viewport->WorkSize.x * 0.40f, viewport->WorkSize.y * 0.80f);
     ImVec2 pos (viewport->WorkPos.x + (viewport->WorkSize.x - size.x) * 0.5f,
                 viewport->WorkPos.y + (viewport->WorkSize.y - size.y) * 0.5f);
 
@@ -32,12 +32,13 @@ void ImpedanceViewerView::Render(bool* isOpen,
 
     // IMPORTANT: pass p_open (&open) so we can close by flipping it
     bool open = *isOpen;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("ImpedanceViewer", &open,
                  ImGuiWindowFlags_NoTitleBar |
                  ImGuiWindowFlags_NoCollapse |
                  ImGuiWindowFlags_NoScrollbar |
                  ImGuiWindowFlags_NoScrollWithMouse);
-
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::BeginChild("impedance_viewer_root",
                       ImVec2(0, 0),
                       ImGuiChildFlags_None,
@@ -52,11 +53,13 @@ void ImpedanceViewerView::Render(bool* isOpen,
         // Note: CloseCurrentPopup() is for popups only, not normal windows.
     };
 
-    elda::impedance_viewer::ui::RenderImpedanceViewerHeader("Impedance Viewer", hcb, 30.0f);
+    elda::impedance_viewer::ui::RenderImpedanceViewerHeader("Impedance Viewer", hcb, 50.0f);
     RenderBody_(electrodes, availableChannels, selectedElectrodeIndex, callbacks);
 
     ImGui::EndChild();
+    ImGui::PopStyleVar();
     ImGui::End();
+    ImGui::PopStyleVar();
 }
 
 
@@ -66,12 +69,20 @@ void ImpedanceViewerView::RenderBody_(const std::vector<ElectrodePosition>& elec
                                       int selectedElectrodeIndex,
                                       const ImpedanceViewerViewCallbacks& callbacks)
 {
-    // Layout
+    // Layout - account for range panel at bottom
+    const float rangePanelHeight = 110.0f; // Panel height + padding
+    const float availableCapHeight = ImGui::GetContentRegionAvail().y - rangePanelHeight;
+
     canvasPos_  = ImGui::GetCursorScreenPos();
     canvasSize_ = ImGui::GetContentRegionAvail();
-    centerPos_  = ImVec2(canvasPos_.x + canvasSize_.x * 0.5f,
-                         canvasPos_.y + canvasSize_.y * 0.5f);
-    pixelCapRadius_ = std::min(canvasSize_.x, canvasSize_.y) * kCapRadiusNormalized_;
+
+    // Center the cap in the available space ABOVE the range panel
+    centerPos_  = ImVec2(
+        canvasPos_.x + canvasSize_.x * 0.5f,
+        canvasPos_.y + availableCapHeight * 0.5f
+    );
+
+    pixelCapRadius_ = std::min(canvasSize_.x, availableCapHeight) * kCapRadiusNormalized_;
 
     ImDrawList* dl = ImGui::GetWindowDrawList();
 
@@ -101,7 +112,7 @@ void ImpedanceViewerView::RenderBody_(const std::vector<ElectrodePosition>& elec
 
     // Range widget (below head)
     {
-        const float panelPad   = 12.0f;
+        const float panelPad   = 40.0f;  // Increased spacing
         const float panelWidth = std::min(420.0f, canvasSize_.x * 0.60f);
         const float panelHeight= 86.0f;
 
@@ -111,8 +122,10 @@ void ImpedanceViewerView::RenderBody_(const std::vector<ElectrodePosition>& elec
         ImGui::SetCursorScreenPos(panelPos);
         ImGui::BeginChild("impedance_range_panel",
                           ImVec2(panelWidth, panelHeight),
-                          true,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                          false,  // No border
+                          ImGuiWindowFlags_NoScrollbar |
+                          ImGuiWindowFlags_NoScrollWithMouse |
+                          ImGuiWindowFlags_NoBackground);  // Transparent background
 
         elda::ui::ImpedanceRanges ranges{ 10000.f, 30000.f, 54000.f };
         elda::ui::ImpedanceRangeConfig barCfg;
