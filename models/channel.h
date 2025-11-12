@@ -8,7 +8,6 @@ namespace elda::models {
         std::string name;
         std::string color;
         bool selected;
-        std::string position;  // 10-20 system position (e.g., "Fp1", "C3", "Pz")
 
         int amplifierChannel;
         std::string signalType;
@@ -19,54 +18,52 @@ namespace elda::models {
         double highPassCutoff;
         double lowPassCutoff;
 
+        float impedanceX;
+        float impedanceY;
+
         Channel()
             : BaseModel()
             , color("#FFFFFF")
             , selected(false)
-            , position("")
             , amplifierChannel(-1)
             , signalType("EEG")
             , sensorGain(1.0)
             , sensorOffset(0.0)
             , filtered(false)
             , highPassCutoff(0.0)
-            , lowPassCutoff(0.0) {}
+            , lowPassCutoff(0.0)
+            , impedanceX(0.5f)
+            , impedanceY(0.5f) {}
 
         Channel(const std::string& name_, const std::string& color_ = "#FFFFFF")
             : BaseModel()
             , name(name_)
             , color(color_)
             , selected(false)
-            , position("")
             , amplifierChannel(-1)
             , signalType("EEG")
             , sensorGain(1.0)
             , sensorOffset(0.0)
             , filtered(false)
             , highPassCutoff(0.0)
-            , lowPassCutoff(0.0) {}
+            , lowPassCutoff(0.0)
+            , impedanceX(0.5f)
+            , impedanceY(0.5f) {}
 
         Channel(const std::string& id_, const std::string& name_, const std::string& color_ = "#FFFFFF")
             : BaseModel(id_)
             , name(name_)
             , color(color_)
             , selected(false)
-            , position("")
             , amplifierChannel(-1)
             , signalType("EEG")
             , sensorGain(1.0)
             , sensorOffset(0.0)
             , filtered(false)
             , highPassCutoff(0.0)
-            , lowPassCutoff(0.0) {}
-
-        // Add a setter for position
-        void SetPosition(const std::string& pos) {
-            if (position != pos) {
-                position = pos;
-                OnUpdate();
-            }
-        }
+            , lowPassCutoff(0.0)
+            , impedanceX(0.5f)
+            , impedanceY(0.5f) {}
 
         void SetSelected(bool isSelected) {
             if (selected != isSelected) {
