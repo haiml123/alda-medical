@@ -30,18 +30,27 @@ namespace elda::impedance_viewer {
             isOpen,
             model_->GetElectrodePositions(),
             model_->GetAvailableChannels(),
-            model_->GetSelectedElectrodeIndex(), callbacks_);
+            model_->GetSelectedElectrodeIndex(),
+            callbacks_);
     }
 
     void ImpedanceViewerPresenter::SetupCallbacks() {
         callbacks_.onElectrodeMouseDown = [this](int idx){
             OnElectrodeMouseDown(idx);
         };
+
         callbacks_.onElectrodeDropped = [this](size_t idx, ImVec2 pos){
             OnElectrodeDropped(idx, pos);
         };
+
+        // ✅ NEW: Save button callback
+        callbacks_.onSave = [this](){
+            OnSave();
+        };
+
+        // ✅ NEW: Close button callback (discard changes)
         callbacks_.onClose = [this](){
-            model_->ClearSelection();
+            OnClose();
         };
     }
 
@@ -56,8 +65,22 @@ namespace elda::impedance_viewer {
     }
 
     void ImpedanceViewerPresenter::OnElectrodeDropped(size_t idx, ImVec2 normalizedPos) {
+        // ✅ Update temporary position (not saved to Channel model yet)
         model_->UpdateElectrodePosition(idx, normalizedPos.x, normalizedPos.y);
         model_->StopDragging(idx);
+    }
+
+    void ImpedanceViewerPresenter::OnSave() {
+        std::cout << "[ImpedanceViewer] Save button clicked\n";
+        // ✅ Persist all temporary position changes to Channel models in state
+        model_->SavePositionsToState();
+    }
+
+    void ImpedanceViewerPresenter::OnClose() {
+        std::cout << "[ImpedanceViewer] Close button clicked\n";
+        // ✅ Discard all temporary changes and restore original positions
+        model_->DiscardChanges();
+        model_->ClearSelection();
     }
 
 } // namespace elda::impedance_viewer

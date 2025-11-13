@@ -23,6 +23,8 @@ namespace elda::impedance_viewer {
         // handlers
         void OnElectrodeMouseDown(int idx); // -1 -> canvas
         void OnElectrodeDropped(size_t idx, ImVec2 normalizedPos);
+        void OnSave();  // ✅ NEW: Handle save button
+        void OnClose(); // ✅ NEW: Handle close button (discard changes)
 
         std::unique_ptr<ImpedanceViewerModel> model_;
         std::unique_ptr<ImpedanceViewerView> view_;

@@ -32,8 +32,8 @@ namespace elda::models {
             , filtered(false)
             , highPassCutoff(0.0)
             , lowPassCutoff(0.0)
-            , impedanceX(0.5f)
-            , impedanceY(0.5f) {}
+            , impedanceX(0.0f)
+            , impedanceY(0.0f) {}
 
         Channel(const std::string& name_, const std::string& color_ = "#FFFFFF")
             : BaseModel()
@@ -47,8 +47,8 @@ namespace elda::models {
             , filtered(false)
             , highPassCutoff(0.0)
             , lowPassCutoff(0.0)
-            , impedanceX(0.5f)
-            , impedanceY(0.5f) {}
+            , impedanceX(0.0f)
+            , impedanceY(0.0f) {}
 
         Channel(const std::string& id_, const std::string& name_, const std::string& color_ = "#FFFFFF")
             : BaseModel(id_)
@@ -62,8 +62,8 @@ namespace elda::models {
             , filtered(false)
             , highPassCutoff(0.0)
             , lowPassCutoff(0.0)
-            , impedanceX(0.5f)
-            , impedanceY(0.5f) {}
+            , impedanceX(0.0f)
+            , impedanceY(0.0f) {}
 
         void SetSelected(bool isSelected) {
             if (selected != isSelected) {
@@ -84,6 +84,14 @@ namespace elda::models {
             highPassCutoff = highPass;
             lowPassCutoff = lowPass;
             OnUpdate();
+        }
+
+        void SetImpedancePosition(float x, float y) {
+            if (impedanceX != x || impedanceY != y) {
+                impedanceX = x;
+                impedanceY = y;
+                OnUpdate();
+            }
         }
     };
 

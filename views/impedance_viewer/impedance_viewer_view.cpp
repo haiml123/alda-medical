@@ -46,11 +46,13 @@ void ImpedanceViewerView::Render(bool* isOpen,
 
     // Header with Close/Save callbacks
     elda::impedance_viewer::ui::HeaderCallbacks hcb;
-    hcb.onSave  = callbacks.onSave;
+    hcb.onSave  =  [&, isOpen]() {
+        if (callbacks.onSave) callbacks.onSave();
+        *isOpen = false;
+    };
     hcb.onClose = [&, isOpen]() {
         if (callbacks.onClose) callbacks.onClose();
-        *isOpen = false;            // << this is what "closes" the window
-        // Note: CloseCurrentPopup() is for popups only, not normal windows.
+        *isOpen = false;
     };
 
     elda::impedance_viewer::ui::RenderImpedanceViewerHeader("Impedance Viewer", hcb, 50.0f);
