@@ -4,7 +4,7 @@
 
 #include "imgui_internal.h"
 
-namespace elda::impedance_viewer::helper {
+namespace elda::views::impedance_viewer {
 
 static ImU32 kPalette[3] = {
     IM_COL32( 40, 160,  85, 255), // green

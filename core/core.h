@@ -8,6 +8,7 @@
 #include <cstdio>
 
 #include "models/channels_group.h"
+#include "models/session.h"
 
 namespace elda::models {
     struct Channel;
@@ -97,6 +98,7 @@ struct AppState {
     bool isPaused           = false;   // PAUSE (F8) pauses file writing; screen continues
     bool showSettingsPopup  = false;   // Settings popup toggle
     RecordingState recordingState = RecordingState::None; // NEW unified recording state
+    std::optional<elda::models::Session> currentSession;
 
     // Display choices
     int   winIdx    = 2;               // default 10s

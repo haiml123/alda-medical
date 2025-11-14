@@ -8,7 +8,7 @@
 #include "models/mvp_base_model.h"
 #include "services/channel_management_service.h"
 
-namespace elda {
+namespace elda::views::monitoring {
 
     class MonitoringModel : public models::MVPBaseModel {
     public:

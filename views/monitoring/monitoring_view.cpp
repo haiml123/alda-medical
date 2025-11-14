@@ -3,7 +3,7 @@
 #include "imgui.h"
 #include "UI/chart/chart.h"
 
-namespace elda {
+namespace elda::views::monitoring {
 
 void MonitoringView::render(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks) {
     ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -102,4 +102,4 @@ void MonitoringView::renderTabBar(const MonitoringViewData& data, const Monitori
     tabBar_.render();
 }
 
-} // namespace elda
+}

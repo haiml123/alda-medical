@@ -1,24 +1,17 @@
-#ifndef ELDA_MONITORING_PRESENTER_H
-#define ELDA_MONITORING_PRESENTER_H
-
+#pragma once
 #include "views/channels_selector_modal/channels_group_presenter.h"
 #include "imgui.h"
 #include "monitoring_view.h"
+#include "monitoring_model.h"
 
-namespace elda {
-    class MonitoringModel;
-    class MonitoringView;
-    struct MonitoringViewCallbacks;
-}
-
-namespace elda {
+namespace elda::views::monitoring {
 
     class MonitoringPresenter {
     public:
         MonitoringPresenter(
             MonitoringModel& model,
             MonitoringView& view,
-            channels_group::ChannelsGroupPresenter& channelsPresenter);
+            channels_selector::ChannelsGroupPresenter& channelsPresenter);
 
         void onEnter();
         void onExit();
@@ -28,7 +21,7 @@ namespace elda {
     private:
         MonitoringModel& model_;
         MonitoringView& view_;
-        std::unique_ptr<channels_group::ChannelsGroupPresenter> channelsPresenter_;
+        std::unique_ptr<channels_selector::ChannelsGroupPresenter> channelsPresenter_;
         // ========================================================================
         // CACHED STATE - Avoid redundant queries
         // ========================================================================
@@ -82,6 +75,4 @@ namespace elda {
         void setupCallbacks();
     };
 
-} // namespace elda
-
-#endif // ELDA_MONITORING_PRESENTER_H
+}

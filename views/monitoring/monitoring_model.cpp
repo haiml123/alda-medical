@@ -3,7 +3,7 @@
 #include <iostream>
 #include <algorithm>
 
-namespace elda {
+namespace elda::views::monitoring {
 
 MonitoringModel::MonitoringModel(AppState& state, elda::AppStateManager& stateManager)
     : models::MVPBaseModel(stateManager), state_(state), stateManager_(stateManager) {

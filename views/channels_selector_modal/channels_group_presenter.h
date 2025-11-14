@@ -6,7 +6,7 @@
 #include <memory>
 #include <functional>
 
-namespace elda::channels_group {
+namespace elda::views::channels_selector {
 
     /**
      * Presenter: Mediates between Model and View
@@ -15,8 +15,6 @@ namespace elda::channels_group {
      * - Updates View based on Model state
      * - Contains presentation logic
      *
-     * ✅ UPDATED: Now requires AppStateManager for MVPBaseModel integration
-     * ✅ UPDATED: Supports refresh callback for parent to reload groups
      */
     class ChannelsGroupPresenter {
     public:

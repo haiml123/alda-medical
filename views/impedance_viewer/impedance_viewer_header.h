@@ -1,8 +1,7 @@
 #pragma once
-#include "imgui.h"
 #include <functional>
 
-namespace elda::impedance_viewer::ui {
+namespace elda::views::impedance_viewer {
 
     struct HeaderCallbacks {
         std::function<void()> onSave;
@@ -13,4 +12,4 @@ namespace elda::impedance_viewer::ui {
                                      const HeaderCallbacks& callbacks,
                                      float height_px = 44.0f);
 
-} // namespace elda::impedance_viewer::ui
+}

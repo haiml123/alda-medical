@@ -1,6 +1,6 @@
 #include "channels_group_presenter.h"
 
-namespace elda::channels_group {
+namespace elda::views::channels_selector {
 
     ChannelsGroupPresenter::ChannelsGroupPresenter(elda::AppStateManager& stateManager)
         : model_(std::make_unique<ChannelsGroupModel>(stateManager))

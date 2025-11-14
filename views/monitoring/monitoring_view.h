@@ -1,6 +1,4 @@
-#ifndef ELDA_MONITORING_VIEW_H
-#define ELDA_MONITORING_VIEW_H
-
+#pragma once
 #include "UI/chart/chart_data.h"
 #include "UI/tabbar/tabbar.h"
 #include "models/channels_group.h"
@@ -11,7 +9,7 @@
 #include "models/channel.h"
 
 
-namespace elda {
+namespace elda::views::monitoring {
 
     /**
      * All data the view needs to display
@@ -79,6 +77,4 @@ namespace elda {
         void renderTabBar(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks);
     };
 
-} // namespace elda
-
-#endif // ELDA_MONITORING_VIEW_H
+}

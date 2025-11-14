@@ -1,6 +1,6 @@
 #include "impedance_viewer_screen.h"
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
     ImpedanceViewerScreen::ImpedanceViewerScreen(AppState& state, AppStateManager& stateManager, AppRouter& router)
         : model_(state.availableChannels ? *state.availableChannels : std::vector<elda::models::Channel>{}, stateManager)

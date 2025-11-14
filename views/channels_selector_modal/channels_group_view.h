@@ -6,7 +6,7 @@
 #include <vector>
 #include <functional>
 
-namespace elda::channels_group {
+namespace elda::views::channels_selector {
 
     /**
      * View interface: Defines callbacks that the Presenter will implement

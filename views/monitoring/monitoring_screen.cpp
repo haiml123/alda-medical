@@ -1,9 +1,9 @@
 #include "monitoring_screen.h"
 #include <iostream>
 
-namespace elda {
+namespace elda::views::monitoring {
 
-    MonitoringScreen::MonitoringScreen(AppState& state, elda::AppStateManager& stateManager, AppRouter& router) {
+    MonitoringScreen::MonitoringScreen(AppState& state, AppStateManager& stateManager, AppRouter& router) {
         std::cout << "[MonitoringScreen] Constructor" << std::endl;
 
         // Model gets AppState access
@@ -12,7 +12,7 @@ namespace elda {
         // View has no AppState access
         view_ = std::make_unique<MonitoringView>();
 
-        auto channelsPresenter = std::make_unique<elda::channels_group::ChannelsGroupPresenter>(stateManager);
+        auto channelsPresenter = std::make_unique<channels_selector::ChannelsGroupPresenter>(stateManager);
 
         channelsPresenter->SetOnGroupsChangedCallback([this]() {
             std::printf("[MonitoringScreen] Groups changed, refreshing available groups\n");

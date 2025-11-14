@@ -4,7 +4,7 @@
 
 #include "UI/popup_message/popup_message.h"
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
     ImpedanceViewerPresenter::ImpedanceViewerPresenter(
         ImpedanceViewerModel& model,

@@ -1,7 +1,7 @@
 #include "channels_group_model.h"
 #include <algorithm>
 
-namespace elda::channels_group {
+namespace elda::views::channels_selector {
 
     ChannelsGroupModel::ChannelsGroupModel(elda::AppStateManager& stateManager)
         : MVPBaseModel(stateManager)

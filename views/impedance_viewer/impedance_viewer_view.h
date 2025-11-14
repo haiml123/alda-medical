@@ -4,7 +4,7 @@
 #include <functional>
 #include <vector>
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
     struct ImpedanceViewerViewCallbacks {
         std::function<void(int electrodeIndex)> onElectrodeMouseDown;

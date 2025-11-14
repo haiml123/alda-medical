@@ -6,7 +6,7 @@
 #include "core/app_state_manager.h"
 #include "models/channel.h"
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
     struct ElectrodePosition {
         float x = 0.5f;

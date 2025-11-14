@@ -1,8 +1,7 @@
 #include "monitoring_toolbar.h"
 #include "imgui.h"
-#include <cmath>
 
-namespace elda {
+namespace elda::views::monitoring {
 
 // ======================= small utilities =======================
 static inline void CenterToToolbarY(float toolbar_h, float item_h) {

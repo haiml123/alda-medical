@@ -6,7 +6,7 @@
 #include "impedance_viewer_view.h"
 #include "core/router/app_router.h"
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
     class ImpedanceViewerScreen : public IScreen {
     public:

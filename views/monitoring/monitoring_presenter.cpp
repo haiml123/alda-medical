@@ -3,12 +3,12 @@
 #include "monitoring_view.h"
 #include <iostream>
 
-namespace elda {
+namespace elda::views::monitoring {
 
 MonitoringPresenter::MonitoringPresenter(
         MonitoringModel& model,
         MonitoringView& view,
-        channels_group::ChannelsGroupPresenter& channelsPresenter)
+        channels_selector::ChannelsGroupPresenter& channelsPresenter)
         : model_(model)
         , view_(view)
         , channelsPresenter_(&channelsPresenter)
@@ -121,4 +121,4 @@ void MonitoringPresenter::setupCallbacks() {
     };
 }
 
-} // namespace elda
+}

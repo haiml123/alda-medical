@@ -11,7 +11,7 @@
 
 #include "core/router/app_router.h"
 
-namespace elda {
+namespace elda::views::monitoring {
 
     class MonitoringScreen : public IScreen {
     public:
@@ -26,7 +26,7 @@ namespace elda {
     private:
         std::unique_ptr<MonitoringModel> model_;
         std::unique_ptr<MonitoringView> view_;
-        std::unique_ptr<channels_group::ChannelsGroupPresenter> channelsPresenter_;
+        std::unique_ptr<channels_selector::ChannelsGroupPresenter> channelsPresenter_;
         std::unique_ptr<MonitoringPresenter> presenter_;
     };
 

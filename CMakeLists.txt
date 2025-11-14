@@ -77,8 +77,6 @@ set(VIEWS
 )
 
 set(UI
-        UI/toolbar/toolbar.h
-        UI/toolbar/toolbar.cpp
         UI/tabbar/tabbar.h
         UI/tabbar/tabbar.cpp
         UI/chart/chart.h

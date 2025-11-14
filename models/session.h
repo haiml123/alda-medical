@@ -1,30 +1,44 @@
-// models/Session.h
+// models/session_state.h
 #pragma once
+#include "patient_info.h"
 #include <string>
-#include <ctime>
+#include <map>
+#include <chrono>
 
 namespace elda::models {
 
-    // Type: PascalCase
     struct Session {
-        // Public members: snake_case (like standard library)
-        std::string session_id;
-        std::string study_name;
-        double sampling_rate;
-        bool is_active;
+        // Session identification
+        std::string sessionId;
+        std::string studyName;
+
+        // Patient information
+        PatientInfo patient;
+
+        // Pre-monitoring impedance snapshot (channelId → Ω value)
+        std::map<std::string, float> preMonitoringImpedance;
+
+        // Session timing
+        std::chrono::system_clock::time_point sessionStartTime;
+
+        // Recording settings
+        double samplingRate;
+
+        // Session state flags
+        bool isActive;
 
         Session()
-            : sampling_rate(5000.0)
-            , is_active(false) {}
+            : samplingRate(5000.0)
+            , isActive(false)
+        {}
 
-        // Methods: camelCase
+        // Validation helper
+        bool isReadyToMonitor() const {
+            return true;
+        }
+
+        // Utility methods
         std::string generateFilename() const;
-        bool isRecordingToFile() const { return is_recording_to_file_; }
-
-    private:
-        // Private members: snake_case with trailing underscore
-        bool is_recording_to_file_;
-        std::time_t start_time_;
     };
 
 } // namespace elda::models

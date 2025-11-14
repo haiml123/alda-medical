@@ -6,18 +6,14 @@
 #include "../../services/channel_management_service.h"
 #include <vector>
 #include <string>
-#include <optional>
 #include <functional>
 
-namespace elda::channels_group {
+namespace elda::views::channels_selector {
 
     /**
      * Model: Contains all data and business logic for channel selection
      * No UI dependencies - pure data and logic
      *
-     * ✅ UPDATED: Now extends MVPBaseModel for state management integration
-     * ✅ UPDATED: Tracks groupId_ to distinguish edit vs create
-     * ✅ UPDATED: Notifies parent when groups change via callback
      */
     class ChannelsGroupModel : public elda::models::MVPBaseModel {
     public:
@@ -82,14 +78,12 @@ namespace elda::channels_group {
 
         /**
          * Save the current selection as a new or updated channel group
-         * ✅ Automatically triggers groups changed callback on success
          * @return true if saved successfully
          */
         bool SaveChannelGroup();
 
         /**
          * Delete the current channel group from the service
-         * ✅ Automatically triggers groups changed callback on success
          * @return true if deleted successfully
          */
         bool DeleteChannelGroup();

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
     static inline void CenterToToolbarY(float toolbar_h, float item_h) {
         ImGui::SetCursorPosY(std::max(0.0f, (toolbar_h - item_h) * 0.5f));

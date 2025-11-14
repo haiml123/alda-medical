@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <iostream>
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
 ImpedanceViewerModel::ImpedanceViewerModel(
     const std::vector<elda::models::Channel>& availableChannels,

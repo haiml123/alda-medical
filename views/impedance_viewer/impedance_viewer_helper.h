@@ -1,9 +1,8 @@
 #pragma once
 #include "imgui.h"
 #include <string>
-#include <cstdint>
 
-namespace elda::impedance_viewer::helper {
+namespace elda::views::impedance_viewer {
 
     ImU32 ChannelColorFromId(const std::string& channelId);
 

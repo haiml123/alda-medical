@@ -1,6 +1,8 @@
 #include "impedance_viewer_header.h"
 
-namespace elda::impedance_viewer::ui {
+#include "imgui.h"
+
+namespace elda::views::impedance_viewer {
 
     void RenderImpedanceViewerHeader(const char* title,
                                      const HeaderCallbacks& callbacks,

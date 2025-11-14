@@ -7,7 +7,7 @@
 #include "views/impedance_viewer/impedance_viewer_helper.h"
 #include "UI/impedance_range/impedance_range.h"
 
-namespace elda::impedance_viewer {
+namespace elda::views::impedance_viewer {
 
 ImpedanceViewerView::ImpedanceViewerView() {}
 
@@ -56,8 +56,8 @@ void ImpedanceViewerView::RenderBody_(const ImpedanceViewerViewData& data,
         ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
     const bool canvasHovered = ImGui::IsItemHovered();
 
-    helper::DrawCapOutline(dl, centerPos_, pixelCapRadius_);
-    if (kShowGridDefault_) helper::DrawCapGrid(dl, centerPos_, pixelCapRadius_);
+    DrawCapOutline(dl, centerPos_, pixelCapRadius_);
+    if (kShowGridDefault_) DrawCapGrid(dl, centerPos_, pixelCapRadius_);
 
     RenderElectrodes(dl, *data.electrodes, *data.availableChannels, data.selectedElectrodeIndex, callbacks);
 
@@ -65,8 +65,8 @@ void ImpedanceViewerView::RenderBody_(const ImpedanceViewerViewData& data,
         ImVec2 mp = ImGui::GetMousePos();
         bool hit = false;
         for (const auto& e : *data.electrodes) {
-            ImVec2 p = helper::CapNormalizedToScreen(centerPos_, pixelCapRadius_, e.x, e.y);
-            if (helper::PointInCircle(mp, p, kElectrodeRadiusPx_)) { hit = true; break; }
+            ImVec2 p = CapNormalizedToScreen(centerPos_, pixelCapRadius_, e.x, e.y);
+            if (PointInCircle(mp, p, kElectrodeRadiusPx_)) { hit = true; break; }
         }
         if (!hit && callbacks.onElectrodeMouseDown) callbacks.onElectrodeMouseDown(-1);
     }
@@ -138,24 +138,24 @@ void ImpedanceViewerView::RenderSingleElectrode(
     bool isSelected,
     const ImpedanceViewerViewCallbacks& callbacks)
 {
-    ImVec2 pos = helper::CapNormalizedToScreen(centerPos_, pixelCapRadius_, electrode.x, electrode.y);
+    ImVec2 pos = CapNormalizedToScreen(centerPos_, pixelCapRadius_, electrode.x, electrode.y);
     ImVec2 mp  = ImGui::GetMousePos();
 
-    bool hovered = helper::PointInCircle(mp, pos, kElectrodeRadiusPx_);
+    bool hovered = PointInCircle(mp, pos, kElectrodeRadiusPx_);
 
     if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !electrode.isDragging) {
         if (callbacks.onElectrodeMouseDown) callbacks.onElectrodeMouseDown(static_cast<int>(index));
     }
 
     if (electrode.isDragging) {
-        ImVec2 dropNorm = helper::ScreenToCapNormalizedClamped(centerPos_, pixelCapRadius_, mp);
-        pos = helper::CapNormalizedToScreen(centerPos_, pixelCapRadius_, dropNorm.x, dropNorm.y);
+        ImVec2 dropNorm = ScreenToCapNormalizedClamped(centerPos_, pixelCapRadius_, mp);
+        pos = CapNormalizedToScreen(centerPos_, pixelCapRadius_, dropNorm.x, dropNorm.y);
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
             if (callbacks.onElectrodeDropped) callbacks.onElectrodeDropped(index, dropNorm);
         }
     }
 
-    ImU32 base = helper::ChannelColorFromId(channel ? channel->id : std::string());
+    ImU32 base = ChannelColorFromId(channel ? channel->id : std::string());
     if (hovered)  base = IM_COL32(
         std::min(255, (int)( base        & 0xFF) + 15),
         std::min(255, (int)((base >> 8 ) & 0xFF) + 15),

@@ -13,10 +13,13 @@
 #include "core/router/app_router.h"
 #include "core/router/IScreen.h"
 #include "views/monitoring/monitoring_screen.h"
-#include "views/impedance_viewer/impedance_viewer_screen.h"
 #include "eeg_theme.h"
 #include "UI/popup_message/popup_message.h"
 #include "UI/toast/toast.h"
+#include "views/impedance_viewer/impedance_viewer_screen.h"
+
+using elda::views::impedance_viewer::ImpedanceViewerScreen;
+using elda::views::monitoring::MonitoringScreen;
 
 int main() {
     // ========================================================================
@@ -95,8 +98,8 @@ int main() {
     // ========================================================================
     // Create Screens (pass AppState, StateManager, Router)
     // ========================================================================
-    auto monitoringScreen = std::make_unique<elda::MonitoringScreen>(appState, stateManager, router);
-    auto impedanceScreen = std::make_unique<elda::impedance_viewer::ImpedanceViewerScreen>(appState, stateManager, router);
+    auto monitoringScreen = std::make_unique<MonitoringScreen>(appState, stateManager, router);
+    auto impedanceScreen = std::make_unique<ImpedanceViewerScreen>(appState, stateManager, router);
 
     // TODO: Add other screens when ready
     // auto idleScreen = std::make_unique<elda::IdleScreen>(appState, stateManager, router);

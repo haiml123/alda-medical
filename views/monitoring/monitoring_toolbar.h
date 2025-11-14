@@ -1,11 +1,7 @@
-#ifndef ELDA_MONITORING_TOOLBAR_H
-#define ELDA_MONITORING_TOOLBAR_H
-
-#include "imgui.h"
+#pragma once
 #include "monitoring_view.h"  // For MonitoringViewData and MonitoringViewCallbacks
-#include <functional>
 
-namespace elda {
+namespace elda::views::monitoring {
 
     /**
      * Reusable Toolbar Component
@@ -20,6 +16,4 @@ namespace elda {
     float MonitoringToolbar(const MonitoringViewData& data,
                             const MonitoringViewCallbacks& callbacks);
 
-} // namespace elda
-
-#endif // ELDA_MONITORING_TOOLBAR_H
+}

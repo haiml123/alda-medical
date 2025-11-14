@@ -3,7 +3,7 @@
 #include <cstring>
 #include <cstdio>
 
-namespace elda::channels_group {
+namespace elda::views::channels_selector {
 
     ChannelsGroupView::ChannelsGroupView()
         : isVisible_(false)
