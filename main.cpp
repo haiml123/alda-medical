@@ -11,8 +11,12 @@
 #include "core/core.h"
 #include "core/app_state_manager.h"
 #include "core/router/app_router.h"
+#include "core/router/IScreen.h"
 #include "views/monitoring/monitoring_screen.h"
+#include "views/impedance_viewer/impedance_viewer_screen.h"
 #include "eeg_theme.h"
+#include "UI/popup_message/popup_message.h"
+#include "UI/toast/toast.h"
 
 int main() {
     // ========================================================================
@@ -50,14 +54,13 @@ int main() {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.IniFilename = nullptr;
 
-    // -------------- FONT LOADING (Do this ONCE here) ----------------
+    // -------------- FONT LOADING ----------------
     io.Fonts->AddFontDefault();
 
     ImFontConfig cfg;
     cfg.MergeMode = true;
     static const ImWchar greek_range[] = { 0x0370, 0x03FF, 0 }; // Greek & Coptic
 
-    // Load your Roboto font from your path (use absolute path or copy to runtime dir)
     const char* fontPath = "fonts/Roboto-Medium.ttf";
     ImFont* merged = io.Fonts->AddFontFromFileTTF(fontPath, 16.0f, &cfg, greek_range);
     if (!merged) {
@@ -85,58 +88,25 @@ int main() {
     std::cout << "[Main] Sample Rate: " << SAMPLE_RATE_HZ << " Hz" << std::endl;
 
     // ========================================================================
-    // Create Screens (pass AppState & StateManager)
-    // ========================================================================
-    auto monitoringScreen = std::make_unique<elda::MonitoringScreen>(appState, stateManager);
-    // auto impedanceScreen  = std::make_unique<elda::impedance_viewer::ImpedanceViewerScreen>(appState, stateManager);
-
-    // TODO: Add other screens when ready
-    // auto idleScreen = std::make_unique<elda::IdleScreen>(appState, stateManager);
-    // auto settingsScreen = std::make_unique<elda::SettingsScreen>(appState, stateManager);
-    // auto impedanceScreen = std::make_unique<elda::ImpedanceScreen>(appState, stateManager);
-
-    // ========================================================================
-    // Setup Router with Callbacks
+    // Setup Router FIRST (before creating screens)
     // ========================================================================
     AppRouter router;
 
-    // Called when entering a new mode
-    router.onModeEnter = [&](AppMode mode) {
-        std::cout << "→ Entering: " << AppModeToString(mode) << std::endl;
+    // ========================================================================
+    // Create Screens (pass AppState, StateManager, Router)
+    // ========================================================================
+    auto monitoringScreen = std::make_unique<elda::MonitoringScreen>(appState, stateManager, router);
+    auto impedanceScreen = std::make_unique<elda::impedance_viewer::ImpedanceViewerScreen>(appState, stateManager, router);
 
-        switch (mode) {
-            case AppMode::MONITORING:
-                monitoringScreen->onEnter();
-                break;
-            case AppMode::IDLE:
-                // Future: idleScreen->onEnter();
-                break;
-            case AppMode::SETTINGS:
-                // Future: settingsScreen->onEnter();
-                break;
-        }
-    };
+    // TODO: Add other screens when ready
+    // auto idleScreen = std::make_unique<elda::IdleScreen>(appState, stateManager, router);
+    // auto settingsScreen = std::make_unique<elda::SettingsScreen>(appState, stateManager, router);
 
-    // Called when exiting current mode
-    router.onModeExit = [&](AppMode mode) {
-        std::cout << "← Exiting: " << AppModeToString(mode) << std::endl;
-
-        switch (mode) {
-            case AppMode::MONITORING:
-                monitoringScreen->onExit();
-                break;
-            case AppMode::IDLE:
-                // Future: idleScreen->onExit();
-                break;
-            case AppMode::SETTINGS:
-                // Future: settingsScreen->onExit();
-                break;
-        }
-    };
-
-    // Start in IDLE mode (proper medical device workflow)
-    // User should: Check impedance → Start monitoring → Start recording
-    router.transitionTo(AppMode::MONITORING);
+    // ========================================================================
+    // Register Screens with Router
+    // ========================================================================
+    router.RegisterScreen(AppMode::MONITORING, monitoringScreen.get());
+    router.RegisterScreen(AppMode::IMPEDANCE_VIEWER, impedanceScreen.get());
 
     // ========================================================================
     // Main Loop
@@ -158,58 +128,23 @@ int main() {
         ImGui::NewFrame();
 
         // ====================================================================
-        // Route to current screen
+        // Route to current screen - SIMPLE!
         // ====================================================================
-        AppMode mode = router.getCurrentMode();
-
-        switch (mode) {
-            case AppMode::MONITORING:
-                monitoringScreen->update(deltaTime);
-                monitoringScreen->render();
-                // impedanceScreen->update(deltaTime);
-                // impedanceScreen->render();
-                break;
-
-            case AppMode::IDLE:
-                // Future: idleScreen->render();
-                // For now, show placeholder
-                {
-                    ImGuiViewport* viewport = ImGui::GetMainViewport();
-                    ImGui::SetNextWindowPos(viewport->Pos);
-                    ImGui::SetNextWindowSize(viewport->Size);
-                    ImGui::Begin("Idle", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-                    ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100, viewport->Size.y * 0.5f - 20));
-                    ImGui::Text("IDLE MODE - Press F2 for Monitoring");
-                    ImGui::End();
-                }
-                break;
-
-            case AppMode::SETTINGS:
-                // Future: settingsScreen->render();
-                // For now, show placeholder
-                {
-                    ImGuiViewport* viewport = ImGui::GetMainViewport();
-                    ImGui::SetNextWindowPos(viewport->Pos);
-                    ImGui::SetNextWindowSize(viewport->Size);
-                    ImGui::Begin("Settings", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-                    ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100, viewport->Size.y * 0.5f - 20));
-                    ImGui::Text("SETTINGS MODE - Press F1 to return");
-                    ImGui::End();
-                }
-                break;
-        }
-
-        // ====================================================================
-        // Mode switching with keyboard (for testing)
-        // ====================================================================
-        if (ImGui::IsKeyPressed(ImGuiKey_F1)) {
-            router.transitionTo(AppMode::IDLE);
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
-            router.transitionTo(AppMode::MONITORING);
-        }
-        if (ImGui::IsKeyPressed(ImGuiKey_F3)) {
-            router.transitionTo(AppMode::SETTINGS);
+        IScreen* currentScreen = router.GetCurrentScreen();
+        elda::ui::PopupMessage::Instance().Render();
+        elda::ui::Toast::Instance().Render();
+        if (currentScreen) {
+            currentScreen->update(deltaTime);
+            currentScreen->render();
+        } else {
+            // Fallback if no screen registered for current mode
+            ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->Pos);
+            ImGui::SetNextWindowSize(viewport->Size);
+            ImGui::Begin("No Screen", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+            ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100, viewport->Size.y * 0.5f - 20));
+            ImGui::Text("No screen registered for current mode");
+            ImGui::End();
         }
 
         // ====================================================================

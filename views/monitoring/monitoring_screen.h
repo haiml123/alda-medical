@@ -9,23 +9,24 @@
 #include "core/app_state_manager.h"
 #include <memory>
 
+#include "core/router/app_router.h"
+
 namespace elda {
 
     class MonitoringScreen : public IScreen {
     public:
-        MonitoringScreen(AppState& state, elda::AppStateManager& stateManager);
+        MonitoringScreen(AppState& state, AppStateManager& stateManager, AppRouter& router);
         ~MonitoringScreen() override = default;
 
         void onEnter() override;
         void onExit() override;
         void render() override;
-        void update(float deltaTime);
+        void update(float dt) override;
 
     private:
         std::unique_ptr<MonitoringModel> model_;
         std::unique_ptr<MonitoringView> view_;
         std::unique_ptr<channels_group::ChannelsGroupPresenter> channelsPresenter_;
-        std::unique_ptr<impedance_viewer::ImpedanceViewerScreen> impedanceScreen_;
         std::unique_ptr<MonitoringPresenter> presenter_;
     };
 

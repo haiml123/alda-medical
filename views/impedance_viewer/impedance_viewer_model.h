@@ -8,12 +8,11 @@
 
 namespace elda::impedance_viewer {
 
-    // Normalized [0..1] position on the canvas
     struct ElectrodePosition {
         float x = 0.5f;
         float y = 0.5f;
-        std::string channelId;   // which channel is assigned
-        bool isDragging = false; // controlled by Presenter
+        std::string channelId;
+        bool isDragging = false;
     };
 
     class ImpedanceViewerModel {
@@ -22,40 +21,34 @@ namespace elda::impedance_viewer {
             const std::vector<elda::models::Channel>& availableChannels,
             AppStateManager& stateManager);
 
-        // State access
         const std::vector<ElectrodePosition>& GetElectrodePositions() const { return electrodePositions_; }
         const std::vector<elda::models::Channel>& GetAvailableChannels() const { return availableChannels_; }
         int  GetSelectedElectrodeIndex() const { return selectedElectrodeIndex_; }
 
-        // Ops
-        void InitializeFromChannels(); // ✅ NEW: Load positions from real channels
-        void UpdateElectrodePosition(size_t index, float x, float y); // normalized coords (temporary)
+        void Update();
+        void InitializeFromChannels();
+        void UpdateElectrodePosition(size_t index, float x, float y);
         void StartDragging(size_t index);
         void StopDragging(size_t index);
         void SelectElectrode(int index);
         void ClearSelection();
 
-        // ✅ NEW: Save/Discard operations
-        void SavePositionsToState();  // Persist temporary changes to Channel models
-        void DiscardChanges();        // Restore original positions from channels
+        void SavePositionsToState();
+        void DiscardChanges();
 
-        // Helpers
         const elda::models::Channel* GetChannelById(const std::string& id) const;
-        bool IsPositionValid(float x, float y) const; // stay within cap circle
+        bool IsPositionValid(float x, float y) const;
 
     private:
         void NotifyPositionChanged();
-        void InitializeDefaultPositions(); // Fallback for channels without positions
+        void InitializeDefaultPositions();
 
-        std::vector<ElectrodePosition> electrodePositions_;      // Current working positions
-        std::map<std::string, std::pair<float, float>> originalPositions_; // ✅ NEW: Backup for discard
-        std::vector<elda::models::Channel> availableChannels_;   // copied once for stability
+        std::vector<ElectrodePosition> electrodePositions_;
+        std::map<std::string, std::pair<float, float>> originalPositions_;
+        std::vector<elda::models::Channel> availableChannels_;
         AppStateManager& stateManager_;
 
         int selectedElectrodeIndex_ = -1;
-
-        // Logical cap radius in normalized space (center 0.5,0.5)
-        // We keep this internal constant to validate IsPositionValid()
         const float capRadius_ = 0.48f;
     };
 

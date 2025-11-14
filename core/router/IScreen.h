@@ -11,6 +11,9 @@ public:
     // Called when screen becomes inactive
     virtual void onExit() {}
 
+    // Called every frame to update logic
+    virtual void update(float deltaTime) {}
+
     // Called every frame to render the screen
     virtual void render() = 0;
 };

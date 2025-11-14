@@ -6,60 +6,52 @@
 
 namespace elda::impedance_viewer {
 
-struct ImpedanceViewerViewCallbacks {
-    std::function<void(int electrodeIndex)> onElectrodeMouseDown; // -1 = deselect
-    std::function<void(size_t electrodeIndex, ImVec2 normalizedDropPos)> onElectrodeDropped;
-    std::function<void()> onSave;
-    std::function<void()> onClose;
-};
+    struct ImpedanceViewerViewCallbacks {
+        std::function<void(int electrodeIndex)> onElectrodeMouseDown;
+        std::function<void(size_t electrodeIndex, ImVec2 normalizedDropPos)> onElectrodeDropped;
+        std::function<void()> onSave;
+        std::function<void()> onRedirectToSettings;
+        std::function<void()> onRedirectToMonitoring;
+    };
 
-class ImpedanceViewerView {
-public:
-    ImpedanceViewerView();
+    struct ImpedanceViewerViewData {
+        const std::vector<ElectrodePosition>* electrodes = nullptr;
+        const std::vector<elda::models::Channel>* availableChannels = nullptr;
+        int selectedElectrodeIndex = -1;
+    };
 
-    // Fullscreen/borderless host (kept for flexibility)
-    void Render(bool *isOpen,
-                const std::vector<ElectrodePosition> &electrodes,
-                const std::vector<elda::models::Channel> &availableChannels,
-                int selectedElectrodeIndex, const ImpedanceViewerViewCallbacks &callbacks);
+    class ImpedanceViewerView {
+    public:
+        ImpedanceViewerView();
 
-    // NEW: true modal (borderless) with our custom header inside
-    void RenderModal(bool* isOpen,
-                     const std::vector<ElectrodePosition>& electrodes,
-                     const std::vector<elda::models::Channel>& availableChannels,
-                     int selectedElectrodeIndex,
-                     const ImpedanceViewerViewCallbacks& callbacks);
+        void Render(const ImpedanceViewerViewData& data,
+                    const ImpedanceViewerViewCallbacks& callbacks);
 
-private:
-    // constants
-    const float kElectrodeRadiusPx_   = 15.0f;
-    const bool  kShowGridDefault_     = true;
-    const float kCapRadiusNormalized_ = 0.40f;
+    private:
+        const float kElectrodeRadiusPx_   = 15.0f;
+        const bool  kShowGridDefault_     = true;
+        const float kCapRadiusNormalized_ = 0.40f;
 
-    // cached during a frame
-    ImVec2 canvasPos_{};
-    ImVec2 canvasSize_{};
-    ImVec2 centerPos_{};
-    float  pixelCapRadius_ = 0.0f;
+        ImVec2 canvasPos_{};
+        ImVec2 canvasSize_{};
+        ImVec2 centerPos_{};
+        float  pixelCapRadius_ = 0.0f;
 
-    // shared body used by both Render & RenderModal
-    void RenderBody_(const std::vector<ElectrodePosition>& electrodes,
-                     const std::vector<elda::models::Channel>& availableChannels,
-                     int selectedElectrodeIndex,
-                     const ImpedanceViewerViewCallbacks& callbacks);
+        void RenderBody_(const ImpedanceViewerViewData& data,
+                         const ImpedanceViewerViewCallbacks& callbacks);
 
-    void RenderElectrodes(ImDrawList* drawList,
-                          const std::vector<ElectrodePosition>& electrodes,
-                          const std::vector<elda::models::Channel>& availableChannels,
-                          int selectedElectrodeIndex,
-                          const ImpedanceViewerViewCallbacks& callbacks);
+        void RenderElectrodes(ImDrawList* drawList,
+                              const std::vector<ElectrodePosition>& electrodes,
+                              const std::vector<elda::models::Channel>& availableChannels,
+                              int selectedElectrodeIndex,
+                              const ImpedanceViewerViewCallbacks& callbacks);
 
-    void RenderSingleElectrode(ImDrawList* drawList,
-                               size_t index,
-                               const ElectrodePosition& electrode,
-                               const elda::models::Channel* channel,
-                               bool isSelected,
-                               const ImpedanceViewerViewCallbacks& callbacks);
-};
+        void RenderSingleElectrode(ImDrawList* drawList,
+                                   size_t index,
+                                   const ElectrodePosition& electrode,
+                                   const elda::models::Channel* channel,
+                                   bool isSelected,
+                                   const ImpedanceViewerViewCallbacks& callbacks);
+    };
 
 } // namespace elda::impedance_viewer

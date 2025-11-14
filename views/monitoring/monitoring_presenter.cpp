@@ -8,12 +8,10 @@ namespace elda {
 MonitoringPresenter::MonitoringPresenter(
         MonitoringModel& model,
         MonitoringView& view,
-        channels_group::ChannelsGroupPresenter& channelsPresenter,
-        impedance_viewer::ImpedanceViewerScreen& impedanceScreen)
+        channels_group::ChannelsGroupPresenter& channelsPresenter)
         : model_(model)
         , view_(view)
         , channelsPresenter_(&channelsPresenter)
-        , impedanceScreen_(&impedanceScreen)
         , channelModalPosition_(0, 0)
         , useCustomModalPosition_(false) {
         setupCallbacks();
@@ -24,7 +22,6 @@ void MonitoringPresenter::onEnter() {
 
     model_.StartAcquisition();
 
-    // if you still want notifications, keep the observer — but no cache/dirty flags
     model_.addStateObserver([this](StateField field) {
         std::cout << "[Presenter] State changed: " << static_cast<int>(field) << std::endl;
     });
@@ -40,16 +37,11 @@ void MonitoringPresenter::update(float deltaTime) {
 }
 
 void MonitoringPresenter::render() {
-    // =========================================================================
-    // STEP 1: COLLECT DATA FRESH EVERY FRAME (no caching)
-    // =========================================================================
     MonitoringViewData viewData;
 
-    // heavy data as pointer/refs (no copies)
     viewData.chartData          = &model_.GetChartData();
     viewData.groups             = &model_.GetAvailableGroups();
 
-    // simple scalars/booleans — fetch every frame (cost is trivial)
     viewData.monitoring         = model_.IsMonitoring();
     viewData.canRecord          = model_.CanRecord();
     viewData.recordingActive    = model_.IsRecordingActive();
@@ -62,14 +54,8 @@ void MonitoringPresenter::render() {
     viewData.activeGroupIndex   = model_.GetActiveGroupIndex();
     viewData.selectedChannels   = &model_.GetSelectedChannels();
 
-    // =========================================================================
-    // STEP 2: RENDER VIEW
-    // =========================================================================
     view_.render(viewData, callbacks_);
 
-    // =========================================================================
-    // STEP 3: RENDER MODAL IF OPEN
-    // =========================================================================
     if (channelsPresenter_->IsOpen()) {
         ImVec2 modalSize = ImVec2(300, 550);
         ImVec2 modalPos = useCustomModalPosition_
@@ -77,10 +63,6 @@ void MonitoringPresenter::render() {
             : calculateDefaultModalPosition(modalSize);
 
         channelsPresenter_->Render(modalPos);
-    }
-
-    if (impedanceScreen_ && impedanceScreen_->isOpen()) {
-        impedanceScreen_->render();
     }
 }
 
@@ -93,7 +75,6 @@ ImVec2 MonitoringPresenter::calculateDefaultModalPosition(ImVec2 modalSize) cons
 }
 
 void MonitoringPresenter::setupCallbacks() {
-    // toolbar
     callbacks_.onToggleMonitoring   = [this]() { model_.ToggleMonitoring();   };
     callbacks_.onToggleRecording    = [this]() { model_.ToggleRecording();    };
     callbacks_.onStopRecording      = [this]() { model_.StopRecording();      };
@@ -112,9 +93,8 @@ void MonitoringPresenter::setupCallbacks() {
     };
 
     callbacks_.onOpenImpedanceViewer = [this](){
-        // open your impedance viewer
-        std::cout << "Open impedance viewer" << std::endl;
-        impedanceScreen_->open();
+        std::cout << "Open impedance viewer - navigate to impedance screen" << std::endl;
+        // Navigation handled by screen manager
     };
 
     callbacks_.onGroupSelected = [this](const models::ChannelsGroup* group) {

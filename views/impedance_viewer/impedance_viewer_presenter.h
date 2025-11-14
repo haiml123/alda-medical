@@ -1,33 +1,33 @@
 #pragma once
-#include <memory>
 #include "impedance_viewer_model.h"
 #include "impedance_viewer_view.h"
+#include "core/router/app_router.h"
 
 namespace elda::impedance_viewer {
 
     class ImpedanceViewerPresenter {
     public:
         ImpedanceViewerPresenter(
-            std::unique_ptr<ImpedanceViewerModel> model,
-            std::unique_ptr<ImpedanceViewerView> view);
+            ImpedanceViewerModel& model,
+            ImpedanceViewerView& view,
+            AppRouter& router);
 
         void OnEnter();
         void OnExit();
         void Update(float dt);
-        void Render(bool *isOpen);
+        void Render();
 
     private:
-        // callbacks bound once
         void SetupCallbacks();
 
-        // handlers
-        void OnElectrodeMouseDown(int idx); // -1 -> canvas
+        void OnElectrodeMouseDown(int idx);
         void OnElectrodeDropped(size_t idx, ImVec2 normalizedPos);
-        void OnSave();  // ✅ NEW: Handle save button
-        void OnClose(); // ✅ NEW: Handle close button (discard changes)
+        void OnSave();
+        void OnClose();
 
-        std::unique_ptr<ImpedanceViewerModel> model_;
-        std::unique_ptr<ImpedanceViewerView> view_;
+        AppRouter& router_;
+        ImpedanceViewerModel& model_;
+        ImpedanceViewerView& view_;
         ImpedanceViewerViewCallbacks callbacks_;
     };
 

@@ -73,6 +73,7 @@ set(VIEWS
         views/impedance_viewer/impedance_viewer_helper.cpp
         views/impedance_viewer/impedance_viewer_header.h
         views/impedance_viewer/impedance_viewer_header.cpp
+        views/impedance_viewer/impedance_viewer_toolbar.h
 )
 
 set(UI
@@ -85,6 +86,10 @@ set(UI
         UI/chart/chart_data.h
         UI/impedance_range/impedance_range.cpp
         UI/impedance_range/impedance_range.h
+        UI/popup_message/popup_message.cpp
+        UI/popup_message/popup_message.h
+        UI/toast/toast.cpp
+        UI/toast/toast.h
 )
 
 set(CORE

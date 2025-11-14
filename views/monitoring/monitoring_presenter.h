@@ -4,7 +4,6 @@
 #include "views/channels_selector_modal/channels_group_presenter.h"
 #include "imgui.h"
 #include "monitoring_view.h"
-#include "views/impedance_viewer/impedance_viewer_screen.h"
 
 namespace elda {
     class MonitoringModel;
@@ -19,8 +18,7 @@ namespace elda {
         MonitoringPresenter(
             MonitoringModel& model,
             MonitoringView& view,
-            channels_group::ChannelsGroupPresenter& channelsPresenter,
-            impedance_viewer::ImpedanceViewerScreen& impedanceScreen);
+            channels_group::ChannelsGroupPresenter& channelsPresenter);
 
         void onEnter();
         void onExit();
@@ -31,10 +29,6 @@ namespace elda {
         MonitoringModel& model_;
         MonitoringView& view_;
         std::unique_ptr<channels_group::ChannelsGroupPresenter> channelsPresenter_;
-
-        // ------- Impedance Viewer integration (owned by Screen) -------
-        std::unique_ptr<impedance_viewer::ImpedanceViewerScreen> impedanceScreen_;
-        bool isImpedanceViewerOpen_ = false;
         // ========================================================================
         // CACHED STATE - Avoid redundant queries
         // ========================================================================

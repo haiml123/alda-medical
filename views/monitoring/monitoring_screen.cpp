@@ -3,7 +3,7 @@
 
 namespace elda {
 
-    MonitoringScreen::MonitoringScreen(AppState& state, elda::AppStateManager& stateManager) {
+    MonitoringScreen::MonitoringScreen(AppState& state, elda::AppStateManager& stateManager, AppRouter& router) {
         std::cout << "[MonitoringScreen] Constructor" << std::endl;
 
         // Model gets AppState access
@@ -19,15 +19,11 @@ namespace elda {
             model_->RefreshAvailableGroups();
         });
 
-        auto impedancePresenter = std::make_unique<elda::impedance_viewer::ImpedanceViewerScreen>(state, stateManager);
-
-
         // Presenter orchestrates - needs all three
-        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channelsPresenter, *impedancePresenter);
+        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channelsPresenter);
 
         // Store channelsPresenter so it doesn't get destroyed
         channelsPresenter_ = std::move(channelsPresenter);
-        impedanceScreen_ = std::move(impedancePresenter);
     }
 
     void MonitoringScreen::onEnter() {
@@ -40,8 +36,8 @@ namespace elda {
         presenter_->onExit();
     }
 
-    void MonitoringScreen::update(float deltaTime) {
-        presenter_->update(deltaTime);
+    void MonitoringScreen::update(float delta_time) {
+        presenter_->update(delta_time);
     }
 
     void MonitoringScreen::render() {

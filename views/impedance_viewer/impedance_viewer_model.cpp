@@ -15,6 +15,10 @@ ImpedanceViewerModel::ImpedanceViewerModel(
     InitializeFromChannels();
 }
 
+void ImpedanceViewerModel::Update() {
+    // Update logic if needed (e.g., real-time impedance readings)
+}
+
 void ImpedanceViewerModel::InitializeFromChannels() {
     electrodePositions_.clear();
     originalPositions_.clear();
@@ -26,7 +30,6 @@ void ImpedanceViewerModel::InitializeFromChannels() {
 
     electrodePositions_.reserve(availableChannels_.size());
 
-    // Check if any channels have positions set (non-zero)
     bool hasPositions = false;
     for (const auto& ch : availableChannels_) {
         if (ch.impedanceX != 0.0f || ch.impedanceY != 0.0f) {
@@ -36,7 +39,6 @@ void ImpedanceViewerModel::InitializeFromChannels() {
     }
 
     if (hasPositions) {
-        // ✅ Load existing positions from channels
         std::cout << "[ImpedanceViewerModel] Loading positions from "
                   << availableChannels_.size() << " channels\n";
 
@@ -44,18 +46,13 @@ void ImpedanceViewerModel::InitializeFromChannels() {
             ElectrodePosition pos;
             pos.channelId = ch.id;
 
-            // Convert from normalized [-1,1] to [0,1] display space
-            // Stored: -1 to 1, Display: 0 to 1 with center at 0.5
             pos.x = (ch.impedanceX + 1.0f) * 0.5f;
             pos.y = (ch.impedanceY + 1.0f) * 0.5f;
 
             electrodePositions_.push_back(pos);
-
-            // Save original positions for discard
             originalPositions_[ch.id] = {pos.x, pos.y};
         }
     } else {
-        // ✅ No positions set - initialize with default concentric circles
         std::cout << "[ImpedanceViewerModel] No positions found, using defaults for "
                   << availableChannels_.size() << " channels\n";
         InitializeDefaultPositions();
@@ -65,7 +62,6 @@ void ImpedanceViewerModel::InitializeFromChannels() {
 }
 
 void ImpedanceViewerModel::InitializeDefaultPositions() {
-    // Create default concentric circle layout for available channels
     electrodePositions_.clear();
     originalPositions_.clear();
 
@@ -73,7 +69,6 @@ void ImpedanceViewerModel::InitializeDefaultPositions() {
     const size_t numChannels = availableChannels_.size();
     size_t channelIdx = 0;
 
-    // Inner ring (4 electrodes)
     const size_t innerCount = std::min(size_t(4), numChannels - channelIdx);
     for (size_t i = 0; i < innerCount && channelIdx < numChannels; ++i, ++channelIdx) {
         float ang = (i * 2.0f * float(M_PI) / 4.0f) - float(M_PI) * 0.5f;
@@ -85,7 +80,6 @@ void ImpedanceViewerModel::InitializeDefaultPositions() {
         originalPositions_[p.channelId] = {p.x, p.y};
     }
 
-    // Middle ring (8 electrodes)
     const size_t middleCount = std::min(size_t(8), numChannels - channelIdx);
     for (size_t i = 0; i < middleCount && channelIdx < numChannels; ++i, ++channelIdx) {
         float ang = (i * 2.0f * float(M_PI) / 8.0f) - float(M_PI) * 0.5f;
@@ -97,7 +91,6 @@ void ImpedanceViewerModel::InitializeDefaultPositions() {
         originalPositions_[p.channelId] = {p.x, p.y};
     }
 
-    // Outer ring (remaining electrodes in groups of 8)
     while (channelIdx < numChannels) {
         const size_t remaining = numChannels - channelIdx;
         const size_t ringCount = std::min(size_t(8), remaining);
@@ -128,7 +121,6 @@ void ImpedanceViewerModel::UpdateElectrodePosition(size_t index, float x, float 
     if (index >= electrodePositions_.size()) return;
     if (!IsPositionValid(x, y)) return;
 
-    // ✅ Update temporary position (not saved to state yet)
     electrodePositions_[index].x = x;
     electrodePositions_[index].y = y;
 
@@ -170,7 +162,6 @@ void ImpedanceViewerModel::SavePositionsToState() {
 
     auto& channelService = services::ChannelManagementService::GetInstance();
 
-    // ✅ Update each channel's impedance position and persist
     for (const auto& pos : electrodePositions_) {
         if (pos.channelId.empty()) continue;
 
@@ -183,28 +174,21 @@ void ImpedanceViewerModel::SavePositionsToState() {
 
         elda::models::Channel channel = channelOpt.value();
 
-        // Convert from display space [0,1] to normalized [-1,1]
-        // Display: 0 to 1 with center at 0.5, Stored: -1 to 1
         float normalizedX = (pos.x - 0.5f) * 2.0f;
         float normalizedY = (pos.y - 0.5f) * 2.0f;
 
         channel.SetImpedancePosition(normalizedX, normalizedY);
 
-        // Persist to storage
         if (!channelService.UpdateChannel(channel)) {
             std::cout << "[ImpedanceViewerModel] Error: Failed to update channel "
                       << pos.channelId << "\n";
         }
     }
 
-    // Update original positions to current (for future discards)
     originalPositions_.clear();
     for (const auto& pos : electrodePositions_) {
         originalPositions_[pos.channelId] = {pos.x, pos.y};
     }
-
-    // Notify state manager
-    // stateManager_.NotifyStateChanged(StateField::Monitoring);
 
     std::cout << "[ImpedanceViewerModel] Save complete\n";
 }
@@ -212,7 +196,6 @@ void ImpedanceViewerModel::SavePositionsToState() {
 void ImpedanceViewerModel::DiscardChanges() {
     std::cout << "[ImpedanceViewerModel] Discarding changes, restoring original positions\n";
 
-    // ✅ Restore original positions
     for (auto& pos : electrodePositions_) {
         auto it = originalPositions_.find(pos.channelId);
         if (it != originalPositions_.end()) {
@@ -228,8 +211,7 @@ void ImpedanceViewerModel::DiscardChanges() {
 }
 
 void ImpedanceViewerModel::NotifyPositionChanged() {
-    // Could notify state manager here if needed for real-time updates
-    // For now, we only notify on explicit save
+    // Notify state manager if needed
 }
 
 } // namespace elda::impedance_viewer
