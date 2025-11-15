@@ -13,24 +13,24 @@ namespace elda::services {
 
     ChannelManagementService::ChannelManagementService() {
         // Initialize storage services
-        channelStorage_ = std::make_unique<elda::services::SecureConfigManager<std::vector<models::Channel>>>(
+        channel_storage_ = std::make_unique<elda::services::SecureConfigManager<std::vector<models::Channel>>>(
             "channels.dat",
             [](const std::vector<models::Channel>& channels) -> std::string {
                 // Serialize channels to string
                 std::ostringstream oss;
                 oss << channels.size() << "\n";
                 for (const auto& ch : channels) {
-                    oss << ch.GetId() << "|"
+                    oss << ch.get_id() << "|"
                         << ch.name << "|"
                         << ch.color << "|"
                         << ch.selected << "|"
-                        << ch.amplifierChannel << "|"
-                        << ch.signalType << "|"
-                        << ch.sensorGain << "|"
-                        << ch.sensorOffset << "|"
+                        << ch.amplifier_channel << "|"
+                        << ch.signal_type << "|"
+                        << ch.sensor_gain << "|"
+                        << ch.sensor_offset << "|"
                         << ch.filtered << "|"
-                        << ch.highPassCutoff << "|"
-                        << ch.lowPassCutoff << "\n";
+                        << ch.high_pass_cutoff << "|"
+                        << ch.low_pass_cutoff << "\n";
                 }
                 return oss.str();
             },
@@ -46,24 +46,24 @@ namespace elda::services {
                     std::string line;
                     if (!std::getline(iss, line)) break;
 
-                    std::istringstream lineStream(line);
+                    std::istringstream line_stream(line);
                     std::string token;
                     std::vector<std::string> tokens;
 
-                    while (std::getline(lineStream, token, '|')) {
+                    while (std::getline(line_stream, token, '|')) {
                         tokens.push_back(token);
                     }
 
                     if (tokens.size() >= 11) {
                         models::Channel ch(tokens[0], tokens[1], tokens[2]);
-                        ch.selected = (tokens[3] == "1");
-                        ch.amplifierChannel = std::stoi(tokens[4]);
-                        ch.signalType = tokens[5];
-                        ch.sensorGain = std::stod(tokens[6]);
-                        ch.sensorOffset = std::stod(tokens[7]);
-                        ch.filtered = (tokens[8] == "1");
-                        ch.highPassCutoff = std::stod(tokens[9]);
-                        ch.lowPassCutoff = std::stod(tokens[10]);
+                        ch.selected           = (tokens[3] == "1");
+                        ch.amplifier_channel  = std::stoi(tokens[4]);
+                        ch.signal_type        = tokens[5];
+                        ch.sensor_gain        = std::stod(tokens[6]);
+                        ch.sensor_offset      = std::stod(tokens[7]);
+                        ch.filtered           = (tokens[8] == "1");
+                        ch.high_pass_cutoff   = std::stod(tokens[9]);
+                        ch.low_pass_cutoff    = std::stod(tokens[10]);
                         channels.push_back(ch);
                     }
                 }
@@ -72,7 +72,7 @@ namespace elda::services {
             true // Enable backup
         );
 
-        groupStorage_ = std::make_unique<elda::services::SecureConfigManager<std::vector<models::ChannelsGroup>>>(
+        group_storage_ = std::make_unique<elda::services::SecureConfigManager<std::vector<models::ChannelsGroup>>>(
             "channel_groups.dat",
             [](const std::vector<models::ChannelsGroup>& groups) -> std::string {
                 // Serialize channel groups
@@ -82,12 +82,12 @@ namespace elda::services {
                     oss << group.id << "|"
                         << group.name << "|"
                         << group.description << "|"
-                        << group.isDefault << "|"
-                        << group.channelIds.size() << "\n";
+                        << group.is_default << "|"
+                        << group.channel_ids.size() << "\n";
 
                     // ✅ Serialize channel IDs only (not full objects)
-                    for (const auto& channelId : group.channelIds) {
-                        oss << channelId << "\n";
+                    for (const auto& channel_id : group.channel_ids) {
+                        oss << channel_id << "\n";
                     }
                 }
                 return oss.str();
@@ -96,19 +96,19 @@ namespace elda::services {
                 // Deserialize channel groups
                 std::vector<models::ChannelsGroup> groups;
                 std::istringstream iss(data);
-                size_t groupCount;
-                iss >> groupCount;
+                size_t group_count;
+                iss >> group_count;
                 iss.ignore();
 
-                for (size_t i = 0; i < groupCount; ++i) {
+                for (size_t i = 0; i < group_count; ++i) {
                     std::string line;
                     if (!std::getline(iss, line)) break;
 
-                    std::istringstream lineStream(line);
+                    std::istringstream line_stream(line);
                     std::string token;
                     std::vector<std::string> tokens;
 
-                    while (std::getline(lineStream, token, '|')) {
+                    while (std::getline(line_stream, token, '|')) {
                         tokens.push_back(token);
                     }
 
@@ -116,14 +116,14 @@ namespace elda::services {
                         // ✅ Read: id, name, description, isDefault, channelCount
                         models::ChannelsGroup group(tokens[0], tokens[1]);
                         group.description = tokens[2];
-                        group.isDefault = (tokens[3] == "1");
-                        size_t channelCount = std::stoul(tokens[4]);
+                        group.is_default   = (tokens[3] == "1");
+                        size_t channel_count = std::stoul(tokens[4]);
 
                         // ✅ Read channel IDs (one per line)
-                        for (size_t j = 0; j < channelCount; ++j) {
-                            std::string channelId;
-                            if (std::getline(iss, channelId)) {
-                                group.channelIds.push_back(channelId);
+                        for (size_t j = 0; j < channel_count; ++j) {
+                            std::string channel_id;
+                            if (std::getline(iss, channel_id)) {
+                                group.channel_ids.push_back(channel_id);
                             }
                         }
 
@@ -135,7 +135,7 @@ namespace elda::services {
             true // Enable backup
         );
 
-        activeGroupStorage_ = std::make_unique<elda::services::SecureConfigManager<models::ChannelsGroup>>(
+        active_group_storage_ = std::make_unique<elda::services::SecureConfigManager<models::ChannelsGroup>>(
             "active_channel_group.dat",
             [](const models::ChannelsGroup& group) -> std::string {
                 // Serialize single group
@@ -143,12 +143,12 @@ namespace elda::services {
                 oss << group.id << "|"
                     << group.name << "|"
                     << group.description << "|"
-                    << group.isDefault << "|"
-                    << group.channelIds.size() << "\n";
+                    << group.is_default << "|"
+                    << group.channel_ids.size() << "\n";
 
                 // ✅ Serialize channel IDs only
-                for (const auto& channelId : group.channelIds) {
-                    oss << channelId << "\n";
+                for (const auto& channel_id : group.channel_ids) {
+                    oss << channel_id << "\n";
                 }
                 return oss.str();
             },
@@ -158,28 +158,26 @@ namespace elda::services {
                 std::string line;
                 std::getline(iss, line);
 
-                std::istringstream lineStream(line);
+                std::istringstream line_stream(line);
                 std::string token;
                 std::vector<std::string> tokens;
 
-                while (std::getline(lineStream, token, '|')) {
+                while (std::getline(line_stream, token, '|')) {
                     tokens.push_back(token);
                 }
 
                 models::ChannelsGroup group;
                 if (tokens.size() >= 5) {
-                    // ✅ Read: id, name, description, isDefault, channelCount
-                    group.id = tokens[0];
-                    group.name = tokens[1];
+                    group.id          = tokens[0];
+                    group.name        = tokens[1];
                     group.description = tokens[2];
-                    group.isDefault = (tokens[3] == "1");
-                    size_t channelCount = std::stoul(tokens[4]);
+                    group.is_default   = (tokens[3] == "1");
+                    size_t channel_count = std::stoul(tokens[4]);
 
-                    // ✅ Read channel IDs (one per line)
-                    for (size_t i = 0; i < channelCount; ++i) {
-                        std::string channelId;
-                        if (std::getline(iss, channelId)) {
-                            group.channelIds.push_back(channelId);
+                    for (size_t i = 0; i < channel_count; ++i) {
+                        std::string channel_id;
+                        if (std::getline(iss, channel_id)) {
+                            group.channel_ids.push_back(channel_id);
                         }
                     }
                 }
@@ -189,15 +187,15 @@ namespace elda::services {
         );
 
         // Load existing data
-        LoadFromStorage();
+        load_from_storage();
 
-        // ✅ Initialize 64 channels if none exist
+        // Initialize 64 channels if none exist
         if (channels_.empty()) {
-            InitializeDefaultChannels();
+            initialize_default_channels();
         }
     }
 
-    ChannelManagementService& ChannelManagementService::GetInstance() {
+    ChannelManagementService& ChannelManagementService::get_instance() {
         static ChannelManagementService instance;
         return instance;
     }
@@ -206,153 +204,153 @@ namespace elda::services {
     // CHANNEL OPERATIONS
     // ============================================================================
 
-    bool ChannelManagementService::CreateChannel(const models::Channel& channel) {
-        if (channel.GetId().empty()) return false;
-        if (ChannelExists(channel.GetId())) return false;
+    bool ChannelManagementService::create_channel(const models::Channel& channel) {
+        if (channel.get_id().empty()) return false;
+        if (channel_exists(channel.get_id())) return false;
 
         channels_.push_back(channel);
-        SaveToStorage();
+        save_to_storage();
         return true;
     }
 
-    std::optional<models::Channel> ChannelManagementService::GetChannel(const std::string& id) const {
-        auto it = FindChannelById(id);
+    std::optional<models::Channel> ChannelManagementService::get_channel(const std::string& id) const {
+        auto it = find_channel_by_id(id);
         if (it != channels_.end()) {
             return *it;
         }
         return std::nullopt;
     }
 
-    const std::vector<models::Channel>& ChannelManagementService::GetAllChannels() const {
+    const std::vector<models::Channel>& ChannelManagementService::get_all_channels() const {
         return channels_;
     }
 
-    bool ChannelManagementService::UpdateChannel(const models::Channel& channel) {
-        auto it = FindChannelById(channel.id);
+    bool ChannelManagementService::update_channel(const models::Channel& channel) {
+        auto it = find_channel_by_id(channel.id);
         if (it == channels_.end()) return false;
 
         *it = channel;
-        SaveToStorage();
+        save_to_storage();
         return true;
     }
 
-    bool ChannelManagementService::DeleteChannel(const std::string& id) {
-        auto it = FindChannelById(id);
+    bool ChannelManagementService::delete_channel(const std::string& id) {
+        auto it = find_channel_by_id(id);
         if (it == channels_.end()) return false;
 
         channels_.erase(it);
-        SaveToStorage();
+        save_to_storage();
         return true;
     }
 
-    bool ChannelManagementService::ChannelExists(const std::string& id) const {
-        return FindChannelById(id) != channels_.end();
+    bool ChannelManagementService::channel_exists(const std::string& id) const {
+        return find_channel_by_id(id) != channels_.end();
     }
 
     // ============================================================================
     // CHANNEL GROUP OPERATIONS
     // ============================================================================
 
-    bool ChannelManagementService::CreateChannelGroup(const models::ChannelsGroup& group) {
+    bool ChannelManagementService::create_channel_group(const models::ChannelsGroup& group) {
         if (group.name.empty()) return false;
         if (group.id.empty()) return false;
-        if (ChannelGroupExists(group.id)) return false;
+        if (channel_group_exists(group.id)) return false;
 
-        std::string errorMessage;
-        if (!ValidateChannelGroup(group, errorMessage)) return false;
+        std::string error_message;
+        if (!validate_channel_group(group, error_message)) return false;
 
-        channelGroups_.push_back(group);
-        SaveToStorage();
+        channel_groups_.push_back(group);
+        save_to_storage();
         return true;
     }
 
-    std::optional<models::ChannelsGroup> ChannelManagementService::GetChannelGroup(const std::string& id) const {
-        auto it = FindGroupById(id);
-        if (it != channelGroups_.end()) {
+    std::optional<models::ChannelsGroup> ChannelManagementService::get_channel_group(const std::string& id) const {
+        auto it = find_group_by_id(id);
+        if (it != channel_groups_.end()) {
             return *it;
         }
         return std::nullopt;
     }
 
-    std::optional<models::ChannelsGroup> ChannelManagementService::GetChannelGroupByName(const std::string& name) const {
-        auto it = FindGroupByName(name);
-        if (it != channelGroups_.end()) {
+    std::optional<models::ChannelsGroup> ChannelManagementService::get_channel_group_by_name(const std::string& name) const {
+        auto it = find_group_by_name(name);
+        if (it != channel_groups_.end()) {
             return *it;
         }
         return std::nullopt;
     }
 
-    std::vector<models::ChannelsGroup> ChannelManagementService::GetAllChannelGroups() const {
-        return channelGroups_;
+    std::vector<models::ChannelsGroup> ChannelManagementService::get_all_channel_groups() const {
+        return channel_groups_;
     }
 
-    bool ChannelManagementService::UpdateChannelGroup(const models::ChannelsGroup& group) {
-        auto it = FindGroupById(group.id);
-        if (it == channelGroups_.end()) return false;
+    bool ChannelManagementService::update_channel_group(const models::ChannelsGroup& group) {
+        auto it = find_group_by_id(group.id);
+        if (it == channel_groups_.end()) return false;
 
-        std::string errorMessage;
-        if (!ValidateChannelGroup(group, errorMessage)) return false;
+        std::string error_message;
+        if (!validate_channel_group(group, error_message)) return false;
 
         *it = group;
-        SaveToStorage();
+        save_to_storage();
         return true;
     }
 
-    int ChannelManagementService::DeleteAllChannelGroups() {
-        int deletedCount = 0;
+    int ChannelManagementService::delete_all_channel_groups() {
+        int deleted_count = 0;
 
         // Iterate backwards to safely erase while iterating
-        for (auto it = channelGroups_.begin(); it != channelGroups_.end(); ) {
-            if (!it->isDefault) {
-                it = channelGroups_.erase(it);  // erase returns iterator to next element
-                deletedCount++;
+        for (auto it = channel_groups_.begin(); it != channel_groups_.end(); ) {
+            if (!it->is_default) {
+                it = channel_groups_.erase(it);  // erase returns iterator to next element
+                deleted_count++;
             } else {
                 ++it;  // Skip default groups
             }
         }
 
-        if (deletedCount > 0) {
+        if (deleted_count > 0) {
             // Clear active group if it was deleted
             // (Active group could have been one of the deleted groups)
-            activeGroupStorage_->SaveAsLastUsed(models::ChannelsGroup());
+            active_group_storage_->save_as_last_used(models::ChannelsGroup());
 
-            SaveToStorage();
+            save_to_storage();
         }
 
-        return deletedCount;
+        return deleted_count;
     }
 
-    bool ChannelManagementService::DeleteChannelGroup(const std::string& id) {
-        auto it = FindGroupById(id);
-        if (it == channelGroups_.end()) return false;
+    bool ChannelManagementService::delete_channel_group(const std::string& id) {
+        auto it = find_group_by_id(id);
+        if (it == channel_groups_.end()) return false;
 
         // Don't allow deleting default groups
-        if (it->isDefault) return false;
+        if (it->is_default) return false;
 
-        channelGroups_.erase(it);
-        SaveToStorage();
+        channel_groups_.erase(it);
+        save_to_storage();
         return true;
     }
 
-    bool ChannelManagementService::ChannelGroupExists(const std::string& id) const {
-        return FindGroupById(id) != channelGroups_.end();
+    bool ChannelManagementService::channel_group_exists(const std::string& id) const {
+        return find_group_by_id(id) != channel_groups_.end();
     }
 
-    bool ChannelManagementService::ChannelGroupExistsByName(const std::string& name) const {
-        return FindGroupByName(name) != channelGroups_.end();
+    bool ChannelManagementService::channel_group_exists_by_name(const std::string& name) const {
+        return find_group_by_name(name) != channel_groups_.end();
     }
 
     // ============================================================================
     // LAST USED / ACTIVE MANAGEMENT
     // ============================================================================
 
-    bool ChannelManagementService::SaveActiveChannelGroup(const models::ChannelsGroup& group) {
-        return activeGroupStorage_->SaveAsLastUsed(group);
+    bool ChannelManagementService::save_active_channel_group(const models::ChannelsGroup& group) {
+        return active_group_storage_->save_as_last_used(group);
     }
 
-    std::optional<models::ChannelsGroup> ChannelManagementService::LoadActiveChannelGroup() const {
+    std::optional<models::ChannelsGroup> ChannelManagementService::load_active_channel_group() const {
         models::ChannelsGroup group;
-        if (activeGroupStorage_->LoadLastUsed(group)) {
+        if (active_group_storage_->load_last_used(group)) {
             return group;
         }
         return std::nullopt;
@@ -362,17 +360,20 @@ namespace elda::services {
     // VALIDATION & UTILITIES
     // ============================================================================
 
-    bool ChannelManagementService::ValidateChannelGroup(const models::ChannelsGroup& group, std::string& errorMessage) const {
+    bool ChannelManagementService::validate_channel_group(
+        const models::ChannelsGroup& group,
+        std::string& error_message
+    ) const {
         if (group.name.empty()) {
-            errorMessage = "Group name cannot be empty";
+            error_message = "Group name cannot be empty";
             return false;
         }
 
         // ✅ Check for duplicate channel IDs within the group
-        std::set<std::string> uniqueIds;
-        for (const auto& channelId : group.channelIds) {
-            if (!uniqueIds.insert(channelId).second) {
-                errorMessage = "Duplicate channel ID found: " + channelId;
+        std::set<std::string> unique_ids;
+        for (const auto& channel_id : group.channel_ids) {
+            if (!unique_ids.insert(channel_id).second) {
+                error_message = "Duplicate channel ID found: " + channel_id;
                 return false;
             }
         }
@@ -380,12 +381,12 @@ namespace elda::services {
         return true;
     }
 
-    std::vector<models::ChannelsGroup> ChannelManagementService::GetDefaultChannelGroups() const {
+    std::vector<models::ChannelsGroup> ChannelManagementService::get_default_channel_groups() const {
         std::vector<models::ChannelsGroup> defaults;
 
         // Return only groups marked as default
-        for (const auto& group : channelGroups_) {
-            if (group.isDefault) {
+        for (const auto& group : channel_groups_) {
+            if (group.is_default) {
                 defaults.push_back(group);
             }
         }
@@ -397,62 +398,92 @@ namespace elda::services {
     // PRIVATE HELPER METHODS
     // ============================================================================
 
-    void ChannelManagementService::LoadFromStorage() {
+    void ChannelManagementService::load_from_storage() {
         // Load channels
-        std::vector<models::Channel> loadedChannels;
-        if (channelStorage_->LoadLastUsed(loadedChannels)) {
-            channels_ = loadedChannels;
+        std::vector<models::Channel> loaded_channels;
+        if (channel_storage_->load_last_used(loaded_channels)) {
+            channels_ = loaded_channels;
         }
 
         // Load channel groups
-        std::vector<models::ChannelsGroup> loadedGroups;
-        if (groupStorage_->LoadLastUsed(loadedGroups)) {
-            channelGroups_ = loadedGroups;
+        std::vector<models::ChannelsGroup> loaded_groups;
+        if (group_storage_->load_last_used(loaded_groups)) {
+            channel_groups_ = loaded_groups;
         }
     }
 
-    void ChannelManagementService::SaveToStorage() {
-        channelStorage_->SaveAsLastUsed(channels_);
-        groupStorage_->SaveAsLastUsed(channelGroups_);
+    void ChannelManagementService::save_to_storage() {
+        channel_storage_->save_as_last_used(channels_);
+        group_storage_->save_as_last_used(channel_groups_);
     }
 
-    std::vector<models::Channel>::iterator ChannelManagementService::FindChannelById(const std::string& id) {
-        return std::find_if(channels_.begin(), channels_.end(),
-            [&id](const models::Channel& ch) { return ch.GetId() == id; });
+    std::vector<models::Channel>::iterator ChannelManagementService::find_channel_by_id(
+        const std::string& id
+    ) {
+        return std::find_if(
+            channels_.begin(),
+            channels_.end(),
+            [&id](const models::Channel& ch) { return ch.get_id() == id; }
+        );
     }
 
-    std::vector<models::Channel>::const_iterator ChannelManagementService::FindChannelById(const std::string& id) const {
-        return std::find_if(channels_.begin(), channels_.end(),
-            [&id](const models::Channel& ch) { return ch.GetId() == id; });
+    std::vector<models::Channel>::const_iterator ChannelManagementService::find_channel_by_id(
+        const std::string& id
+    ) const {
+        return std::find_if(
+            channels_.begin(),
+            channels_.end(),
+            [&id](const models::Channel& ch) { return ch.get_id() == id; }
+        );
     }
 
-    std::vector<models::ChannelsGroup>::iterator ChannelManagementService::FindGroupById(const std::string& id) {
-        return std::find_if(channelGroups_.begin(), channelGroups_.end(),
-            [&id](const models::ChannelsGroup& g) { return g.id == id; });
+    std::vector<models::ChannelsGroup>::iterator ChannelManagementService::find_group_by_id(
+        const std::string& id
+    ) {
+        return std::find_if(
+            channel_groups_.begin(),
+            channel_groups_.end(),
+            [&id](const models::ChannelsGroup& g) { return g.id == id; }
+        );
     }
 
-    std::vector<models::ChannelsGroup>::const_iterator ChannelManagementService::FindGroupById(const std::string& id) const {
-        return std::find_if(channelGroups_.begin(), channelGroups_.end(),
-            [&id](const models::ChannelsGroup& g) { return g.id == id; });
+    std::vector<models::ChannelsGroup>::const_iterator ChannelManagementService::find_group_by_id(
+        const std::string& id
+    ) const {
+        return std::find_if(
+            channel_groups_.begin(),
+            channel_groups_.end(),
+            [&id](const models::ChannelsGroup& g) { return g.id == id; }
+        );
     }
 
-    std::vector<models::ChannelsGroup>::iterator ChannelManagementService::FindGroupByName(const std::string& name) {
-        return std::find_if(channelGroups_.begin(), channelGroups_.end(),
-            [&name](const models::ChannelsGroup& g) { return g.name == name; });
+    std::vector<models::ChannelsGroup>::iterator ChannelManagementService::find_group_by_name(
+        const std::string& name
+    ) {
+        return std::find_if(
+            channel_groups_.begin(),
+            channel_groups_.end(),
+            [&name](const models::ChannelsGroup& g) { return g.name == name; }
+        );
     }
 
-    std::vector<models::ChannelsGroup>::const_iterator ChannelManagementService::FindGroupByName(const std::string& name) const {
-        return std::find_if(channelGroups_.begin(), channelGroups_.end(),
-            [&name](const models::ChannelsGroup& g) { return g.name == name; });
+    std::vector<models::ChannelsGroup>::const_iterator ChannelManagementService::find_group_by_name(
+        const std::string& name
+    ) const {
+        return std::find_if(
+            channel_groups_.begin(),
+            channel_groups_.end(),
+            [&name](const models::ChannelsGroup& g) { return g.name == name; }
+        );
     }
 
-    bool ChannelManagementService::InitializeDefaultChannels() {
+    bool ChannelManagementService::initialize_default_channels() {
         if (!channels_.empty()) {
             return true; // Already initialized
         }
 
         // EEG standard channel names (10-20 system)
-        const char* channelNames[64] = {
+        const char* channel_names[64] = {
             "Fp1", "Fp2", "F7", "F3", "Fz", "F4", "F8",
             "FC5", "FC1", "FC2", "FC6",
             "T7", "T8", "TP9", "TP10",
@@ -479,21 +510,21 @@ namespace elda::services {
         for (int i = 0; i < 64; ++i) {
             char id[16];
             std::snprintf(id, sizeof(id), "ch_%d", i);
-            models::Channel channel(id, channelNames[i], colors[i % 10]);
+            models::Channel channel(id, channel_names[i], colors[i % 10]);
             channels_.push_back(channel);
         }
 
-        SaveToStorage();
+        save_to_storage();
 
         // // ✅ Create default group with all channel IDs
-        // models::ChannelsGroup defaultGroup("default_group", "Standard 64-Channel");
+        // models::ChannelsGroup default_group("default_group", "Standard 64-Channel");
         // for (const auto& channel : channels_) {
-        //     defaultGroup.addChannelId(channel.id);
+        //     default_group.addChannelId(channel.id);
         // }
-        // defaultGroup.isDefault = true;
+        // default_group.is_default = true;
         //
-        // CreateChannelGroup(defaultGroup);
-        // SaveActiveChannelGroup(defaultGroup);
+        // create_channel_group(default_group);
+        // save_active_channel_group(default_group);
 
         return true;
     }

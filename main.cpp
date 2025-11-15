@@ -26,7 +26,7 @@ int main() {
     // GLFW + OpenGL Setup
     // ========================================================================
     if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
+        std::cerr << "failed to initialize GLFW" << std::endl;
         return -1;
     }
 
@@ -38,7 +38,7 @@ int main() {
 
     GLFWwindow* window = glfwCreateWindow(1920, 1080, "ELDA - EEG Acquisition", nullptr, nullptr);
     if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
+        std::cerr << "failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
     }
@@ -64,10 +64,10 @@ int main() {
     cfg.MergeMode = true;
     static const ImWchar greek_range[] = { 0x0370, 0x03FF, 0 }; // Greek & Coptic
 
-    const char* fontPath = "fonts/Roboto-Medium.ttf";
-    ImFont* merged = io.Fonts->AddFontFromFileTTF(fontPath, 16.0f, &cfg, greek_range);
-    if (!merged) {
-        std::fprintf(stderr, "[Fonts] Could not load %s — Ω may render as '?'\n", fontPath);
+    const char* font_path = "fonts/Roboto-Medium.ttf";
+    ImFont* merged_font = io.Fonts->AddFontFromFileTTF(font_path, 16.0f, &cfg, greek_range);
+    if (!merged_font) {
+        std::fprintf(stderr, "[Fonts] could not load %s — Ω may render as '?'\n", font_path);
     }
 
     // -------------- Init backends after fonts ----------------
@@ -80,15 +80,12 @@ int main() {
     // ========================================================================
     // Initialize Core Application State
     // ========================================================================
-    AppState appState;
-    elda::AppStateManager stateManager(appState);
+    AppState app_state;
+    elda::AppStateManager state_manager(app_state);
 
-    // Enable audit logging (optional - for medical device compliance)
-    // stateManager.EnableAuditLog("elda_audit.log");
-
-    std::cout << "[Main] Application state initialized" << std::endl;
-    std::cout << "[Main] Channels: " << CHANNELS << std::endl;
-    std::cout << "[Main] Sample Rate: " << SAMPLE_RATE_HZ << " Hz" << std::endl;
+    std::cout << "[Main] application state initialized" << std::endl;
+    std::cout << "[Main] channels: " << CHANNELS << std::endl;
+    std::cout << "[Main] sample rate: " << SAMPLE_RATE_HZ << " Hz" << std::endl;
 
     // ========================================================================
     // Setup Router FIRST (before creating screens)
@@ -96,33 +93,28 @@ int main() {
     AppRouter router;
 
     // ========================================================================
-    // Create Screens (pass AppState, StateManager, Router)
+    // Create Screens
     // ========================================================================
-    auto monitoringScreen = std::make_unique<MonitoringScreen>(appState, stateManager, router);
-    auto impedanceScreen = std::make_unique<ImpedanceViewerScreen>(appState, stateManager, router);
-
-    // TODO: Add other screens when ready
-    // auto idleScreen = std::make_unique<elda::IdleScreen>(appState, stateManager, router);
-    // auto settingsScreen = std::make_unique<elda::SettingsScreen>(appState, stateManager, router);
+    auto monitoring_screen = std::make_unique<MonitoringScreen>(app_state, state_manager, router);
+    auto impedance_screen  = std::make_unique<ImpedanceViewerScreen>(app_state, state_manager, router);
 
     // ========================================================================
     // Register Screens with Router
     // ========================================================================
-    router.RegisterScreen(AppMode::MONITORING, monitoringScreen.get());
-    router.RegisterScreen(AppMode::IMPEDANCE_VIEWER, impedanceScreen.get());
+    router.register_screen(AppMode::MONITORING, monitoring_screen.get());
+    router.register_screen(AppMode::IMPEDANCE_VIEWER, impedance_screen.get());
 
     // ========================================================================
     // Main Loop
     // ========================================================================
-    double lastTime = glfwGetTime();
+    double last_time = glfwGetTime();
 
     while (!glfwWindowShouldClose(window)) {
-        // Calculate deltaTime
-        double currentTime = glfwGetTime();
-        float deltaTime = static_cast<float>(currentTime - lastTime);
-        lastTime = currentTime;
+        // delta_time
+        double current_time = glfwGetTime();
+        float delta_time = static_cast<float>(current_time - last_time);
+        last_time = current_time;
 
-        // Poll events
         glfwPollEvents();
 
         // Start ImGui frame
@@ -131,66 +123,66 @@ int main() {
         ImGui::NewFrame();
 
         // ====================================================================
-        // Route to current screen - SIMPLE!
+        // Render screen via router
         // ====================================================================
-        IScreen* currentScreen = router.GetCurrentScreen();
-        elda::ui::PopupMessage::Instance().Render();
-        elda::ui::Toast::Instance().Render();
-        if (currentScreen) {
-            currentScreen->update(deltaTime);
-            currentScreen->render();
+        IScreen* current_screen = router.get_current_screen();
+        elda::ui::PopupMessage::instance().render();
+        elda::ui::Toast::instance().render();
+
+        if (current_screen) {
+            current_screen->update(delta_time);
+            current_screen->render();
         } else {
-            // Fallback if no screen registered for current mode
             ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->Pos);
             ImGui::SetNextWindowSize(viewport->Size);
-            ImGui::Begin("No Screen", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-            ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100, viewport->Size.y * 0.5f - 20));
-            ImGui::Text("No screen registered for current mode");
+            ImGui::Begin("No Screen", nullptr,
+                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+            ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100,
+                                       viewport->Size.y * 0.5f - 20));
+            ImGui::Text("no screen registered for current mode");
             ImGui::End();
         }
 
         // ====================================================================
-        // Global hotkeys (F5/F7) - delegate to state manager
+        // Global hotkeys
         // ====================================================================
         if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
-            // Toggle monitoring
-            bool monitoring = stateManager.IsMonitoring();
-            auto result = stateManager.SetMonitoring(!monitoring);
-            if (!result.IsSuccess()) {
+            bool monitoring = state_manager.is_monitoring();
+            auto result = state_manager.set_monitoring(!monitoring);
+            if (!result.is_success()) {
                 std::fprintf(stderr, "[Main] F5 toggle failed: %s\n", result.message.c_str());
             }
         }
 
         if (ImGui::IsKeyPressed(ImGuiKey_F7)) {
-            // Toggle recording (only if monitoring)
-            if (stateManager.IsMonitoring()) {
-                bool recordingActive = stateManager.IsRecording() && !stateManager.IsPaused();
-                bool currentlyPaused = stateManager.IsRecording() && stateManager.IsPaused();
+            if (state_manager.is_monitoring()) {
+                bool recording_active = state_manager.is_recording() && !state_manager.is_paused();
+                bool currently_paused = state_manager.is_recording() && state_manager.is_paused();
 
-                if (recordingActive) {
-                    // Pause
-                    auto result = stateManager.PauseRecording();
-                    if (!result.IsSuccess()) {
+                if (recording_active) {
+                    auto result = state_manager.pause_recording();
+                    if (!result.is_success()) {
                         std::fprintf(stderr, "[Main] F7 pause failed: %s\n", result.message.c_str());
                     }
                 } else {
-                    // Start or resume
                     elda::StateChangeError result;
-                    if (currentlyPaused) {
-                        result = stateManager.ResumeRecording();
+                    if (currently_paused) {
+                        result = state_manager.resume_recording();
                     } else {
-                        result = stateManager.StartRecording();
+                        result = state_manager.start_recording();
                     }
 
-                    if (!result.IsSuccess()) {
+                    if (!result.is_success()) {
                         std::fprintf(stderr, "[Main] F7 record failed: %s\n", result.message.c_str());
                     }
                 }
             }
         }
 
-        // Render
+        // ====================================================================
+        // Render frame
+        // ====================================================================
         ImGui::Render();
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
@@ -204,14 +196,13 @@ int main() {
     // ========================================================================
     // Cleanup
     // ========================================================================
-    std::cout << "[Main] Shutting down..." << std::endl;
+    std::cout << "[Main] shutting down..." << std::endl;
 
-    // Properly stop any active recording/monitoring
-    if (stateManager.IsRecording()) {
-        stateManager.StopRecording();
+    if (state_manager.is_recording()) {
+        state_manager.stop_recording();
     }
-    if (stateManager.IsMonitoring()) {
-        stateManager.SetMonitoring(false);
+    if (state_manager.is_monitoring()) {
+        state_manager.set_monitoring(false);
     }
 
     ImGui_ImplOpenGL3_Shutdown();
@@ -221,6 +212,6 @@ int main() {
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    std::cout << "[Main] Clean shutdown complete" << std::endl;
+    std::cout << "[Main] clean shutdown complete" << std::endl;
     return 0;
 }

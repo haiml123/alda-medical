@@ -22,7 +22,7 @@ namespace elda::views::channels_selector {
         using OnDeleteCallback = std::function<void(const std::string&)>;
         using OnGroupsChangedCallback = std::function<void()>;
 
-        explicit ChannelsGroupPresenter(elda::AppStateManager& stateManager);
+        explicit ChannelsGroupPresenter(elda::AppStateManager& state_manager);
         ~ChannelsGroupPresenter() = default;
 
         // ========================================================================
@@ -35,10 +35,10 @@ namespace elda::views::channels_selector {
          * @param callback Callback when user confirms
          * @param deleteCallback Callback when user deletes (optional)
          */
-        void Open(
-            const std::string& groupId = "",
+        void open(
+            const std::string& group_id = "",
             OnConfirmCallback callback = nullptr,
-            OnDeleteCallback deleteCallback = nullptr
+            OnDeleteCallback delete_callback = nullptr
         );
 
         /**
@@ -46,42 +46,42 @@ namespace elda::views::channels_selector {
          * This allows parent to refresh its view of available groups
          * @param callback Function to call when groups need refresh
          */
-        void SetOnGroupsChangedCallback(OnGroupsChangedCallback callback);
+        void set_on_groups_changed_callback(OnGroupsChangedCallback callback);
 
         /**
          * Close the modal
          */
-        void Close();
+        void close();
 
         /**
          * Render the modal (call every frame)
-         * @param buttonPos Position to place the modal (typically below a button)
+         * @param button_pos Position to place the modal (typically below a button)
          */
-        void Render(ImVec2 buttonPos);
+        void render(ImVec2 button_pos);
 
         /**
          * Check if modal is currently open
          */
-        bool IsOpen() const;
+        bool is_open() const;
 
     private:
         // ========================================================================
         // VIEW EVENT HANDLERS - Respond to user actions
         // ========================================================================
 
-        void OnGroupNameChanged(const std::string& newName);
-        void OnChannelSelectionChanged(size_t index, bool selected);
-        void OnSelectAllChannels(bool selected);
-        void OnConfirm();
-        void OnCancel();
-        void OnDelete();
+        void on_group_name_changed(const std::string& new_name);
+        void on_channel_selection_changed(size_t index, bool selected);
+        void on_select_all_channels(bool selected);
+        void on_confirm();
+        void on_cancel();
+        void on_delete();
 
         // ========================================================================
         // INTERNAL HELPERS
         // ========================================================================
 
-        void UpdateView();
-        void SetupViewCallbacks();
+        void update_view();
+        void setup_view_callbacks();
 
         // ========================================================================
         // MEMBERS
@@ -89,8 +89,8 @@ namespace elda::views::channels_selector {
 
         std::unique_ptr<ChannelsGroupModel> model_;
         std::unique_ptr<ChannelsGroupView> view_;
-        OnConfirmCallback onConfirmCallback_;
-        OnDeleteCallback onDeleteCallback_;
+        OnConfirmCallback on_confirm_callback_;
+        OnDeleteCallback on_delete_callback_;
     };
 
 } // namespace elda::channels_group

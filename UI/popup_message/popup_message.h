@@ -7,25 +7,25 @@ namespace elda::ui {
 
     class PopupMessage {
     public:
-        static PopupMessage& Instance();
+        static PopupMessage& instance();
 
-        void Show(const std::string& title,
+        void show(const std::string& title,
                   const std::string& message,
-                  std::function<void()> onConfirm,
-                  std::function<void()> onCancel = nullptr);
+                  std::function<void()> on_confirm,
+                  std::function<void()> on_cancel = nullptr);
 
-        void Render();
-        bool IsOpen() const { return m_isOpen; }
+        void render();
+        bool is_open() const { return is_open_; }
 
     private:
         PopupMessage() = default;
 
-        bool m_isOpen = false;
-        bool m_justOpened = false;  // Track if we need to call OpenPopup
-        std::string m_title;
-        std::string m_message;
-        std::function<void()> m_onConfirm;
-        std::function<void()> m_onCancel;
+        bool is_open_ = false;
+        bool just_opened_ = false;  // Track if we need to call OpenPopup
+        std::string title_;
+        std::string message_;
+        std::function<void()> on_confirm_;
+        std::function<void()> on_cancel_;
     };
 
 } // namespace elda::ui

@@ -12,18 +12,18 @@ namespace elda::views::impedance_viewer {
             ImpedanceViewerView& view,
             AppRouter& router);
 
-        void OnEnter();
-        void OnExit();
-        void Update(float dt);
-        void Render();
+        void on_enter();
+        void on_exit();
+        void update(float delta_time);
+        void render();
 
     private:
-        void SetupCallbacks();
+        void setup_callbacks();
 
-        void OnElectrodeMouseDown(int idx);
-        void OnElectrodeDropped(size_t idx, ImVec2 normalizedPos);
-        void OnSave();
-        void OnClose();
+        void on_electrode_mouse_down(int idx);
+        void on_electrode_dropped(size_t idx, ImVec2 normalized_pos);
+        void on_save();
+        void on_close();
 
         AppRouter& router_;
         ImpedanceViewerModel& model_;

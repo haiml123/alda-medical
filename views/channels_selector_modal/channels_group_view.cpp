@@ -6,25 +6,25 @@
 namespace elda::views::channels_selector {
 
     ChannelsGroupView::ChannelsGroupView()
-        : isVisible_(false)
+        : is_visible_(false)
         , position_(0, 0)
         , size_(300, 550) {
-        nameInputBuffer_[0] = '\0';
+        name_input_buffer_[0] = '\0';
     }
 
     // ========================================================================
     // RENDERING
     // ========================================================================
 
-    void ChannelsGroupView::Render(
-        const std::string& groupName,
+    void ChannelsGroupView::render(
+        const std::string& group_name,
         const std::vector<models::Channel>& channels,
-        int selectedCount,
-        int totalCount,
-        bool canConfirm,
-        bool isNewGroup
+        int selected_count,
+        int total_count,
+        bool can_confirm,
+        bool is_new_group
     ) {
-        if (!isVisible_) return;
+        if (!is_visible_) return;
 
         ImGui::SetNextWindowPos(position_, ImGuiCond_Always);
         ImGui::SetNextWindowSize(size_, ImGuiCond_Always);
@@ -34,50 +34,50 @@ namespace elda::views::channels_selector {
                                 ImGuiWindowFlags_NoScrollWithMouse |
                                 ImGuiWindowFlags_NoResize;
 
-        bool open = isVisible_;
+        bool open = is_visible_;
         if (ImGui::Begin("Channel Selector", &open, flags)) {
-            RenderHeader(groupName);
-            RenderChannelsList(channels, selectedCount, totalCount);
-            RenderFooter(canConfirm, isNewGroup);
+            render_header(group_name);
+            render_channels_list(channels, selected_count, total_count);
+            render_footer(can_confirm, is_new_group);
         }
         ImGui::End();
 
         // Handle window close via X button
-        if (!open && callbacks_.onCancel) {
-            callbacks_.onCancel();
+        if (!open && callbacks_.on_cancel) {
+            callbacks_.on_cancel();
         }
     }
 
-    void ChannelsGroupView::RenderHeader(const std::string& groupName) {
+    void ChannelsGroupView::render_header(const std::string& group_name) {
         ImGui::SeparatorText("Configuration Name");
         ImGui::Spacing();
 
         // Update buffer if groupName changed externally
-        if (groupName != nameInputBuffer_) {
-            strncpy(nameInputBuffer_, groupName.c_str(), sizeof(nameInputBuffer_));
-            nameInputBuffer_[sizeof(nameInputBuffer_) - 1] = '\0';
+        if (group_name != name_input_buffer_) {
+            strncpy(name_input_buffer_, group_name.c_str(), sizeof(name_input_buffer_));
+            name_input_buffer_[sizeof(name_input_buffer_) - 1] = '\0';
         }
 
         ImGui::SetNextItemWidth(-1);
-        if (ImGui::InputText("##name_input", nameInputBuffer_, sizeof(nameInputBuffer_))) {
-            if (callbacks_.onGroupNameChanged) {
-                callbacks_.onGroupNameChanged(nameInputBuffer_);
+        if (ImGui::InputText("##name_input", name_input_buffer_, sizeof(name_input_buffer_))) {
+            if (callbacks_.on_group_name_changed) {
+                callbacks_.on_group_name_changed(name_input_buffer_);
             }
         }
 
         ImGui::Spacing();
     }
 
-    void ChannelsGroupView::RenderChannelsList(
+    void ChannelsGroupView::render_channels_list(
         const std::vector<models::Channel>& channels,
-        int selectedCount,
-        int totalCount
+        int selected_count,
+        int total_count
     ) {
         // Section title with count
-        char sectionTitle[64];
-        std::snprintf(sectionTitle, sizeof(sectionTitle),
-                     "Select Channels (%d / %d)", selectedCount, totalCount);
-        ImGui::SeparatorText(sectionTitle);
+        char section_title[64];
+        std::snprintf(section_title, sizeof(section_title),
+                     "Select Channels (%d / %d)", selected_count, total_count);
+        ImGui::SeparatorText(section_title);
         ImGui::Spacing();
 
         if (channels.empty()) {
@@ -88,14 +88,14 @@ namespace elda::views::channels_selector {
         // Select All / Clear All buttons
         ImGui::BeginGroup();
         if (ImGui::Button("Select All", ImVec2(100, 0))) {
-            if (callbacks_.onSelectAllChannels) {
-                callbacks_.onSelectAllChannels(true);
+            if (callbacks_.on_select_all_channels) {
+                callbacks_.on_select_all_channels(true);
             }
         }
         ImGui::SameLine();
         if (ImGui::Button("Clear All", ImVec2(100, 0))) {
-            if (callbacks_.onSelectAllChannels) {
-                callbacks_.onSelectAllChannels(false);
+            if (callbacks_.on_select_all_channels) {
+                callbacks_.on_select_all_channels(false);
             }
         }
         ImGui::EndGroup();
@@ -109,13 +109,13 @@ namespace elda::views::channels_selector {
 
         for (size_t i = 0; i < channels.size(); ++i) {
             const auto& channel = channels[i];
-            ImGui::PushID(channel.GetId().c_str());
+            ImGui::PushID(channel.get_id().c_str());
 
-            bool wasSelected = channel.selected;
-            bool isSelected = RenderCustomCheckbox(channel.name.c_str(), channel.selected);
+            bool was_selected = channel.selected;
+            bool is_selected = render_custom_checkbox(channel.name.c_str(), channel.selected);
 
-            if (isSelected != wasSelected && callbacks_.onChannelSelectionChanged) {
-                callbacks_.onChannelSelectionChanged(i, isSelected);
+            if (is_selected != was_selected && callbacks_.on_channel_selection_changed) {
+                callbacks_.on_channel_selection_changed(i, is_selected);
             }
 
             ImGui::PopID();
@@ -124,34 +124,34 @@ namespace elda::views::channels_selector {
         ImGui::EndChild();
     }
 
-    void ChannelsGroupView::RenderFooter(bool canConfirm, bool isNewGroup) {
+    void ChannelsGroupView::render_footer(bool can_confirm, bool is_new_group) {
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
         // Confirm button
-        if (!canConfirm) {
+        if (!can_confirm) {
             ImGui::BeginDisabled();
         }
 
         if (ImGui::Button("Confirm", ImVec2(120, 0))) {
-            if (callbacks_.onConfirm) {
-                callbacks_.onConfirm();
+            if (callbacks_.on_confirm) {
+                callbacks_.on_confirm();
             }
         }
 
-        if (!canConfirm) {
+        if (!can_confirm) {
             ImGui::EndDisabled();
         }
 
         // Delete or Cancel button (to the right of Confirm)
         ImGui::SameLine();
 
-        if (isNewGroup) {
+        if (is_new_group) {
             // Show Cancel button for new groups
             if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-                if (callbacks_.onCancel) {
-                    callbacks_.onCancel();
+                if (callbacks_.on_cancel) {
+                    callbacks_.on_cancel();
                 }
             }
         } else {
@@ -161,8 +161,8 @@ namespace elda::views::channels_selector {
             ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.7f, 0.1f, 0.1f, 1.0f));
 
             if (ImGui::Button("Delete", ImVec2(120, 0))) {
-                if (callbacks_.onDelete) {
-                    callbacks_.onDelete();
+                if (callbacks_.on_delete) {
+                    callbacks_.on_delete();
                 }
             }
 
@@ -174,7 +174,7 @@ namespace elda::views::channels_selector {
     // CUSTOM CHECKBOX (from original implementation)
     // ========================================================================
 
-    bool ChannelsGroupView::RenderCustomCheckbox(const char* label, bool value) {
+    bool ChannelsGroupView::render_custom_checkbox(const char* label, bool value) {
         ImGuiWindow* window = ImGui::GetCurrentWindow();
         if (window->SkipItems)
             return value;
@@ -196,9 +196,9 @@ namespace elda::views::channels_selector {
 
         bool hovered, held;
         bool pressed = ImGui::ButtonBehavior(total_bb, id, &hovered, &held);
-        bool newValue = value;
+        bool new_value = value;
         if (pressed)
-            newValue = !value;
+            new_value = !value;
 
         // Center checkbox vertically
         float check_y_offset = (total_h - square_sz) * 0.5f;
@@ -249,7 +249,7 @@ namespace elda::views::channels_selector {
                                     pos.y + label_y_offset), label);
         }
 
-        return newValue;
+        return new_value;
     }
 
 } // namespace elda::channels_group

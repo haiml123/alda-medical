@@ -3,17 +3,17 @@
 
 namespace elda::views::channels_selector {
 
-    ChannelsGroupModel::ChannelsGroupModel(elda::AppStateManager& stateManager)
-        : MVPBaseModel(stateManager)
-        , channelService_(services::ChannelManagementService::GetInstance())
-        , onGroupsChangedCallback_(nullptr) {
+    ChannelsGroupModel::ChannelsGroupModel(elda::AppStateManager& state_manager)
+        : MVPBaseModel(state_manager)
+        , channel_service_(services::ChannelManagementService::get_instance())
+        , on_groups_changed_callback_(nullptr) {
     }
 
     // ========================================================================
     // DATA ACCESS
     // ========================================================================
 
-    int ChannelsGroupModel::GetSelectedCount() const {
+    int ChannelsGroupModel::get_selected_count() const {
         return std::count_if(channels_.begin(), channels_.end(),
                            [](const models::Channel& ch) { return ch.selected; });
     }
@@ -22,17 +22,17 @@ namespace elda::views::channels_selector {
     // DATA MODIFICATION
     // ========================================================================
 
-    void ChannelsGroupModel::SetChannels(const std::vector<models::Channel>& channels) {
+    void ChannelsGroupModel::set_channels(const std::vector<models::Channel>& channels) {
         channels_ = channels;
     }
 
-    void ChannelsGroupModel::SelectChannel(size_t index, bool selected) {
+    void ChannelsGroupModel::select_channel(size_t index, bool selected) {
         if (index < channels_.size()) {
             channels_[index].selected = selected;
         }
     }
 
-    void ChannelsGroupModel::SelectAllChannels(bool selected) {
+    void ChannelsGroupModel::select_all_channels(bool selected) {
         for (auto& ch : channels_) {
             ch.selected = selected;
         }
@@ -42,14 +42,14 @@ namespace elda::views::channels_selector {
     // VALIDATION
     // ========================================================================
 
-    bool ChannelsGroupModel::CanConfirm(std::string& errorMessage) const {
-        if (groupName_.empty()) {
-            errorMessage = "Group name cannot be empty";
+    bool ChannelsGroupModel::can_confirm(std::string& error_message) const {
+        if (group_name_.empty()) {
+            error_message = "Group name cannot be empty";
             return false;
         }
 
-        if (GetSelectedCount() == 0) {
-            errorMessage = "At least one channel must be selected";
+        if (get_selected_count() == 0) {
+            error_message = "At least one channel must be selected";
             return false;
         }
 
@@ -60,19 +60,19 @@ namespace elda::views::channels_selector {
     // BUSINESS LOGIC
     // ========================================================================
 
-    bool ChannelsGroupModel::LoadChannelGroupById(const std::string& id) {
-        auto group = channelService_.GetChannelGroup(id);
+    bool ChannelsGroupModel::load_channel_group_by_id(const std::string& id) {
+        auto group = channel_service_.get_channel_group(id);
         if (group.has_value()) {
-            groupId_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
-            groupName_ = group->name;
+            group_id_ = group->id;  // ✅ CRITICAL: Store the ID from BaseModel
+            group_name_ = group->name;
 
-            channels_ = channelService_.GetAllChannels();
+            channels_ = channel_service_.get_all_channels();
 
             // Mark channels that are in the group as selected
             for (auto& channel : channels_) {
-                channel.selected = std::find(group->channelIds.begin(),
-                                            group->channelIds.end(),
-                                            channel.GetId()) != group->channelIds.end();
+                channel.selected = std::find(group->channel_ids.begin(),
+                                            group->channel_ids.end(),
+                                            channel.get_id()) != group->channel_ids.end();
             }
 
             return true;
@@ -80,19 +80,19 @@ namespace elda::views::channels_selector {
         return false;
     }
 
-    bool ChannelsGroupModel::LoadActiveChannelGroup() {
-        auto group = channelService_.LoadActiveChannelGroup();
+    bool ChannelsGroupModel::load_active_channel_group() {
+        auto group = channel_service_.load_active_channel_group();
         if (group.has_value()) {
-            groupId_ = group->id;
-            groupName_ = group->name;
+            group_id_ = group->id;
+            group_name_ = group->name;
 
-            channels_ = channelService_.GetAllChannels();
+            channels_ = channel_service_.get_all_channels();
 
             // Mark channels that are in the group as selected
             for (auto& channel : channels_) {
-                channel.selected = std::find(group->channelIds.begin(),
-                                            group->channelIds.end(),
-                                            channel.GetId()) != group->channelIds.end();
+                channel.selected = std::find(group->channel_ids.begin(),
+                                            group->channel_ids.end(),
+                                            channel.get_id()) != group->channel_ids.end();
             }
 
             return true;
@@ -100,7 +100,7 @@ namespace elda::views::channels_selector {
         return false;
     }
 
-    bool ChannelsGroupModel::SaveChannelGroup() {
+    bool ChannelsGroupModel::save_channel_group() {
         // TODO: This should go through AppStateManager for:
         // - State validation
         // - Audit logging
@@ -108,64 +108,64 @@ namespace elda::views::channels_selector {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        std::vector<std::string> selectedChannelIds;
+        std::vector<std::string> selected_channel_ids;
         for (const auto& channel : channels_) {
             if (channel.selected) {
-                selectedChannelIds.push_back(channel.id);
+                selected_channel_ids.push_back(channel.id);
             }
         }
 
         bool success = false;
 
-        if (groupId_.empty()) {
+        if (group_id_.empty()) {
             // CREATE: New group
-            models::ChannelsGroup group(groupName_);
-            group.channelIds = selectedChannelIds;
-            group.OnCreate();
+            models::ChannelsGroup group(group_name_);
+            group.channel_ids = selected_channel_ids;
+            group.on_create();
 
-            if (channelService_.CreateChannelGroup(group)) {
+            if (channel_service_.create_channel_group(group)) {
                 // Remember the ID for future operations
-                groupId_ = group.id;
+                group_id_ = group.id;
                 success = true;
 
                 std::printf("[ChannelsGroupModel] ✓ Created group: %s (ID: %s)\n",
-                           groupName_.c_str(), groupId_.c_str());
+                           group_name_.c_str(), group_id_.c_str());
             } else {
                 std::fprintf(stderr, "[ChannelsGroupModel] ✗ Failed to create group: %s\n",
-                            groupName_.c_str());
+                            group_name_.c_str());
             }
 
         } else {
             // UPDATE: Existing group - preserve ID, allow name change
-            models::ChannelsGroup group(groupId_, groupName_);
-            group.channelIds = selectedChannelIds;
-            group.OnUpdate();
+            models::ChannelsGroup group(group_id_, group_name_);
+            group.channel_ids = selected_channel_ids;
+            group.on_update();
 
-            if (channelService_.UpdateChannelGroup(group)) {
+            if (channel_service_.update_channel_group(group)) {
                 success = true;
 
                 std::printf("[ChannelsGroupModel] ✓ Updated group: %s (ID: %s)\n",
-                           groupName_.c_str(), groupId_.c_str());
+                           group_name_.c_str(), group_id_.c_str());
             } else {
                 std::fprintf(stderr, "[ChannelsGroupModel] ✗ Failed to update group: %s\n",
-                            groupName_.c_str());
+                            group_name_.c_str());
             }
         }
 
         if (success) {
             // Save as active group
-            models::ChannelsGroup activeGroup(groupId_, groupName_);
-            activeGroup.channelIds = selectedChannelIds;
-            channelService_.SaveActiveChannelGroup(activeGroup);
+            models::ChannelsGroup active_group(group_id_, group_name_);
+            active_group.channel_ids = selected_channel_ids;
+            channel_service_.save_active_channel_group(active_group);
 
-            NotifyGroupsChanged();
+            notify_groups_changed();
         }
 
         return success;
     }
 
-    bool ChannelsGroupModel::DeleteChannelGroup() {
-        if (groupId_.empty()) {
+    bool ChannelsGroupModel::delete_channel_group() {
+        if (group_id_.empty()) {
             return false;  // Can't delete a group that doesn't exist yet
         }
 
@@ -176,26 +176,26 @@ namespace elda::views::channels_selector {
         // - Medical device compliance
         // See APPSTATE_INTEGRATION.cpp for implementation options
 
-        if (channelService_.DeleteChannelGroup(groupId_)) {
+        if (channel_service_.delete_channel_group(group_id_)) {
             std::printf("[ChannelsGroupModel] ✓ Deleted group: %s (ID: %s)\n",
-                       groupName_.c_str(), groupId_.c_str());
+                       group_name_.c_str(), group_id_.c_str());
 
-            NotifyGroupsChanged();
+            notify_groups_changed();
 
             return true;
         }
 
         std::fprintf(stderr, "[ChannelsGroupModel] ✗ Failed to delete group: %s\n",
-                    groupName_.c_str());
+                    group_name_.c_str());
         return false;
     }
 
-    std::vector<models::Channel> ChannelsGroupModel::GetAllChannels() const {
-        return channelService_.GetAllChannels();
+    std::vector<models::Channel> ChannelsGroupModel::get_all_channels() const {
+        return channel_service_.get_all_channels();
     }
 
-    std::vector<std::string> ChannelsGroupModel::GetAvailableGroupNames() const {
-        auto groups = channelService_.GetAllChannelGroups();
+    std::vector<std::string> ChannelsGroupModel::get_available_group_names() const {
+        auto groups = channel_service_.get_all_channel_groups();
         std::vector<std::string> names;
         names.reserve(groups.size());
 
@@ -206,24 +206,24 @@ namespace elda::views::channels_selector {
         return names;
     }
 
-    void ChannelsGroupModel::Clear() {
+    void ChannelsGroupModel::clear() {
         channels_.clear();
-        groupName_.clear();
-        groupId_.clear();
+        group_name_.clear();
+        group_id_.clear();
     }
 
-    bool ChannelsGroupModel::IsNewGroup() const {
-        return groupId_.empty();
+    bool ChannelsGroupModel::is_new_group() const {
+        return group_id_.empty();
     }
 
     // ========================================================================
     // INTERNAL HELPERS
     // ========================================================================
 
-    void ChannelsGroupModel::NotifyGroupsChanged() {
-        if (onGroupsChangedCallback_) {
+    void ChannelsGroupModel::notify_groups_changed() {
+        if (on_groups_changed_callback_) {
             std::printf("[ChannelsGroupModel] Notifying parent of groups change\n");
-            onGroupsChangedCallback_();
+            on_groups_changed_callback_();
         }
     }
 

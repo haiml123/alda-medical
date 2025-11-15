@@ -11,49 +11,43 @@ namespace elda::models {
 
     class BaseModel {
     public:
-        // PUBLIC FIELD - direct access
         std::string id;
 
         virtual ~BaseModel() = default;
 
-        // Getter for backward compatibility
-        const std::string& GetId() const { return id; }
+        const std::string& get_id() const { return id; }
 
-        // Timestamp getters
-        const std::string& GetCreatedAt() const { return createdAt_; }
-        const std::string& GetUpdatedAt() const { return updatedAt_; }
+        const std::string& get_created_at() const { return created_at_; }
+        const std::string& get_updated_at() const { return updated_at_; }
 
-        // Setters
-        void SetId(const std::string& newId) { id = newId; }
-        void SetId() { id = GenerateUniqueId(); }
+        void set_id(const std::string& new_id) { id = new_id; }
+        void set_id() { id = generate_unique_id(); }
 
-        void SetCreatedAt(const std::string& timestamp) { createdAt_ = timestamp; }
-        void SetCreatedAt() { createdAt_ = GetCurrentTimestamp(); }
+        void set_created_at(const std::string& timestamp) { created_at_ = timestamp; }
+        void set_created_at() { created_at_ = get_current_timestamp(); }
 
-        void SetUpdatedAt(const std::string& timestamp) { updatedAt_ = timestamp; }
-        void SetUpdatedAt() { updatedAt_ = GetCurrentTimestamp(); }
+        void set_updated_at(const std::string& timestamp) { updated_at_ = timestamp; }
+        void set_updated_at() { updated_at_ = get_current_timestamp(); }
 
-        // Lifecycle methods
-        void OnCreate() {
+        void on_create() {
             if (id.empty()) {
-                SetId();
+                set_id();
             }
-            if (createdAt_.empty()) {
-                SetCreatedAt();
+            if (created_at_.empty()) {
+                set_created_at();
             }
-            SetUpdatedAt();
+            set_updated_at();
         }
 
-        void OnUpdate() {
-            SetUpdatedAt();
+        void on_update() {
+            set_updated_at();
         }
 
-        bool IsInitialized() const {
-            return !id.empty() && !createdAt_.empty() && !updatedAt_.empty();
+        bool is_initialized() const {
+            return !id.empty() && !created_at_.empty() && !updated_at_.empty();
         }
 
-        // Static utility methods
-        static std::string GetCurrentTimestamp() {
+        static std::string get_current_timestamp() {
             auto now = std::chrono::system_clock::now();
             auto time_t_now = std::chrono::system_clock::to_time_t(now);
 
@@ -69,7 +63,7 @@ namespace elda::models {
             return oss.str();
         }
 
-        static std::string GenerateUniqueId() {
+        static std::string generate_unique_id() {
             auto now = std::chrono::system_clock::now();
             auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now.time_since_epoch()).count();
@@ -90,13 +84,13 @@ namespace elda::models {
         BaseModel() = default;
         explicit BaseModel(const std::string& id) : id(id) {}
         BaseModel(const std::string& id,
-                   const std::string& createdAt,
-                   const std::string& updatedAt)
-            : id(id), createdAt_(createdAt), updatedAt_(updatedAt) {}
+                  const std::string& created_at,
+                  const std::string& updated_at)
+            : id(id), created_at_(created_at), updated_at_(updated_at) {}
 
     private:
-        std::string createdAt_;
-        std::string updatedAt_;
+        std::string created_at_;
+        std::string updated_at_;
     };
 
-} // namespace elda::models
+}

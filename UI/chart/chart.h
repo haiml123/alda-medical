@@ -1,6 +1,6 @@
 #pragma once
 #include "chart_data.h"
-#include "models/channel.h"  // add
+#include "models/channel.h"
 
-void DrawChart(const elda::ChartData& data,
-               const std::vector<const elda::models::Channel*>& selectedChannels);
+void draw_chart(const elda::ChartData& data,
+                const std::vector<const elda::models::Channel*>& selected_channels);

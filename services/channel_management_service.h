@@ -30,41 +30,41 @@ namespace elda::services {
          * @param channel Channel to create
          * @return true if created successfully
          */
-        bool CreateChannel(const models::Channel& channel);
+        bool create_channel(const models::Channel& channel);
 
         /**
          * Get a channel by ID
          * @param id Channel unique identifier
          * @return Optional channel if found
          */
-        std::optional<models::Channel> GetChannel(const std::string& id) const;
+        std::optional<models::Channel> get_channel(const std::string& id) const;
 
         /**
          * Get all channels
          * @return Vector of all channels
          */
-        const std::vector<models::Channel>& GetAllChannels() const;
+        const std::vector<models::Channel>& get_all_channels() const;
 
         /**
          * Update an existing channel
          * @param channel Channel with updated data (must have valid id)
          * @return true if updated successfully
          */
-        bool UpdateChannel(const models::Channel& channel);
+        bool update_channel(const models::Channel& channel);
 
         /**
          * Delete a channel by ID
          * @param id Channel identifier
          * @return true if deleted successfully
          */
-        bool DeleteChannel(const std::string& id);
+        bool delete_channel(const std::string& id);
 
         /**
          * Check if a channel exists
          * @param id Channel identifier
          * @return true if channel exists
          */
-        bool ChannelExists(const std::string& id) const;
+        bool channel_exists(const std::string& id) const;
 
         // ============================================================================
         // CHANNEL GROUP (MONTAGE) OPERATIONS - ID-BASED
@@ -75,61 +75,61 @@ namespace elda::services {
          * @param group Channel group to create (must have unique id)
          * @return true if created successfully
          */
-        bool CreateChannelGroup(const models::ChannelsGroup& group);
+        bool create_channel_group(const models::ChannelsGroup& group);
 
         /**
          * Get a channel group by ID
          * @param id Group unique identifier
          * @return Optional channel group if found
          */
-        std::optional<models::ChannelsGroup> GetChannelGroup(const std::string& id) const;
+        std::optional<models::ChannelsGroup> get_channel_group(const std::string& id) const;
 
         /**
          * Get a channel group by name (for backward compatibility)
          * @param name Group name
          * @return Optional channel group if found
          */
-        std::optional<models::ChannelsGroup> GetChannelGroupByName(const std::string& name) const;
+        std::optional<models::ChannelsGroup> get_channel_group_by_name(const std::string& name) const;
 
         /**
          * Get all channel groups
          * @return Vector of all channel groups
          */
-        std::vector<models::ChannelsGroup> GetAllChannelGroups() const;
+        std::vector<models::ChannelsGroup> get_all_channel_groups() const;
 
         /**
          * Update an existing channel group
          * @param group Channel group with updated data (must have valid id)
          * @return true if updated successfully
          */
-        bool UpdateChannelGroup(const models::ChannelsGroup& group);
+        bool update_channel_group(const models::ChannelsGroup& group);
 
         /**
          * Delete a channel group by ID
          * @param id Group identifier
          * @return true if deleted successfully
          */
-        bool DeleteChannelGroup(const std::string& id);
+        bool delete_channel_group(const std::string& id);
 
-         /**
+        /**
          * Delete all non-default channel groups
          * @return Number of groups deleted
          */
-        int DeleteAllChannelGroups();
+        int delete_all_channel_groups();
 
         /**
          * Check if a channel group exists by ID
          * @param id Group identifier
          * @return true if group exists
          */
-        bool ChannelGroupExists(const std::string& id) const;
+        bool channel_group_exists(const std::string& id) const;
 
         /**
          * Check if a channel group exists by name
          * @param name Group name
          * @return true if group exists
          */
-        bool ChannelGroupExistsByName(const std::string& name) const;
+        bool channel_group_exists_by_name(const std::string& name) const;
 
         // ============================================================================
         // LAST USED / ACTIVE MANAGEMENT
@@ -140,13 +140,13 @@ namespace elda::services {
          * @param group The active channel group
          * @return true if saved successfully
          */
-        bool SaveActiveChannelGroup(const models::ChannelsGroup& group);
+        bool save_active_channel_group(const models::ChannelsGroup& group);
 
         /**
          * Load the last used/active channel group
          * @return Optional channel group if available
          */
-        std::optional<models::ChannelsGroup> LoadActiveChannelGroup() const;
+        std::optional<models::ChannelsGroup> load_active_channel_group() const;
 
         // ============================================================================
         // VALIDATION & UTILITIES
@@ -155,22 +155,22 @@ namespace elda::services {
         /**
          * Validate a channel group (e.g., check for duplicate channel IDs)
          * @param group Group to validate
-         * @param errorMessage Output parameter for error details
+         * @param error_message Output parameter for error details
          * @return true if valid
          */
-        bool ValidateChannelGroup(const models::ChannelsGroup& group, std::string& errorMessage) const;
+        bool validate_channel_group(const models::ChannelsGroup& group, std::string& error_message) const;
 
         /**
          * Get default/system channel groups (like 10-20, 10-10 systems)
          * @return Vector of default groups
          */
-        std::vector<models::ChannelsGroup> GetDefaultChannelGroups() const;
+        std::vector<models::ChannelsGroup> get_default_channel_groups() const;
 
         // ============================================================================
         // SINGLETON ACCESS
         // ============================================================================
 
-        static ChannelManagementService& GetInstance();
+        static ChannelManagementService& get_instance();
 
         // Prevent copying
         ChannelManagementService(const ChannelManagementService&) = delete;
@@ -181,31 +181,31 @@ namespace elda::services {
         ~ChannelManagementService() = default;
 
         // Storage helpers
-        void LoadFromStorage();
-        void SaveToStorage();
+        void load_from_storage();
+        void save_to_storage();
 
         // Internal data
         std::vector<models::Channel> channels_;
-        std::vector<models::ChannelsGroup> channelGroups_;
+        std::vector<models::ChannelsGroup> channel_groups_;
 
         // Storage services
-        std::unique_ptr<elda::services::SecureConfigManager<std::vector<models::Channel>>> channelStorage_;
-        std::unique_ptr<elda::services::SecureConfigManager<std::vector<models::ChannelsGroup>>> groupStorage_;
-        std::unique_ptr<elda::services::SecureConfigManager<models::ChannelsGroup>> activeGroupStorage_;
+        std::unique_ptr<elda::services::SecureConfigManager<std::vector<models::Channel>>> channel_storage_;
+        std::unique_ptr<elda::services::SecureConfigManager<std::vector<models::ChannelsGroup>>> group_storage_;
+        std::unique_ptr<elda::services::SecureConfigManager<models::ChannelsGroup>> active_group_storage_;
 
         // Helper methods
-        std::vector<models::Channel>::iterator FindChannelById(const std::string& id);
-        std::vector<models::Channel>::const_iterator FindChannelById(const std::string& id) const;
+        std::vector<models::Channel>::iterator find_channel_by_id(const std::string& id);
+        std::vector<models::Channel>::const_iterator find_channel_by_id(const std::string& id) const;
 
         // ID-based lookups (primary)
-        std::vector<models::ChannelsGroup>::iterator FindGroupById(const std::string& id);
-        std::vector<models::ChannelsGroup>::const_iterator FindGroupById(const std::string& id) const;
+        std::vector<models::ChannelsGroup>::iterator find_group_by_id(const std::string& id);
+        std::vector<models::ChannelsGroup>::const_iterator find_group_by_id(const std::string& id) const;
 
         // Name-based lookups (for backward compatibility)
-        std::vector<models::ChannelsGroup>::iterator FindGroupByName(const std::string& name);
-        std::vector<models::ChannelsGroup>::const_iterator FindGroupByName(const std::string& name) const;
+        std::vector<models::ChannelsGroup>::iterator find_group_by_name(const std::string& name);
+        std::vector<models::ChannelsGroup>::const_iterator find_group_by_name(const std::string& name) const;
 
-        bool InitializeDefaultChannels();
+        bool initialize_default_channels();
     };
 
 } // namespace elda::services

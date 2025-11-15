@@ -10,10 +10,10 @@ namespace elda::views::impedance_viewer {
 
     class ImpedanceViewerScreen : public IScreen {
     public:
-        ImpedanceViewerScreen(AppState& state, AppStateManager& stateManager, AppRouter& router);
+        ImpedanceViewerScreen(AppState& state, AppStateManager& state_manager, AppRouter& router);
 
-        void onEnter() override;
-        void onExit() override;
+        void on_enter() override;
+        void on_exit() override;
         void update(float dt) override;
         void render() override;
 
@@ -23,4 +23,4 @@ namespace elda::views::impedance_viewer {
         ImpedanceViewerPresenter presenter_;
     };
 
-} // namespace elda::impedance_viewer
+}

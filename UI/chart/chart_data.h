@@ -6,24 +6,24 @@
 namespace elda {
 
     /**
-     * ChartData - Clean interface for DrawChart
-     * This is what DrawChart needs, nothing more
+     * ChartData - Clean interface for draw_chart
+     * This is what draw_chart needs, nothing more
      */
     struct ChartData {
         // Display settings (extracted from your AppState)
-        double amplitudePPuV;       // From st.ampPPuV()
-        double windowSeconds;        // From st.windowSec()
-        double playheadSeconds;      // From st.playheadSeconds
-        double gainMultiplier;       // From st.gainMul()
+        double amplitude_pp_uv;      // From st.ampPPuV()
+        double window_seconds;       // From st.windowSec()
+        double playhead_seconds;     // From st.playheadSeconds
+        double gain_multiplier;      // From st.gainMul()
 
-        int numChannels;
-        int sampleRateHz;
-        int bufferSize;
+        int num_channels;
+        int sample_rate_hz;
+        int buffer_size;
 
         // Ring buffer (extracted from st.ring)
         struct {
-            std::vector<double> tAbs;                       // Time absolute
-            std::vector<std::vector<double>> data;          // [channel][sample]
+            std::vector<double> t_abs;                    // Time absolute
+            std::vector<std::vector<double>> data;        // [channel][sample]
             int write;
             bool filled;
         } ring;

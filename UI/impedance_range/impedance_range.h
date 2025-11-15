@@ -35,7 +35,7 @@ struct DualCursorConfig {
     // Cursor look/feel
     ImU32 cursor_color      = IM_COL32(0, 0, 0, 255); // black
     float cursor_thickness  = 2.0f;
-    float cursor_overhang   = 6.0f; // pixels above/below the bar
+    float cursor_overhang   = 6.0f;  // pixels above/below the bar
     float hit_slop_px       = 10.0f; // how easy it is to grab the line
 
     // Behavior
@@ -45,13 +45,13 @@ struct DualCursorConfig {
 
 // Two-cursor range widget with dynamic coloring and live value labels above cursors.
 // Returns true if either cursor changed this frame.
-bool DrawImpedanceRangeDual(const char* id_label,
-                            float low_ohms,
-                            float high_ohms,
-                            const ImpedanceRanges& ranges,
-                            const ImpedanceRangeConfig& cfg = {},
-                            const DualCursorConfig& dcfg = {},
-                            float* out_low = nullptr,
-                            float* out_high = nullptr);
+bool draw_impedance_range_dual(const char* id_label,
+                               float low_ohms,
+                               float high_ohms,
+                               const ImpedanceRanges& ranges,
+                               const ImpedanceRangeConfig& cfg = {},
+                               const DualCursorConfig& dcfg = {},
+                               float* out_low = nullptr,
+                               float* out_high = nullptr);
 
 } // namespace elda::ui

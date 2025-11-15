@@ -9,88 +9,88 @@ namespace elda::models {
         std::string color;
         bool selected;
 
-        int amplifierChannel;
-        std::string signalType;
-        double sensorGain;
-        double sensorOffset;
+        int amplifier_channel;
+        std::string signal_type;
+        double sensor_gain;
+        double sensor_offset;
 
         bool filtered;
-        double highPassCutoff;
-        double lowPassCutoff;
+        double high_pass_cutoff;
+        double low_pass_cutoff;
 
-        float impedanceX;
-        float impedanceY;
+        float impedance_x;
+        float impedance_y;
 
         Channel()
             : BaseModel()
             , color("#FFFFFF")
             , selected(false)
-            , amplifierChannel(-1)
-            , signalType("EEG")
-            , sensorGain(1.0)
-            , sensorOffset(0.0)
+            , amplifier_channel(-1)
+            , signal_type("EEG")
+            , sensor_gain(1.0)
+            , sensor_offset(0.0)
             , filtered(false)
-            , highPassCutoff(0.0)
-            , lowPassCutoff(0.0)
-            , impedanceX(0.0f)
-            , impedanceY(0.0f) {}
+            , high_pass_cutoff(0.0)
+            , low_pass_cutoff(0.0)
+            , impedance_x(0.0f)
+            , impedance_y(0.0f) {}
 
         Channel(const std::string& name_, const std::string& color_ = "#FFFFFF")
             : BaseModel()
             , name(name_)
             , color(color_)
             , selected(false)
-            , amplifierChannel(-1)
-            , signalType("EEG")
-            , sensorGain(1.0)
-            , sensorOffset(0.0)
+            , amplifier_channel(-1)
+            , signal_type("EEG")
+            , sensor_gain(1.0)
+            , sensor_offset(0.0)
             , filtered(false)
-            , highPassCutoff(0.0)
-            , lowPassCutoff(0.0)
-            , impedanceX(0.0f)
-            , impedanceY(0.0f) {}
+            , high_pass_cutoff(0.0)
+            , low_pass_cutoff(0.0)
+            , impedance_x(0.0f)
+            , impedance_y(0.0f) {}
 
         Channel(const std::string& id_, const std::string& name_, const std::string& color_ = "#FFFFFF")
             : BaseModel(id_)
             , name(name_)
             , color(color_)
             , selected(false)
-            , amplifierChannel(-1)
-            , signalType("EEG")
-            , sensorGain(1.0)
-            , sensorOffset(0.0)
+            , amplifier_channel(-1)
+            , signal_type("EEG")
+            , sensor_gain(1.0)
+            , sensor_offset(0.0)
             , filtered(false)
-            , highPassCutoff(0.0)
-            , lowPassCutoff(0.0)
-            , impedanceX(0.0f)
-            , impedanceY(0.0f) {}
+            , high_pass_cutoff(0.0)
+            , low_pass_cutoff(0.0)
+            , impedance_x(0.0f)
+            , impedance_y(0.0f) {}
 
-        void SetSelected(bool isSelected) {
-            if (selected != isSelected) {
-                selected = isSelected;
-                OnUpdate();
+        void set_selected(bool is_selected) {
+            if (selected != is_selected) {
+                selected = is_selected;
+                on_update();
             }
         }
 
-        void SetGain(double gain) {
-            if (sensorGain != gain) {
-                sensorGain = gain;
-                OnUpdate();
+        void set_gain(double gain) {
+            if (sensor_gain != gain) {
+                sensor_gain = gain;
+                on_update();
             }
         }
 
-        void SetFiltering(bool enable, double highPass = 0.0, double lowPass = 0.0) {
+        void set_filtering(bool enable, double high_pass = 0.0, double low_pass = 0.0) {
             filtered = enable;
-            highPassCutoff = highPass;
-            lowPassCutoff = lowPass;
-            OnUpdate();
+            high_pass_cutoff = high_pass;
+            low_pass_cutoff = low_pass;
+            on_update();
         }
 
-        void SetImpedancePosition(float x, float y) {
-            if (impedanceX != x || impedanceY != y) {
-                impedanceX = x;
-                impedanceY = y;
-                OnUpdate();
+        void set_impedance_position(float x, float y) {
+            if (impedance_x != x || impedance_y != y) {
+                impedance_x = x;
+                impedance_y = y;
+                on_update();
             }
         }
     };

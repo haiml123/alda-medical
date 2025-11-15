@@ -4,12 +4,12 @@
 namespace elda::views::impedance_viewer {
 
     struct HeaderCallbacks {
-        std::function<void()> onSave;
-        std::function<void()> onClose;
+        std::function<void()> on_save;
+        std::function<void()> on_close;
     };
 
-    void RenderImpedanceViewerHeader(const char* title,
-                                     const HeaderCallbacks& callbacks,
-                                     float height_px = 44.0f);
+    void render_impedance_viewer_header(const char* title,
+                                        const HeaderCallbacks& callbacks,
+                                        float height_px = 44.0f);
 
 }

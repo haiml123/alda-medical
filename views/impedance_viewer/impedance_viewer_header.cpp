@@ -4,7 +4,7 @@
 
 namespace elda::views::impedance_viewer {
 
-    void RenderImpedanceViewerHeader(const char* title,
+    void render_impedance_viewer_header(const char* title,
                                      const HeaderCallbacks& callbacks,
                                      float height_px)
     {
@@ -14,40 +14,34 @@ namespace elda::views::impedance_viewer {
         ImGui::BeginChild("impedance_viewer_header",
                           ImVec2(0, height_px),
                           false,
-                          ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+                          ImGuiWindowFlags_NoScrollbar |
+                          ImGuiWindowFlags_NoScrollWithMouse);
 
-        const float padX = 12.0f;
-        const ImVec2 btnSize(84.0f, 26.0f);
-        const float gap = 8.0f;
+        // Left side: title (bold)
+        ImGui::PushFont(ImGui::GetFont());  // same font, just demonstrate customization
+        ImGui::TextUnformatted(title);
+        ImGui::PopFont();
 
-        // ---- Left: Title ----
-        ImGui::SetCursorPos(ImVec2(padX, (height_px - ImGui::GetTextLineHeight()) * 0.5f));
-        ImGui::TextUnformatted(title ? title : "Impedance Viewer");
+        // Right side: buttons in a row
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetWindowWidth() - 220.0f);
 
-        // ---- Right: Save / Close buttons ----
-        const float groupWidth = btnSize.x * 2.0f + gap;
-        const float availWidth = ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
-        const float xRight = availWidth - padX - groupWidth;
-        const float yCenter = (height_px - btnSize.y) * 0.5f;
-
-        // Position: Save button
-        ImGui::SetCursorPos(ImVec2(xRight, yCenter));
-        ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.18f, 0.52f, 0.98f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.16f, 0.46f, 0.90f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.18f, 0.52f, 0.98f, 1.0f));
-        if (ImGui::Button("Save", btnSize)) {
-            if (callbacks.onSave) callbacks.onSave();
+        if (ImGui::Button("Save", ImVec2(100, height_px - 16.0f))) {
+            if (callbacks.on_save) {
+                callbacks.on_save();
+            }
         }
-        ImGui::PopStyleColor(3);
 
-        // Position: Close button (to the right of Save)
-        ImGui::SetCursorPos(ImVec2(xRight + btnSize.x + gap, yCenter));
-        if (ImGui::Button("Close", btnSize)) {
-            if (callbacks.onClose) callbacks.onClose();
+        ImGui::SameLine();
+
+        if (ImGui::Button("Close", ImVec2(100, height_px - 16.0f))) {
+            if (callbacks.on_close) {
+                callbacks.on_close();
+            }
         }
 
         ImGui::EndChild();
-        ImGui::PopStyleColor(); // Pop ChildBg color
+        ImGui::PopStyleColor();
     }
 
 } // namespace elda::impedance_viewer::ui

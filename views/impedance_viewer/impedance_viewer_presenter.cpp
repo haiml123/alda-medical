@@ -14,83 +14,83 @@ namespace elda::views::impedance_viewer {
         , model_(model)
         , view_(view)
     {
-        SetupCallbacks();
+        setup_callbacks();
     }
 
-    void ImpedanceViewerPresenter::OnEnter() {
+    void ImpedanceViewerPresenter::on_enter() {
         std::cout << "[ImpedanceViewer] Enter\n";
     }
 
-    void ImpedanceViewerPresenter::OnExit() {
+    void ImpedanceViewerPresenter::on_exit() {
         std::cout << "[ImpedanceViewer] Exit\n";
     }
 
-    void ImpedanceViewerPresenter::Update(float) {
-        model_.Update();
+    void ImpedanceViewerPresenter::update(float) {
+        model_.update();
     }
 
-    void ImpedanceViewerPresenter::Render() {
+    void ImpedanceViewerPresenter::render() {
         ImpedanceViewerViewData viewData;
-        viewData.electrodes = &model_.GetElectrodePositions();
-        viewData.availableChannels = &model_.GetAvailableChannels();
-        viewData.selectedElectrodeIndex = model_.GetSelectedElectrodeIndex();
+        viewData.electrodes = &model_.get_electrode_positions();
+        viewData.available_channels = &model_.get_available_channels();
+        viewData.selected_electrode_index = model_.get_selected_electrode_index();
 
-        view_.Render(viewData, callbacks_);
+        view_.render(viewData, callbacks_);
     }
 
-    void ImpedanceViewerPresenter::SetupCallbacks() {
-        callbacks_.onElectrodeMouseDown = [this](int idx){
-            OnElectrodeMouseDown(idx);
+    void ImpedanceViewerPresenter::setup_callbacks() {
+        callbacks_.on_electrode_mouse_down = [this](int idx){
+            on_electrode_mouse_down(idx);
         };
 
-        callbacks_.onElectrodeDropped = [this](size_t idx, ImVec2 pos){
-            OnElectrodeDropped(idx, pos);
+        callbacks_.on_electrode_dropped = [this](size_t idx, ImVec2 pos){
+            on_electrode_dropped(idx, pos);
         };
 
-        callbacks_.onSave = [this](){
-            OnSave();
+        callbacks_.on_save = [this](){
+            on_save();
         };
 
-        callbacks_.onRedirectToMonitoring = [this](){
+        callbacks_.on_redirect_to_monitoring = [this](){
             // TODO save impedance values
        //      elda::ui::PopupMessage::Instance().Show(
        //     "Low Impedance Warning",
        //     "Some channels have impedance below 50kΩ. Are you sure you want to proceed to monitoring?",
        //     [this]() {
-       router_.transitionTo(AppMode::MONITORING);
+       //     router_.transitionTo(AppMode::MONITORING);
        //     }
        // );
-
+            router_.transition_to(AppMode::MONITORING);
         };
 
-        callbacks_.onRedirectToSettings = [this](){
-            router_.transitionTo(AppMode::SETTINGS);
+        callbacks_.on_redirect_to_settings = [this](){
+            router_.transition_to(AppMode::SETTINGS);
         };
     }
 
-    void ImpedanceViewerPresenter::OnElectrodeMouseDown(int idx) {
+    void ImpedanceViewerPresenter::on_electrode_mouse_down(int idx) {
         if (idx < 0) {
-            model_.ClearSelection();
+            model_.clear_selection();
             return;
         }
-        model_.SelectElectrode(idx);
-        model_.StartDragging(static_cast<size_t>(idx));
+        model_.select_electrode(idx);
+        model_.start_dragging(static_cast<size_t>(idx));
     }
 
-    void ImpedanceViewerPresenter::OnElectrodeDropped(size_t idx, ImVec2 normalizedPos) {
-        model_.UpdateElectrodePosition(idx, normalizedPos.x, normalizedPos.y);
-        model_.StopDragging(idx);
+    void ImpedanceViewerPresenter::on_electrode_dropped(size_t idx, ImVec2 normalized_pos) {
+        model_.update_electrode_position(idx, normalized_pos.x, normalized_pos.y);
+        model_.stop_dragging(idx);
     }
 
-    void ImpedanceViewerPresenter::OnSave() {
+    void ImpedanceViewerPresenter::on_save() {
         std::cout << "[ImpedanceViewer] Save button clicked\n";
-        model_.SavePositionsToState();
+        model_.save_positions_to_state();
     }
 
-    void ImpedanceViewerPresenter::OnClose() {
+    void ImpedanceViewerPresenter::on_close() {
         std::cout << "[ImpedanceViewer] Close button clicked\n";
-        model_.DiscardChanges();
-        model_.ClearSelection();
+        model_.discard_changes();
+        model_.clear_selection();
     }
 
 } // namespace elda::impedance_viewer

@@ -7,51 +7,51 @@
 namespace elda::views::impedance_viewer {
 
     struct ImpedanceViewerViewCallbacks {
-        std::function<void(int electrodeIndex)> onElectrodeMouseDown;
-        std::function<void(size_t electrodeIndex, ImVec2 normalizedDropPos)> onElectrodeDropped;
-        std::function<void()> onSave;
-        std::function<void()> onRedirectToSettings;
-        std::function<void()> onRedirectToMonitoring;
+        std::function<void(int electrode_index)> on_electrode_mouse_down;
+        std::function<void(size_t electrode_index, ImVec2 normalized_drop_pos)> on_electrode_dropped;
+        std::function<void()> on_save;
+        std::function<void()> on_redirect_to_settings;
+        std::function<void()> on_redirect_to_monitoring;
     };
 
     struct ImpedanceViewerViewData {
         const std::vector<ElectrodePosition>* electrodes = nullptr;
-        const std::vector<elda::models::Channel>* availableChannels = nullptr;
-        int selectedElectrodeIndex = -1;
+        const std::vector<elda::models::Channel>* available_channels = nullptr;
+        int selected_electrode_index = -1;
     };
 
     class ImpedanceViewerView {
     public:
         ImpedanceViewerView();
 
-        void Render(const ImpedanceViewerViewData& data,
+        void render(const ImpedanceViewerViewData& data,
                     const ImpedanceViewerViewCallbacks& callbacks);
 
     private:
-        const float kElectrodeRadiusPx_   = 15.0f;
-        const bool  kShowGridDefault_     = true;
-        const float kCapRadiusNormalized_ = 0.40f;
+        const float k_electrode_radius_px_   = 15.0f;
+        const bool  k_show_grid_default_     = true;
+        const float k_cap_radius_normalized_ = 0.40f;
 
-        ImVec2 canvasPos_{};
-        ImVec2 canvasSize_{};
-        ImVec2 centerPos_{};
-        float  pixelCapRadius_ = 0.0f;
+        ImVec2 canvas_pos_{};
+        ImVec2 canvas_size_{};
+        ImVec2 center_pos_{};
+        float  pixel_cap_radius_ = 0.0f;
 
-        void RenderBody_(const ImpedanceViewerViewData& data,
+        void render_body(const ImpedanceViewerViewData& data,
                          const ImpedanceViewerViewCallbacks& callbacks);
 
-        void RenderElectrodes(ImDrawList* drawList,
-                              const std::vector<ElectrodePosition>& electrodes,
-                              const std::vector<elda::models::Channel>& availableChannels,
-                              int selectedElectrodeIndex,
-                              const ImpedanceViewerViewCallbacks& callbacks);
+        void render_electrodes(ImDrawList* draw_list,
+                               const std::vector<ElectrodePosition>& electrodes,
+                               const std::vector<elda::models::Channel>& available_channels,
+                               int selected_electrode_index,
+                               const ImpedanceViewerViewCallbacks& callbacks);
 
-        void RenderSingleElectrode(ImDrawList* drawList,
-                                   size_t index,
-                                   const ElectrodePosition& electrode,
-                                   const elda::models::Channel* channel,
-                                   bool isSelected,
-                                   const ImpedanceViewerViewCallbacks& callbacks);
+        void render_single_electrode(ImDrawList* draw_list,
+                                     size_t index,
+                                     const ElectrodePosition& electrode,
+                                     const elda::models::Channel* channel,
+                                     bool is_selected,
+                                     const ImpedanceViewerViewCallbacks& callbacks);
     };
 
-} // namespace elda::impedance_viewer
+}

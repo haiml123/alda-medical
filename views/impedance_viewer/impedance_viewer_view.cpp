@@ -11,8 +11,8 @@ namespace elda::views::impedance_viewer {
 
 ImpedanceViewerView::ImpedanceViewerView() {}
 
-void ImpedanceViewerView::Render(const ImpedanceViewerViewData& data,
-                                  const ImpedanceViewerViewCallbacks& callbacks)
+void ImpedanceViewerView::render(const ImpedanceViewerViewData& data,
+                                 const ImpedanceViewerViewCallbacks& callbacks)
 {
     ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
@@ -25,157 +25,196 @@ void ImpedanceViewerView::Render(const ImpedanceViewerViewData& data,
                  ImGuiWindowFlags_NoResize |
                  ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    ImpedanceViewerToolbar(callbacks);
+    render_impedance_viewer_toolbar(callbacks);
 
-    RenderBody_(data, callbacks);
+    render_body(data, callbacks);
 
     ImGui::End();
     ImGui::PopStyleVar();
 }
 
-void ImpedanceViewerView::RenderBody_(const ImpedanceViewerViewData& data,
+void ImpedanceViewerView::render_body(const ImpedanceViewerViewData& data,
                                       const ImpedanceViewerViewCallbacks& callbacks)
 {
-    const float rangePanelHeight = 110.0f;
-    const float availableCapHeight = ImGui::GetContentRegionAvail().y - rangePanelHeight;
+    const float range_panel_height = 110.0f;
+    const float available_cap_height = ImGui::GetContentRegionAvail().y - range_panel_height;
 
-    canvasPos_  = ImGui::GetCursorScreenPos();
-    canvasSize_ = ImGui::GetContentRegionAvail();
+    canvas_pos_  = ImGui::GetCursorScreenPos();
+    canvas_size_ = ImGui::GetContentRegionAvail();
 
-    centerPos_  = ImVec2(
-        canvasPos_.x + canvasSize_.x * 0.5f,
-        canvasPos_.y + availableCapHeight * 0.5f
+    center_pos_  = ImVec2(
+        canvas_pos_.x + canvas_size_.x * 0.5f,
+        canvas_pos_.y + available_cap_height * 0.5f
     );
 
-    pixelCapRadius_ = std::min(canvasSize_.x, availableCapHeight) * kCapRadiusNormalized_;
+    pixel_cap_radius_ = std::min(canvas_size_.x, available_cap_height) * k_cap_radius_normalized_;
 
-    ImDrawList* dl = ImGui::GetWindowDrawList();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     ImGui::InvisibleButton("impedance_canvas",
-        canvasSize_,
+        canvas_size_,
         ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-    const bool canvasHovered = ImGui::IsItemHovered();
+    const bool canvas_hovered = ImGui::IsItemHovered();
 
-    DrawCapOutline(dl, centerPos_, pixelCapRadius_);
-    if (kShowGridDefault_) DrawCapGrid(dl, centerPos_, pixelCapRadius_);
+    draw_cap_outline(draw_list, center_pos_, pixel_cap_radius_);
+    if (k_show_grid_default_) draw_cap_grid(draw_list, center_pos_, pixel_cap_radius_);
 
-    RenderElectrodes(dl, *data.electrodes, *data.availableChannels, data.selectedElectrodeIndex, callbacks);
+    render_electrodes(draw_list,
+                      *data.electrodes,
+                      *data.available_channels,
+                      data.selected_electrode_index,
+                      callbacks);
 
-    if (canvasHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    // background-click clears selection
+    if (canvas_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         ImVec2 mp = ImGui::GetMousePos();
         bool hit = false;
-        for (const auto& e : *data.electrodes) {
-            ImVec2 p = CapNormalizedToScreen(centerPos_, pixelCapRadius_, e.x, e.y);
-            if (PointInCircle(mp, p, kElectrodeRadiusPx_)) { hit = true; break; }
+        for (const auto& electrode : *data.electrodes) {
+            ImVec2 p = cap_normalized_to_screen(center_pos_, pixel_cap_radius_, electrode.x, electrode.y);
+            if (point_in_circle(mp, p, k_electrode_radius_px_)) { hit = true; break; }
         }
-        if (!hit && callbacks.onElectrodeMouseDown) callbacks.onElectrodeMouseDown(-1);
+        if (!hit && callbacks.on_electrode_mouse_down)
+            callbacks.on_electrode_mouse_down(-1);
     }
 
+    //
+    // bottom impedance range panel
+    //
     {
-        const float panelPad   = 40.0f;
-        const float panelWidth = std::min(420.0f, canvasSize_.x * 0.60f);
-        const float panelHeight= 86.0f;
+        const float panel_padding = 40.0f;
+        const float panel_width   = std::min(420.0f, canvas_size_.x * 0.60f);
+        const float panel_height  = 86.0f;
 
-        ImVec2 panelPos(centerPos_.x - panelWidth * 0.5f,
-                        centerPos_.y + pixelCapRadius_ + panelPad);
+        ImVec2 panel_pos(center_pos_.x - panel_width * 0.5f,
+                         center_pos_.y + pixel_cap_radius_ + panel_padding);
 
-        ImGui::SetCursorScreenPos(panelPos);
+        ImGui::SetCursorScreenPos(panel_pos);
         ImGui::BeginChild("impedance_range_panel",
-                          ImVec2(panelWidth, panelHeight),
+                          ImVec2(panel_width, panel_height),
                           false,
                           ImGuiWindowFlags_NoScrollbar |
                           ImGuiWindowFlags_NoScrollWithMouse |
                           ImGuiWindowFlags_NoBackground);
 
         elda::ui::ImpedanceRanges ranges{ 10000.f, 30000.f, 54000.f };
-        elda::ui::ImpedanceRangeConfig barCfg;
-        barCfg.show_threshold_labels = true;
+        elda::ui::ImpedanceRangeConfig bar_cfg;
+        bar_cfg.show_threshold_labels = true;
 
-        elda::ui::DualCursorConfig curCfg;
-        curCfg.cursor_color  = IM_COL32(0,0,0,255);
-        curCfg.min_gap_ohms  = 500.0f;
-        curCfg.draggable     = true;
+        elda::ui::DualCursorConfig cursor_cfg;
+        cursor_cfg.cursor_color  = IM_COL32(0,0,0,255);
+        cursor_cfg.min_gap_ohms  = 500.0f;
+        cursor_cfg.draggable     = true;
 
-        static float low  = 10000.f;
-        static float high = 30000.f;
+        static float low_ohm  = 10000.f;
+        static float high_ohm = 30000.f;
 
-        elda::ui::DrawImpedanceRangeDual("imp-range-dual",
-                                         low, high,
-                                         ranges, barCfg, curCfg,
-                                         &low, &high);
+        elda::ui::draw_impedance_range_dual("imp-range-dual",
+                                         low_ohm, high_ohm,
+                                         ranges, bar_cfg, cursor_cfg,
+                                         &low_ohm, &high_ohm);
 
         ImGui::EndChild();
     }
 }
 
-void ImpedanceViewerView::RenderElectrodes(
-    ImDrawList* dl,
+void ImpedanceViewerView::render_electrodes(
+    ImDrawList* draw_list,
     const std::vector<ElectrodePosition>& electrodes,
-    const std::vector<elda::models::Channel>& availableChannels,
-    int selectedElectrodeIndex,
+    const std::vector<elda::models::Channel>& available_channels,
+    int selected_electrode_index,
     const ImpedanceViewerViewCallbacks& callbacks)
 {
     for (size_t i = 0; i < electrodes.size(); ++i) {
-        const auto& e = electrodes[i];
+        const auto& electrode = electrodes[i];
 
-        const elda::models::Channel* ch = nullptr;
-        if (!e.channelId.empty()) {
-            auto it = std::find_if(availableChannels.begin(), availableChannels.end(),
-                [&](const elda::models::Channel& c){ return c.id == e.channelId; });
-            if (it != availableChannels.end()) ch = &(*it);
+        const elda::models::Channel* channel = nullptr;
+        if (!electrode.channel_id.empty()) {
+            auto it = std::find_if(
+                available_channels.begin(), available_channels.end(),
+                [&](const elda::models::Channel& c){ return c.id == electrode.channel_id; }
+            );
+            if (it != available_channels.end()) channel = &(*it);
         }
 
-        bool isSel = (static_cast<int>(i) == selectedElectrodeIndex);
-        RenderSingleElectrode(dl, i, e, ch, isSel, callbacks);
+        bool is_selected = (static_cast<int>(i) == selected_electrode_index);
+
+        render_single_electrode(draw_list,
+                                i,
+                                electrode,
+                                channel,
+                                is_selected,
+                                callbacks);
     }
 }
 
-void ImpedanceViewerView::RenderSingleElectrode(
-    ImDrawList* dl,
+void ImpedanceViewerView::render_single_electrode(
+    ImDrawList* draw_list,
     size_t index,
     const ElectrodePosition& electrode,
     const elda::models::Channel* channel,
-    bool isSelected,
+    bool is_selected,
     const ImpedanceViewerViewCallbacks& callbacks)
 {
-    ImVec2 pos = CapNormalizedToScreen(centerPos_, pixelCapRadius_, electrode.x, electrode.y);
-    ImVec2 mp  = ImGui::GetMousePos();
+    ImVec2 pos = cap_normalized_to_screen(center_pos_, pixel_cap_radius_, electrode.x, electrode.y);
+    ImVec2 mouse_pos = ImGui::GetMousePos();
 
-    bool hovered = PointInCircle(mp, pos, kElectrodeRadiusPx_);
+    bool hovered = point_in_circle(mouse_pos, pos, k_electrode_radius_px_);
 
-    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !electrode.isDragging) {
-        if (callbacks.onElectrodeMouseDown) callbacks.onElectrodeMouseDown(static_cast<int>(index));
+    if (hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !electrode.is_dragging) {
+        if (callbacks.on_electrode_mouse_down)
+            callbacks.on_electrode_mouse_down(static_cast<int>(index));
     }
 
-    if (electrode.isDragging) {
-        ImVec2 dropNorm = ScreenToCapNormalizedClamped(centerPos_, pixelCapRadius_, mp);
-        pos = CapNormalizedToScreen(centerPos_, pixelCapRadius_, dropNorm.x, dropNorm.y);
+    // dragging
+    if (electrode.is_dragging) {
+        ImVec2 drop_norm = screen_to_cap_normalized_clamped(center_pos_, pixel_cap_radius_, mouse_pos);
+        pos = cap_normalized_to_screen(center_pos_, pixel_cap_radius_, drop_norm.x, drop_norm.y);
+
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            if (callbacks.onElectrodeDropped) callbacks.onElectrodeDropped(index, dropNorm);
+            if (callbacks.on_electrode_dropped)
+                callbacks.on_electrode_dropped(index, drop_norm);
         }
     }
 
-    ImU32 base = ChannelColorFromId(channel ? channel->id : std::string());
-    if (hovered)  base = IM_COL32(
-        std::min(255, (int)( base        & 0xFF) + 15),
-        std::min(255, (int)((base >> 8 ) & 0xFF) + 15),
-        std::min(255, (int)((base >> 16) & 0xFF) + 15),
-        255
-    );
-    if (isSelected) base = IM_COL32(255,235,150,255);
+    //
+    // circle color
+    //
+    ImU32 color_base = channel_color_from_id(channel ? channel->id : std::string());
 
-    float r = kElectrodeRadiusPx_;
-    if (isSelected) r *= 1.20f;
-    if (hovered)    r *= 1.10f;
+    if (hovered) {
+        int r = (color_base      & 0xFF) + 15;
+        int g = ((color_base>>8) & 0xFF) + 15;
+        int b = ((color_base>>16)& 0xFF) + 15;
+        color_base = IM_COL32(std::min(r,255), std::min(g,255), std::min(b,255), 255);
+    }
+    if (is_selected) {
+        color_base = IM_COL32(255,235,150,255);
+    }
 
-    dl->AddCircleFilled(pos, r, base);
-    dl->AddCircle(pos, r, IM_COL32(0,0,0,255), 22, 1.0f);
+    float radius = k_electrode_radius_px_;
+    if (is_selected) radius *= 1.20f;
+    if (hovered)     radius *= 1.10f;
 
-    const char* label = nullptr; char fb[8];
+    draw_list->AddCircleFilled(pos, radius, color_base);
+    draw_list->AddCircle(pos, radius, IM_COL32(0,0,0,255), 22, 1.0f);
+
+    //
+    // label
+    //
+    const char* label = nullptr;
+    char fallback[8];
+
     if (channel) label = channel->name.c_str();
-    else { std::snprintf(fb, sizeof(fb), "%zu", index + 1); label = fb; }
-    ImVec2 sz = ImGui::CalcTextSize(label);
-    dl->AddText(ImVec2(pos.x - sz.x * 0.5f, pos.y - sz.y * 0.5f), IM_COL32(0,0,0,255), label);
+    else {
+        std::snprintf(fallback, sizeof(fallback), "%zu", index + 1);
+        label = fallback;
+    }
+
+    ImVec2 label_size = ImGui::CalcTextSize(label);
+    draw_list->AddText(ImVec2(pos.x - label_size.x * 0.5f,
+                              pos.y - label_size.y * 0.5f),
+                       IM_COL32(0,0,0,255),
+                       label);
 }
 
-} // namespace elda::impedance_viewer
+}
