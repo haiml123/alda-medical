@@ -9,56 +9,54 @@
 namespace elda::ui {
 
 TabBar::TabBar()
-    : activeTabIndex_(0), hoveredTabIndex_(-1) {
+    : active_tab_index_(0)
+    , hovered_tab_index_(-1) {
 }
 
 TabBar::TabBar(const TabBarStyle& style)
-    : activeTabIndex_(0), style_(style), hoveredTabIndex_(-1) {
+    : active_tab_index_(0)
+    , style_(style)
+    , hovered_tab_index_(-1) {
 }
 
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
-void TabBar::setTabs(const std::vector<Tab>& tabs) {
+void TabBar::set_tabs(const std::vector<Tab>& tabs) {
     tabs_ = tabs;
-    // Clamp active index to valid range
-    if (activeTabIndex_ >= static_cast<int>(tabs_.size())) {
-        activeTabIndex_ = std::max(0, static_cast<int>(tabs_.size()) - 1);
+    if (active_tab_index_ >= static_cast<int>(tabs_.size())) {
+        active_tab_index_ = std::max(0, static_cast<int>(tabs_.size()) - 1);
     }
-    // Clear bounds since tabs changed
-    tabBounds_.clear();
-    // Clear bounds pointers in tabs
+    tab_bounds_.clear();
     for (auto& tab : tabs_) {
         tab.bounds = nullptr;
     }
 }
 
-void TabBar::setActiveTab(int index) {
+void TabBar::set_active_tab(int index) {
     if (index >= 0 && index < static_cast<int>(tabs_.size())) {
-        activeTabIndex_ = index;
+        active_tab_index_ = index;
     }
 }
 
-void TabBar::setStyle(const TabBarStyle& style) {
+void TabBar::set_style(const TabBarStyle& style) {
     style_ = style;
 }
 
-void TabBar::addTab(const Tab& tab) {
+void TabBar::add_tab(const Tab& tab) {
     tabs_.push_back(tab);
 }
 
-void TabBar::removeTab(int index) {
+void TabBar::remove_tab(int index) {
     if (index >= 0 && index < static_cast<int>(tabs_.size())) {
         tabs_.erase(tabs_.begin() + index);
 
-        // Adjust active tab if needed
-        if (activeTabIndex_ >= static_cast<int>(tabs_.size())) {
-            activeTabIndex_ = std::max(0, static_cast<int>(tabs_.size()) - 1);
+        if (active_tab_index_ >= static_cast<int>(tabs_.size())) {
+            active_tab_index_ = std::max(0, static_cast<int>(tabs_.size()) - 1);
         }
 
-        // Clear bounds since tabs changed (will be recalculated on next render)
-        tabBounds_.clear();
+        tab_bounds_.clear();
         for (auto& tab : tabs_) {
             tab.bounds = nullptr;
         }
@@ -67,23 +65,23 @@ void TabBar::removeTab(int index) {
 
 void TabBar::clear() {
     tabs_.clear();
-    activeTabIndex_ = 0;
-    tabBounds_.clear();
+    active_tab_index_ = 0;
+    tab_bounds_.clear();
 }
 
-void TabBar::setBadge(int tabIndex, int badge) {
-    if (tabIndex >= 0 && tabIndex < static_cast<int>(tabs_.size())) {
-        tabs_[tabIndex].badge = badge;
+void TabBar::set_badge(int tab_index, int badge) {
+    if (tab_index >= 0 && tab_index < static_cast<int>(tabs_.size())) {
+        tabs_[tab_index].badge = badge;
     }
 }
 
-void TabBar::setTabEnabled(int tabIndex, bool enabled) {
-    if (tabIndex >= 0 && tabIndex < static_cast<int>(tabs_.size())) {
-        tabs_[tabIndex].enabled = enabled;
+void TabBar::set_tab_enabled(int tab_index, bool enabled) {
+    if (tab_index >= 0 && tab_index < static_cast<int>(tabs_.size())) {
+        tabs_[tab_index].enabled = enabled;
     }
 }
 
-const Tab* TabBar::getTab(int index) const {
+const Tab* TabBar::get_tab(int index) const {
     if (index >= 0 && index < static_cast<int>(tabs_.size())) {
         return &tabs_[index];
     }
@@ -94,16 +92,16 @@ const Tab* TabBar::getTab(int index) const {
 // TAB BOUNDS QUERIES
 // ============================================================================
 
-const TabBounds* TabBar::getTabBounds(int index) const {
-    if (index >= 0 && index < static_cast<int>(tabBounds_.size())) {
-        return &tabBounds_[index];
+const TabBounds* TabBar::get_tab_bounds(int index) const {
+    if (index >= 0 && index < static_cast<int>(tab_bounds_.size())) {
+        return &tab_bounds_[index];
     }
     return nullptr;
 }
 
-int TabBar::getTabAtPosition(float x, float y) const {
-    for (int i = 0; i < static_cast<int>(tabBounds_.size()); ++i) {
-        if (tabBounds_[i].contains(x, y)) {
+int TabBar::get_tab_at_position(float x, float y) const {
+    for (int i = 0; i < static_cast<int>(tab_bounds_.size()); ++i) {
+        if (tab_bounds_[i].contains(x, y)) {
             return i;
         }
     }
@@ -117,14 +115,11 @@ int TabBar::getTabAtPosition(float x, float y) const {
 bool TabBar::render() {
     if (tabs_.empty()) return false;
 
-    // keep your existing prep
     for (auto& tab : tabs_) tab.bounds = nullptr;
-    tabBounds_.clear();
-    tabBounds_.reserve(tabs_.size());
+    tab_bounds_.clear();
+    tab_bounds_.reserve(tabs_.size());
 
-    bool tabChanged = false;
-
-    // (If you draw background/separator outside the child in your file, leave it as-is)
+    bool tab_changed = false;
 
     ImGui::BeginChild("##TabBarContainer",
                       ImVec2(0, style_.height),
@@ -132,469 +127,386 @@ bool TabBar::render() {
                       ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style_.spacing, 0));
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style_.tabBarPadding);
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + style_.tabBarPadding);
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + style_.tab_bar_padding);
+    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + style_.tab_bar_padding);
 
-    // ------- minimal hover fix: compute hover this frame, apply once at end -------
-    int newHover = -1;
+    int new_hover = -1;
 
     for (size_t i = 0; i < tabs_.size(); ++i) {
-        const bool isActive = (static_cast<int>(i) == activeTabIndex_);
+        const bool is_active = (static_cast<int>(i) == active_tab_index_);
 
-        // your existing draw for the tab
-        renderTab(static_cast<int>(i), tabs_[i], isActive);
+        render_tab(static_cast<int>(i), tabs_[i], is_active);
 
-        // keep your bounds pointer update
-        if (i < tabBounds_.size())
-            tabs_[i].bounds = &tabBounds_[i];
+        if (i < tab_bounds_.size())
+            tabs_[i].bounds = &tab_bounds_[i];
 
-        // clicks (unchanged)
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-            if (tabs_[i].enabled && !isActive) {
-                activeTabIndex_ = static_cast<int>(i);
-                tabChanged = true;
-                if (onTabClick_) onTabClick_(static_cast<int>(i), tabs_[i]);
+            if (tabs_[i].enabled && !is_active) {
+                active_tab_index_ = static_cast<int>(i);
+                tab_changed = true;
+                if (on_tab_click_) on_tab_click_(static_cast<int>(i), tabs_[i]);
             }
         }
         if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left) && ImGui::IsItemHovered()) {
-            if (tabs_[i].enabled && onTabDoubleClick_)
-                onTabDoubleClick_(static_cast<int>(i), tabs_[i]);
+            if (tabs_[i].enabled && on_tab_double_click_)
+                on_tab_double_click_(static_cast<int>(i), tabs_[i]);
         }
         if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-            if (tabs_[i].enabled && onTabRightClick_)
-                onTabRightClick_(static_cast<int>(i), tabs_[i]);
+            if (tabs_[i].enabled && on_tab_right_click_)
+                on_tab_right_click_(static_cast<int>(i), tabs_[i]);
         }
 
-        // collect hover for THIS frame only (don’t write to member here)
         if (ImGui::IsItemHovered()) {
-            newHover = static_cast<int>(i);
+            new_hover = static_cast<int>(i);
         }
 
         if (i < tabs_.size() - 1)
             ImGui::SameLine();
     }
 
-    // clear hover when mouse leaves the tab bar child
-    if (!ImGui::IsWindowHovered()) {        // NOTE: no RectOnly flag here
-        newHover = -1;
+    if (!ImGui::IsWindowHovered()) {
+        new_hover = -1;
     }
 
-    // apply hover result once per frame (prevents sticky hover)
-    if (hoveredTabIndex_ != newHover) {
-        hoveredTabIndex_ = newHover;
-        if (hoveredTabIndex_ != -1 && onTabHover_)
-            onTabHover_(hoveredTabIndex_, tabs_[hoveredTabIndex_]);
+    if (hovered_tab_index_ != new_hover) {
+        hovered_tab_index_ = new_hover;
+        if (hovered_tab_index_ != -1 && on_tab_hover_)
+            on_tab_hover_(hovered_tab_index_, tabs_[hovered_tab_index_]);
     }
 
-    // your existing add button logic
-    if (onAddTab_ || style_.showAddButton) {
+    if (on_add_tab_ || style_.show_add_button) {
         ImGui::SameLine();
-        renderAddButton();
+        render_add_button();
     }
 
     ImGui::PopStyleVar();
     ImGui::EndChild();
 
-    // (If you draw a bottom separator after the child in your file, leave it as-is)
-
-    return tabChanged;
+    return tab_changed;
 }
 
-void TabBar::renderTab(int index, const Tab& tab, bool isActive) {
-    const bool isHovered = (hoveredTabIndex_ == index);
-    const bool isDisabled = !tab.enabled;
+void TabBar::render_tab(int index, const Tab& tab, bool is_active) {
+    const bool is_hovered = (hovered_tab_index_ == index);
+    const bool is_disabled = !tab.enabled;
 
-    // Build label with optional badge
     char label[256];
-    if (style_.showBadges && tab.badge >= 0) {
+    if (style_.show_badges && tab.badge >= 0) {
         std::snprintf(label, sizeof(label), "%s (%d)", tab.label.c_str(), tab.badge);
     } else {
         std::snprintf(label, sizeof(label), "%s", tab.label.c_str());
     }
 
-    // Create unique ID for button
-    char buttonId[300];
-    std::snprintf(buttonId, sizeof(buttonId), "%s##tab_%d", label, index);
+    char button_id[300];
+    std::snprintf(button_id, sizeof(button_id), "%s##tab_%d", label, index);
 
-    // Calculate size
-    ImVec2 size = calculateTabSize(tab);
+    ImVec2 size = calculate_tab_size(tab);
 
-    // Get positions for custom drawing
-    ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-    ImVec2 textSize = ImGui::CalcTextSize(label);
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+    ImVec2 text_size = ImGui::CalcTextSize(label);
 
-    // Calculate actual tab size
-    ImVec2 actualSize = size;
-    if (actualSize.x == 0) {
-        actualSize.x = textSize.x + style_.buttonPaddingX * 2;
+    ImVec2 actual_size = size;
+    if (actual_size.x == 0) {
+        actual_size.x = text_size.x + style_.button_padding_x * 2;
     }
-    if (actualSize.y == 0) {
-        // Tab height should fill the container minus the top padding
-        actualSize.y = style_.height - style_.tabBarPadding;
+    if (actual_size.y == 0) {
+        actual_size.y = style_.height - style_.tab_bar_padding;
     }
 
-    // Store tab bounds
-    tabBounds_.emplace_back(cursorPos.x, cursorPos.y, actualSize.x, actualSize.y);
+    tab_bounds_.emplace_back(cursor_pos.x, cursor_pos.y, actual_size.x, actual_size.y);
 
-    // Get draw list
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-    // Determine colors
-    ImVec4 bgColor;
-    if (isDisabled) {
-        bgColor = style_.disabledColor;
-    } else if (isActive) {
-        bgColor = style_.activeColor;
-    } else if (isHovered) {
-        bgColor = style_.hoverColor;
+    ImVec4 bg_color;
+    if (is_disabled) {
+        bg_color = style_.disabled_color;
+    } else if (is_active) {
+        bg_color = style_.active_color;
+    } else if (is_hovered) {
+        bg_color = style_.hover_color;
     } else {
-        bgColor = style_.inactiveColor;
+        bg_color = style_.inactive_color;
     }
 
-    ImU32 bgColorU32 = ImGui::GetColorU32(bgColor);
-    ImU32 borderColorU32 = ImGui::GetColorU32(style_.borderColor);
+    ImU32 bg_color_u32 = ImGui::GetColorU32(bg_color);
+    ImU32 border_color_u32 = ImGui::GetColorU32(style_.border_color);
 
-    // Draw browser-style tab with custom path
-    if (style_.browserStyle) {
-        // ImGui coordinate system: (0,0) is top-left, Y increases downward, X increases rightward
-        // We want: rounded top corners, square bottom corners
-
+    if (style_.browser_style) {
         float rounding = style_.rounding;
 
-        // Define the four corners of the tab
-        ImVec2 topLeft = cursorPos;
-        ImVec2 topRight = ImVec2(cursorPos.x + actualSize.x, cursorPos.y);
-        ImVec2 bottomRight = ImVec2(cursorPos.x + actualSize.x, cursorPos.y + actualSize.y);
-        ImVec2 bottomLeft = ImVec2(cursorPos.x, cursorPos.y + actualSize.y);
+        ImVec2 top_left     = cursor_pos;
+        ImVec2 top_right    = ImVec2(cursor_pos.x + actual_size.x, cursor_pos.y);
+        ImVec2 bottom_right = ImVec2(cursor_pos.x + actual_size.x, cursor_pos.y + actual_size.y);
+        ImVec2 bottom_left  = ImVec2(cursor_pos.x, cursor_pos.y + actual_size.y);
 
-        // Build a custom path for browser-style tabs
-        // Start at bottom-left, go up to top-left, arc around top-left corner,
-        // go across to top-right, arc around top-right corner, go down to bottom-right,
-        // then straight back to bottom-left.
+        draw_list->PathClear();
 
-        drawList->PathClear();
-
-        // Bottom-left corner (square)
-        drawList->PathLineTo(bottomLeft);
-
-        // Left edge going up (leaving room for top-left arc)
-        drawList->PathLineTo(ImVec2(topLeft.x, topLeft.y + rounding));
-
-        // Top-left arc (π to 1.5π, or 180° to 270°)
-        drawList->PathArcTo(
-            ImVec2(topLeft.x + rounding, topLeft.y + rounding),  // center
-            rounding,                                            // radius
-            M_PI,                                                // start angle (left)
-            M_PI * 1.5f,                                         // end angle (up)
-            8                                                    // segments
+        draw_list->PathLineTo(bottom_left);
+        draw_list->PathLineTo(ImVec2(top_left.x, top_left.y + rounding));
+        draw_list->PathArcTo(
+            ImVec2(top_left.x + rounding, top_left.y + rounding),
+            rounding, M_PI, M_PI * 1.5f, 8
         );
-
-        // Top edge (from left arc to right arc)
-        drawList->PathLineTo(ImVec2(topRight.x - rounding, topRight.y));
-
-        // Top-right arc (1.5π to 2π, or 270° to 360°)
-        drawList->PathArcTo(
-            ImVec2(topRight.x - rounding, topRight.y + rounding), // center
-            rounding,                                             // radius
-            M_PI * 1.5f,                                          // start angle (up)
-            M_PI * 2.0f,                                          // end angle (right)
-            8                                                     // segments
+        draw_list->PathLineTo(ImVec2(top_right.x - rounding, top_right.y));
+        draw_list->PathArcTo(
+            ImVec2(top_right.x - rounding, top_right.y + rounding),
+            rounding, M_PI * 1.5f, M_PI * 2.0f, 8
         );
+        draw_list->PathLineTo(bottom_right);
+        draw_list->PathFillConvex(bg_color_u32);
 
-        // Right edge going down (square bottom)
-        drawList->PathLineTo(bottomRight);
-
-        // Fill the path
-        drawList->PathFillConvex(bgColorU32);
-
-        // Draw borders if enabled (using individual line segments + arcs)
-        if (style_.showBorders) {
-            // Left border
-            drawList->AddLine(
-                bottomLeft,
-                ImVec2(topLeft.x, topLeft.y + rounding),
-                borderColorU32, style_.borderThickness
+        if (style_.show_borders) {
+            draw_list->AddLine(
+                bottom_left,
+                ImVec2(top_left.x, top_left.y + rounding),
+                border_color_u32, style_.border_thickness
             );
 
-            // Top-left arc
-            drawList->PathClear();
-            drawList->PathArcTo(
-                ImVec2(topLeft.x + rounding, topLeft.y + rounding),
+            draw_list->PathClear();
+            draw_list->PathArcTo(
+                ImVec2(top_left.x + rounding, top_left.y + rounding),
                 rounding, M_PI, M_PI * 1.5f, 8
             );
-            drawList->PathStroke(borderColorU32, false, style_.borderThickness);
+            draw_list->PathStroke(border_color_u32, false, style_.border_thickness);
 
-            // Top border
-            drawList->AddLine(
-                ImVec2(topLeft.x + rounding, topLeft.y),
-                ImVec2(topRight.x - rounding, topRight.y),
-                borderColorU32, style_.borderThickness
+            draw_list->AddLine(
+                ImVec2(top_left.x + rounding, top_left.y),
+                ImVec2(top_right.x - rounding, top_right.y),
+                border_color_u32, style_.border_thickness
             );
 
-            // Top-right arc
-            drawList->PathClear();
-            drawList->PathArcTo(
-                ImVec2(topRight.x - rounding, topRight.y + rounding),
+            draw_list->PathClear();
+            draw_list->PathArcTo(
+                ImVec2(top_right.x - rounding, top_right.y + rounding),
                 rounding, M_PI * 1.5f, M_PI * 2.0f, 8
             );
-            drawList->PathStroke(borderColorU32, false, style_.borderThickness);
+            draw_list->PathStroke(border_color_u32, false, style_.border_thickness);
 
-            // Right border
-            drawList->AddLine(
-                ImVec2(topRight.x, topRight.y + rounding),
-                bottomRight,
-                borderColorU32, style_.borderThickness
+            draw_list->AddLine(
+                ImVec2(top_right.x, top_right.y + rounding),
+                bottom_right,
+                border_color_u32, style_.border_thickness
             );
 
-            // Bottom border
-            drawList->AddLine(
-                bottomLeft, bottomRight,
-                borderColorU32, style_.borderThickness
+            draw_list->AddLine(
+                bottom_left, bottom_right,
+                border_color_u32, style_.border_thickness
             );
         }
     } else {
-        // Regular rounded rectangle
-        ImVec2 rectMin = cursorPos;
-        ImVec2 rectMax = ImVec2(cursorPos.x + actualSize.x, cursorPos.y + actualSize.y);
+        ImVec2 rect_min = cursor_pos;
+        ImVec2 rect_max = ImVec2(cursor_pos.x + actual_size.x, cursor_pos.y + actual_size.y);
 
-        drawList->AddRectFilled(rectMin, rectMax, bgColorU32, style_.rounding);
+        draw_list->AddRectFilled(rect_min, rect_max, bg_color_u32, style_.rounding);
 
-        if (style_.showBorders) {
-            drawList->AddRect(rectMin, rectMax, borderColorU32,
-                            style_.rounding, 0, style_.borderThickness);
+        if (style_.show_borders) {
+            draw_list->AddRect(rect_min, rect_max, border_color_u32,
+                               style_.rounding, 0, style_.border_thickness);
         }
     }
 
-    // Create invisible button for interaction
-    ImGui::SetCursorScreenPos(cursorPos);
+    ImGui::SetCursorScreenPos(cursor_pos);
 
-    if (isDisabled) {
+    if (is_disabled) {
         ImGui::BeginDisabled();
     }
 
-    // Invisible button
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0, 0, 0, 0));
-    ImGui::Button(buttonId, actualSize);
+    ImGui::Button(button_id, actual_size);
     ImGui::PopStyleColor(3);
 
-    // Draw text on top
-    ImVec2 textPos = ImVec2(
-        cursorPos.x + (actualSize.x - textSize.x) * 0.5f,
-        cursorPos.y + (actualSize.y - textSize.y) * 0.5f
+    ImVec2 text_pos = ImVec2(
+        cursor_pos.x + (actual_size.x - text_size.x) * 0.5f,
+        cursor_pos.y + (actual_size.y - text_size.y) * 0.5f
     );
 
-    ImU32 textColor = isDisabled ?
-        ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 0.5f, 1.0f)) :
-        ImGui::GetColorU32(ImGuiCol_Text);
+    ImU32 text_color = is_disabled
+        ? ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 0.5f, 1.0f))
+        : ImGui::GetColorU32(ImGuiCol_Text);
 
-    drawList->AddText(textPos, textColor, label);
+    draw_list->AddText(text_pos, text_color, label);
 
-    if (isDisabled) {
+    if (is_disabled) {
         ImGui::EndDisabled();
     }
 
-    // Move cursor for next element
-    ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + actualSize.x, cursorPos.y));
+    ImGui::SetCursorScreenPos(ImVec2(cursor_pos.x + actual_size.x, cursor_pos.y));
 }
 
-void TabBar::renderAddButton() {
-    ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+void TabBar::render_add_button() {
+    ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
 
-    // Add button size - smaller and square
-    float buttonSize = style_.height - style_.tabBarPadding;
-    ImVec2 size = ImVec2(buttonSize, buttonSize);
+    float button_size = style_.height - style_.tab_bar_padding;
+    ImVec2 size(button_size, button_size);
 
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-    // Define corners
-    ImVec2 topLeft = cursorPos;
-    ImVec2 topRight = ImVec2(cursorPos.x + size.x, cursorPos.y);
-    ImVec2 bottomRight = ImVec2(cursorPos.x + size.x, cursorPos.y + size.y);
-    ImVec2 bottomLeft = ImVec2(cursorPos.x, cursorPos.y + size.y);
+    ImVec2 top_left     = cursor_pos;
+    ImVec2 top_right    = ImVec2(cursor_pos.x + size.x, cursor_pos.y);
+    ImVec2 bottom_right = ImVec2(cursor_pos.x + size.x, cursor_pos.y + size.y);
+    ImVec2 bottom_left  = ImVec2(cursor_pos.x, cursor_pos.y + size.y);
 
-    // Colors
-    ImVec4 bgColor = style_.inactiveColor;
-    ImU32 bgColorU32 = ImGui::GetColorU32(bgColor);
-    ImU32 borderColorU32 = ImGui::GetColorU32(style_.borderColor);
+    ImVec4 bg_color = style_.inactive_color;
+    ImU32 bg_color_u32 = ImGui::GetColorU32(bg_color);
+    ImU32 border_color_u32 = ImGui::GetColorU32(style_.border_color);
 
     float rounding = style_.rounding;
 
-    // Draw browser-style add button (same style as tabs)
-    if (style_.browserStyle) {
-        // Build path with rounded top corners
-        drawList->PathLineTo(bottomLeft);
-        drawList->PathLineTo(ImVec2(topLeft.x, topLeft.y + rounding));
-        drawList->PathArcTo(
-            ImVec2(topLeft.x + rounding, topLeft.y + rounding),
+    if (style_.browser_style) {
+        draw_list->PathLineTo(bottom_left);
+        draw_list->PathLineTo(ImVec2(top_left.x, top_left.y + rounding));
+        draw_list->PathArcTo(
+            ImVec2(top_left.x + rounding, top_left.y + rounding),
             rounding, M_PI, M_PI * 1.5f, 8
         );
-        drawList->PathLineTo(ImVec2(topRight.x - rounding, topRight.y));
-        drawList->PathArcTo(
-            ImVec2(topRight.x - rounding, topRight.y + rounding),
+        draw_list->PathLineTo(ImVec2(top_right.x - rounding, top_right.y));
+        draw_list->PathArcTo(
+            ImVec2(top_right.x - rounding, top_right.y + rounding),
             rounding, M_PI * 1.5f, M_PI * 2.0f, 8
         );
-        drawList->PathLineTo(bottomRight);
-        drawList->PathFillConvex(bgColorU32);
+        draw_list->PathLineTo(bottom_right);
+        draw_list->PathFillConvex(bg_color_u32);
 
-        // Draw borders
-        if (style_.showBorders) {
-            // Top-left arc
-            drawList->PathClear();
-            drawList->PathArcTo(
-                ImVec2(topLeft.x + rounding, topLeft.y + rounding),
+        if (style_.show_borders) {
+            draw_list->PathClear();
+            draw_list->PathArcTo(
+                ImVec2(top_left.x + rounding, top_left.y + rounding),
                 rounding, M_PI, M_PI * 1.5f, 8
             );
-            drawList->PathStroke(borderColorU32, false, style_.borderThickness);
+            draw_list->PathStroke(border_color_u32, false, style_.border_thickness);
 
-            // Top border
-            drawList->AddLine(
-                ImVec2(topLeft.x + rounding, topLeft.y),
-                ImVec2(topRight.x - rounding, topRight.y),
-                borderColorU32, style_.borderThickness
+            draw_list->AddLine(
+                ImVec2(top_left.x + rounding, top_left.y),
+                ImVec2(top_right.x - rounding, top_right.y),
+                border_color_u32, style_.border_thickness
             );
 
-            // Top-right arc
-            drawList->PathClear();
-            drawList->PathArcTo(
-                ImVec2(topRight.x - rounding, topRight.y + rounding),
+            draw_list->PathClear();
+            draw_list->PathArcTo(
+                ImVec2(top_right.x - rounding, top_right.y + rounding),
                 rounding, M_PI * 1.5f, M_PI * 2.0f, 8
             );
-            drawList->PathStroke(borderColorU32, false, style_.borderThickness);
+            draw_list->PathStroke(border_color_u32, false, style_.border_thickness);
 
-            // Right border
-            drawList->AddLine(
-                ImVec2(topRight.x, topRight.y + rounding),
-                bottomRight,
-                borderColorU32, style_.borderThickness
+            draw_list->AddLine(
+                ImVec2(top_right.x, top_right.y + rounding),
+                bottom_right,
+                border_color_u32, style_.border_thickness
             );
 
-            // Bottom border
-            drawList->AddLine(
-                bottomLeft, bottomRight,
-                borderColorU32, style_.borderThickness
+            draw_list->AddLine(
+                bottom_left, bottom_right,
+                border_color_u32, style_.border_thickness
             );
         }
     } else {
-        // Regular rounded rectangle
-        drawList->AddRectFilled(topLeft, bottomRight, bgColorU32, rounding);
-        if (style_.showBorders) {
-            drawList->AddRect(topLeft, bottomRight, borderColorU32,
-                            rounding, 0, style_.borderThickness);
+        draw_list->AddRectFilled(top_left, bottom_right, bg_color_u32, rounding);
+        if (style_.show_borders) {
+            draw_list->AddRect(top_left, bottom_right, border_color_u32,
+                               rounding, 0, style_.border_thickness);
         }
     }
 
-    // Invisible button for interaction
-    ImGui::SetCursorScreenPos(cursorPos);
+    ImGui::SetCursorScreenPos(cursor_pos);
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.6f, 0.9f, 0.2f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.3f, 0.6f, 0.9f, 0.3f));
 
     if (ImGui::Button("##AddTab", size)) {
-        if (onAddTab_) {
-            onAddTab_();
+        if (on_add_tab_) {
+            on_add_tab_();
         }
     }
 
     ImGui::PopStyleColor(3);
 
-    // Draw "+" symbol
-    ImVec2 center = ImVec2(cursorPos.x + size.x * 0.5f, cursorPos.y + size.y * 0.5f);
-    float plusSize = size.x * style_.addButtonIconSize;  // Use configurable size
-    ImU32 plusColor = ImGui::GetColorU32(ImGuiCol_Text);
+    ImVec2 center(cursor_pos.x + size.x * 0.5f, cursor_pos.y + size.y * 0.5f);
+    float plus_size = size.x * style_.add_button_icon_size;
+    ImU32 plus_color = ImGui::GetColorU32(ImGuiCol_Text);
     float thickness = 2.0f;
 
-    // Horizontal line
-    drawList->AddLine(
-        ImVec2(center.x - plusSize, center.y),
-        ImVec2(center.x + plusSize, center.y),
-        plusColor, thickness
+    draw_list->AddLine(
+        ImVec2(center.x - plus_size, center.y),
+        ImVec2(center.x + plus_size, center.y),
+        plus_color, thickness
     );
 
-    // Vertical line
-    drawList->AddLine(
-        ImVec2(center.x, center.y - plusSize),
-        ImVec2(center.x, center.y + plusSize),
-        plusColor, thickness
+    draw_list->AddLine(
+        ImVec2(center.x, center.y - plus_size),
+        ImVec2(center.x, center.y + plus_size),
+        plus_color, thickness
     );
 
-    // Move cursor for next element
-    ImGui::SetCursorScreenPos(ImVec2(cursorPos.x + size.x, cursorPos.y));
+    ImGui::SetCursorScreenPos(ImVec2(cursor_pos.x + size.x, cursor_pos.y));
 }
 
-void TabBar::renderBadge(int badgeCount) {
-    // This is a helper for potential future badge-as-overlay rendering
-    // Currently badges are rendered inline with the label
-    if (badgeCount < 0) return;
+void TabBar::render_badge(int badge_count) {
+    if (badge_count < 0) return;
 
-    ImDrawList* drawList = ImGui::GetWindowDrawList();
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 pos = ImGui::GetItemRectMax();
     pos.x -= 20.0f;
     pos.y += 4.0f;
 
     char badge[16];
-    std::snprintf(badge, sizeof(badge), "%d", badgeCount);
+    std::snprintf(badge, sizeof(badge), "%d", badge_count);
 
-    ImVec2 textSize = ImGui::CalcTextSize(badge);
-    float radius = std::max(textSize.x, textSize.y) * 0.5f + 4.0f;
+    ImVec2 text_size = ImGui::CalcTextSize(badge);
+    float radius = std::max(text_size.x, text_size.y) * 0.5f + 4.0f;
 
-    drawList->AddCircleFilled(pos, radius, ImGui::GetColorU32(style_.badgeColor));
-    drawList->AddText(
-        ImVec2(pos.x - textSize.x * 0.5f, pos.y - textSize.y * 0.5f),
-        ImGui::GetColorU32(style_.badgeTextColor),
+    draw_list->AddCircleFilled(pos, radius, ImGui::GetColorU32(style_.badge_color));
+    draw_list->AddText(
+        ImVec2(pos.x - text_size.x * 0.5f, pos.y - text_size.y * 0.5f),
+        ImGui::GetColorU32(style_.badge_text_color),
         badge
     );
 }
 
-ImVec2 TabBar::calculateTabSize(const Tab& tab) const {
-    // Build label for size calculation
+ImVec2 TabBar::calculate_tab_size(const Tab& tab) const {
     char label[256];
-    if (style_.showBadges && tab.badge >= 0) {
+    if (style_.show_badges && tab.badge >= 0) {
         std::snprintf(label, sizeof(label), "%s (%d)", tab.label.c_str(), tab.badge);
     } else {
         std::snprintf(label, sizeof(label), "%s", tab.label.c_str());
     }
 
-    ImVec2 textSize = ImGui::CalcTextSize(label);
+    ImVec2 text_size = ImGui::CalcTextSize(label);
 
-    if (style_.autoSize) {
-        float availableWidth = ImGui::GetContentRegionAvail().x - (style_.tabBarPadding * 2);
-        float totalSpacing = style_.spacing * (tabs_.size() - 1);
-        float tabWidth = (availableWidth - totalSpacing) / tabs_.size();
-        return ImVec2(tabWidth, textSize.y + style_.buttonPaddingY * 2);
+    if (style_.auto_size) {
+        float available_width = ImGui::GetContentRegionAvail().x - (style_.tab_bar_padding * 2);
+        float total_spacing = style_.spacing * (tabs_.size() - 1);
+        float tab_width = (available_width - total_spacing) / tabs_.size();
+        return ImVec2(tab_width, text_size.y + style_.button_padding_y * 2);
     }
 
-    // Auto-size by content
     return ImVec2(0, 0);
 }
 
-void TabBar::applyTabStyle(bool isActive, bool /*isHovered*/, bool isDisabled) {
-    // Push style variables
+void TabBar::apply_tab_style(bool is_active, bool /*is_hovered*/, bool is_disabled) {
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, style_.rounding);
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                       ImVec2(style_.buttonPaddingX, style_.buttonPaddingY));
+                        ImVec2(style_.button_padding_x, style_.button_padding_y));
 
-    // Push colors based on state
-    ImVec4 bgColor;
-    if (isDisabled) {
-        bgColor = style_.disabledColor;
-    } else if (isActive) {
-        bgColor = style_.activeColor;
+    ImVec4 bg_color;
+    if (is_disabled) {
+        bg_color = style_.disabled_color;
+    } else if (is_active) {
+        bg_color = style_.active_color;
     } else {
-        bgColor = style_.inactiveColor;
+        bg_color = style_.inactive_color;
     }
 
-    ImVec4 hoverColor = isActive ? style_.activeColor : style_.hoverColor;
+    ImVec4 hover_color = is_active ? style_.active_color : style_.hover_color;
 
-    ImGui::PushStyleColor(ImGuiCol_Button, bgColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hoverColor);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, hoverColor);
+    ImGui::PushStyleColor(ImGuiCol_Button, bg_color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hover_color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, hover_color);
 }
 
-void TabBar::restoreStyle() {
-    ImGui::PopStyleColor(3);  // Button colors
-    ImGui::PopStyleVar(2);    // Frame rounding and padding
+void TabBar::restore_style() {
+    ImGui::PopStyleColor(3);
+    ImGui::PopStyleVar(2);
 }
 
 } // namespace elda::ui

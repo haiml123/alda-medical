@@ -6,7 +6,9 @@
 
 namespace elda::ui {
 
-static inline float clampf(float v, float a, float b) { return v < a ? a : (v > b ? b : v); }
+static inline float clampf(float v, float a, float b) {
+    return v < a ? a : (v > b ? b : v);
+}
 
 static void default_format_ohms(char* buf, int n, float ohms) {
     // 10,000 -> "10K", 54,000 -> "54K", 2,350 -> "2.35K", <1k -> raw Ohms
@@ -19,21 +21,21 @@ static void default_format_ohms(char* buf, int n, float ohms) {
     }
 }
 
-static ImGuiID storageKey(const char* id_label, const char* suffix) {
+static ImGuiID storage_key(const char* id_label, const char* suffix) {
     ImGui::PushID(id_label);
     ImGuiID key = ImGui::GetID(suffix);
     ImGui::PopID();
     return key;
 }
 
-bool DrawImpedanceRangeDual(const char* id_label,
-                            float low_ohms,
-                            float high_ohms,
-                            const ImpedanceRanges& ranges,
-                            const ImpedanceRangeConfig& cfg,
-                            const DualCursorConfig& dcfg,
-                            float* out_low,
-                            float* out_high)
+bool draw_impedance_range_dual(const char* id_label,
+                               float low_ohms,
+                               float high_ohms,
+                               const ImpedanceRanges& ranges,
+                               const ImpedanceRangeConfig& cfg,
+                               const DualCursorConfig& dcfg,
+                               float* out_low,
+                               float* out_high)
 {
     ImDrawList* dl = ImGui::GetWindowDrawList();
     ImVec2 cursor  = ImGui::GetCursorScreenPos();
@@ -42,7 +44,8 @@ bool DrawImpedanceRangeDual(const char* id_label,
     // Layout height (space for cursor labels above)
     float label_h = ImGui::GetTextLineHeight(); // we always display cursor labels now
     float bar_h   = cfg.bar_height;
-    float total_h = label_h + cfg.top_labels_gap + dcfg.cursor_overhang + bar_h + dcfg.cursor_overhang + 8.0f;
+    float total_h = label_h + cfg.top_labels_gap + dcfg.cursor_overhang +
+                    bar_h + dcfg.cursor_overhang + 8.0f;
     ImGui::InvisibleButton(id_label, ImVec2(avail.x, total_h));
     bool hovered = ImGui::IsItemHovered();
     bool active  = ImGui::IsItemActive();
@@ -79,7 +82,8 @@ bool DrawImpedanceRangeDual(const char* id_label,
     if (x_low > x0)
         dl->AddRectFilled(bar_p0, ImVec2(x_low, bar_p1.y), cfg.col_green, cfg.bar_round);
     if (x_high > x_low)
-        dl->AddRectFilled(ImVec2(x_low, bar_p0.y), ImVec2(x_high, bar_p1.y), cfg.col_yellow, cfg.bar_round);
+        dl->AddRectFilled(ImVec2(x_low, bar_p0.y), ImVec2(x_high, bar_p1.y),
+                          cfg.col_yellow, cfg.bar_round);
     if (x1 > x_high)
         dl->AddRectFilled(ImVec2(x_high, bar_p0.y), bar_p1, cfg.col_red, cfg.bar_round);
 
@@ -89,11 +93,11 @@ bool DrawImpedanceRangeDual(const char* id_label,
     // Optional scale labels (e.g., only max on the right by default)
     auto fmt = cfg.format_ohms ? cfg.format_ohms : default_format_ohms;
     if (cfg.show_threshold_labels) {
-        char bufMax[32];
-        fmt(bufMax, sizeof(bufMax), max_range);
-        ImVec2 tMax = ImGui::CalcTextSize(bufMax);
+        char buf_max[32];
+        fmt(buf_max, sizeof(buf_max), max_range);
+        ImVec2 t_max = ImGui::CalcTextSize(buf_max);
         const float y_top = cursor.y; // top row
-        dl->AddText(ImVec2(x1 - tMax.x, y_top), cfg.col_text, bufMax);
+        dl->AddText(ImVec2(x1 - t_max.x, y_top), cfg.col_text, buf_max);
         // If you want a "0" at left, uncomment:
         // dl->AddText(ImVec2(x0, y_top), cfg.col_text, "0");
     }
@@ -101,79 +105,90 @@ bool DrawImpedanceRangeDual(const char* id_label,
     // Cursor lines
     const float y0_line = y_bar - dcfg.cursor_overhang;
     const float y1_line = y_bar + bar_h + dcfg.cursor_overhang;
-    dl->AddLine(ImVec2(x_low,  y0_line), ImVec2(x_low,  y1_line), dcfg.cursor_color, dcfg.cursor_thickness);
-    dl->AddLine(ImVec2(x_high, y0_line), ImVec2(x_high, y1_line), dcfg.cursor_color, dcfg.cursor_thickness);
+    dl->AddLine(ImVec2(x_low,  y0_line), ImVec2(x_low,  y1_line),
+                dcfg.cursor_color, dcfg.cursor_thickness);
+    dl->AddLine(ImVec2(x_high, y0_line), ImVec2(x_high, y1_line),
+                dcfg.cursor_color, dcfg.cursor_thickness);
 
     // --- Interaction (drag) ---
     bool changed = false;
     if (dcfg.draggable && (out_low || out_high)) {
-        ImGuiStorage* st = ImGui::GetStateStorage();
-        const ImGuiID keyActive = storageKey(id_label, "#active_cursor"); // -1 none, 0=low, 1=high
-        int activeCursor = st->GetInt(keyActive, -1);
+        ImGuiStorage* storage = ImGui::GetStateStorage();
+        const ImGuiID key_active = storage_key(id_label, "#active_cursor"); // -1 none, 0=low, 1=high
+        int active_cursor = storage->GetInt(key_active, -1);
 
         // Click → choose nearest cursor within hit slop
         if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
             float mx = ImGui::GetIO().MousePos.x;
-            float dxL = fabsf(mx - x_low);
-            float dxH = fabsf(mx - x_high);
-            if (dxL <= dcfg.hit_slop_px || dxH <= dcfg.hit_slop_px) {
-                activeCursor = (dxL <= dxH) ? 0 : 1;
-                st->SetInt(keyActive, activeCursor);
+            float dx_l = fabsf(mx - x_low);
+            float dx_h = fabsf(mx - x_high);
+            if (dx_l <= dcfg.hit_slop_px || dx_h <= dcfg.hit_slop_px) {
+                active_cursor = (dx_l <= dx_h) ? 0 : 1;
+                storage->SetInt(key_active, active_cursor);
             } else {
-                st->SetInt(keyActive, -1);
-                activeCursor = -1;
+                storage->SetInt(key_active, -1);
+                active_cursor = -1;
             }
         }
 
         // Drag active cursor
-        if (activeCursor != -1 && ImGui::IsMouseDown(ImGuiMouseButton_Left) && (hovered || active)) {
+        if (active_cursor != -1 &&
+            ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+            (hovered || active))
+        {
             float mx = ImGui::GetIO().MousePos.x;
             float val = x_to_ohms(mx);
 
-            if (activeCursor == 0 && out_low) {
-                float maxLow = (out_high ? (*out_high - dcfg.min_gap_ohms) : (high_ohms - dcfg.min_gap_ohms));
-                float newLow = clampf(val, 0.0f, std::max(0.0f, maxLow));
-                if (newLow != *out_low) { *out_low = newLow; changed = true; }
-            } else if (activeCursor == 1 && out_high) {
-                float minHigh = (out_low ? (*out_low + dcfg.min_gap_ohms) : (low_ohms + dcfg.min_gap_ohms));
-                float newHigh = clampf(val, std::max(0.0f, minHigh), max_range);
-                if (newHigh != *out_high) { *out_high = newHigh; changed = true; }
+            if (active_cursor == 0 && out_low) {
+                float max_low = (out_high ? (*out_high - dcfg.min_gap_ohms)
+                                          : (high_ohms - dcfg.min_gap_ohms));
+                float new_low = clampf(val, 0.0f, std::max(0.0f, max_low));
+                if (new_low != *out_low) { *out_low = new_low; changed = true; }
+            } else if (active_cursor == 1 && out_high) {
+                float min_high = (out_low ? (*out_low + dcfg.min_gap_ohms)
+                                          : (low_ohms + dcfg.min_gap_ohms));
+                float new_high = clampf(val, std::max(0.0f, min_high), max_range);
+                if (new_high != *out_high) { *out_high = new_high; changed = true; }
             }
         }
 
         if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
-            st->SetInt(keyActive, -1);
+            storage->SetInt(key_active, -1);
         }
     }
 
     // --- Labels above each cursor (live values) ---
     {
-        char lbuf[48], rbuf[48];
-        fmt(lbuf, sizeof(lbuf), low_ohms);
-        fmt(rbuf, sizeof(rbuf), high_ohms);
+        char left_buf[48], right_buf[48];
+        fmt(left_buf, sizeof(left_buf), low_ohms);
+        fmt(right_buf, sizeof(right_buf), high_ohms);
 
-        ImVec2 tl = ImGui::CalcTextSize(lbuf);
-        ImVec2 tr = ImGui::CalcTextSize(rbuf);
+        ImVec2 t_left  = ImGui::CalcTextSize(left_buf);
+        ImVec2 t_right = ImGui::CalcTextSize(right_buf);
         float y_label = cursor.y; // top row (above bar)
 
         // Avoid overlap: if labels collide, push left/right
         float min_gap_px = 6.0f;
-        float left_x  = x_low  - tl.x * 0.5f;
-        float right_x = x_high - tr.x * 0.5f;
+        float left_x  = x_low  - t_left.x * 0.5f;
+        float right_x = x_high - t_right.x * 0.5f;
+
+        // panel edges
+        float x0 = cursor.x + cfg.side_pad;
+        float x1 = cursor.x + avail.x - cfg.side_pad;
 
         // Clamp to panel edges
-        left_x  = clampf(left_x,  x0, x1 - tl.x);
-        right_x = clampf(right_x, x0, x1 - tr.x);
+        left_x  = clampf(left_x,  x0, x1 - t_left.x);
+        right_x = clampf(right_x, x0, x1 - t_right.x);
 
-        if (right_x < left_x + tl.x + min_gap_px) {
+        if (right_x < left_x + t_left.x + min_gap_px) {
             // Push them apart symmetrically
-            float overlap = (left_x + tl.x + min_gap_px) - right_x;
-            left_x  = clampf(left_x  - overlap * 0.5f, x0, x1 - tl.x);
-            right_x = clampf(right_x + overlap * 0.5f, x0, x1 - tr.x);
+            float overlap = (left_x + t_left.x + min_gap_px) - right_x;
+            left_x  = clampf(left_x  - overlap * 0.5f, x0, x1 - t_left.x);
+            right_x = clampf(right_x + overlap * 0.5f, x0, x1 - t_right.x);
         }
 
-        dl->AddText(ImVec2(left_x,  y_label), cfg.col_text, lbuf);
-        dl->AddText(ImVec2(right_x, y_label), cfg.col_text, rbuf);
+        dl->AddText(ImVec2(left_x,  y_label), cfg.col_text, left_buf);
+        dl->AddText(ImVec2(right_x, y_label), cfg.col_text, right_buf);
     }
 
     return changed;

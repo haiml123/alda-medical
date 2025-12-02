@@ -6,31 +6,31 @@
 
 namespace elda::views::impedance_viewer {
 
-static ImU32 kPalette[3] = {
+static ImU32 k_palette[3] = {
     IM_COL32( 40, 160,  85, 255), // green
     IM_COL32(240, 210,  70, 255), // yellow
     IM_COL32(200,  70,  50, 255), // red
 };
 
-static uint32_t Hash32(const void* data, size_t len) {
+static uint32_t hash_32(const void* data, size_t len) {
     const auto* p = static_cast<const uint8_t*>(data);
     uint32_t h = 2166136261u;
     for (size_t i = 0; i < len; ++i) { h ^= p[i]; h *= 16777619u; }
     return h;
 }
 
-ImU32 ChannelColorFromId(const std::string& channelId) {
-    if (channelId.empty()) return IM_COL32(200,200,200,255);
-    return kPalette[Hash32(channelId.data(), channelId.size()) % 3];
+ImU32 channel_color_from_id(const std::string& channel_id) {
+    if (channel_id.empty()) return IM_COL32(200,200,200,255);
+    return k_palette[hash_32(channel_id.data(), channel_id.size()) % 3];
 }
 
-ImVec2 CapNormalizedToScreen(const ImVec2& center, float radius, float x, float y) {
+ImVec2 cap_normalized_to_screen(const ImVec2& center, float radius, float x, float y) {
     const float ux = (x - 0.5f) * 2.0f;
     const float uy = (y - 0.5f) * 2.0f;
     return ImVec2(center.x + ux * radius, center.y + uy * radius);
 }
 
-ImVec2 ScreenToCapNormalizedClamped(const ImVec2& center, float radius, const ImVec2& p) {
+ImVec2 screen_to_cap_normalized_clamped(const ImVec2& center, float radius, const ImVec2& p) {
     float vx = (p.x - center.x) / radius;
     float vy = (p.y - center.y) / radius;
     float len = std::sqrt(vx*vx + vy*vy);
@@ -38,13 +38,14 @@ ImVec2 ScreenToCapNormalizedClamped(const ImVec2& center, float radius, const Im
     return ImVec2(0.5f + 0.5f * vx, 0.5f + 0.5f * vy);
 }
 
-bool PointInCircle(const ImVec2& p, const ImVec2& c, float r) {
-    float dx = p.x - c.x, dy = p.y - c.y;
-    return (dx*dx + dy*dy) <= (r*r);
+bool point_in_circle(const ImVec2& p, const ImVec2& c, float r) {
+    const float dx = p.x - c.x;
+    const float dy = p.y - c.y;
+    return (dx*dx + dy*dy) <= r*r;
 }
 
 // ---- Outline with nose/ears ----
-void DrawCapOutline(ImDrawList* dl, const ImVec2& center, float radius) {
+void draw_cap_outline(ImDrawList* dl, const ImVec2& center, float radius) {
     const ImU32 rimCol    = IM_COL32(140, 140, 155, 255);
     const ImU32 accentCol = IM_COL32(140, 140, 155, 255);
     const float rimThick  = 2.0f;
@@ -87,7 +88,7 @@ void DrawCapOutline(ImDrawList* dl, const ImVec2& center, float radius) {
     dl->AddBezierCubic(R0, R1, R2, R3, accentCol, lineThick);
 }
 
-void DrawCapGrid(ImDrawList* dl, const ImVec2& center, float radius) {
+void draw_cap_grid(ImDrawList* dl, const ImVec2& center, float radius) {
     const ImU32 c = IM_COL32(60, 60, 70, 120);
     for (int i = 1; i <= 3; ++i) {
         dl->AddCircle(center, radius * (i/3.0f), c, 64, 1.0f);
@@ -100,4 +101,4 @@ void DrawCapGrid(ImDrawList* dl, const ImVec2& center, float radius) {
     }
 }
 
-} // namespace elda::impedance_viewer::helper
+}

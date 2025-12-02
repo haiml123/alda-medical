@@ -1,24 +1,23 @@
-// src/ui/components/Toast.cpp
 #include "toast.h"
 
 namespace elda::ui {
 
-Toast& Toast::Instance() {
+Toast& Toast::instance() {
     static Toast instance;
     return instance;
 }
 
-void Toast::Show(const std::string& message, ToastType type, float duration) {
-    m_message = message;
-    m_type = type;
-    m_duration = duration;
-    m_isVisible = true;
-    m_startTime = std::chrono::steady_clock::now();
+void Toast::show(const std::string& message, ToastType type, float duration) {
+    message_ = message;
+    type_ = type;
+    duration_ = duration;
+    is_visible_ = true;
+    start_time_ = std::chrono::steady_clock::now();
 }
 
-ImVec4 Toast::GetBackgroundColor() const {
+ImVec4 Toast::get_background_color() const {
     // Subtle, professional dark backgrounds
-    switch (m_type) {
+    switch (type_) {
         case ToastType::Success:
             return ImVec4(0.16f, 0.20f, 0.17f, 0.95f);  // Dark green tint
         case ToastType::Warning:
@@ -31,9 +30,9 @@ ImVec4 Toast::GetBackgroundColor() const {
     }
 }
 
-ImVec4 Toast::GetTextColor() const {
+ImVec4 Toast::get_text_color() const {
     // Subtle colored text instead of borders
-    switch (m_type) {
+    switch (type_) {
         case ToastType::Success:
             return ImVec4(0.4f, 0.9f, 0.5f, 1.0f);  // Light green
         case ToastType::Warning:
@@ -46,51 +45,51 @@ ImVec4 Toast::GetTextColor() const {
     }
 }
 
-void Toast::Render() {
-    if (!m_isVisible) return;
+void Toast::render() {
+    if (!is_visible_) return;
 
     auto now = std::chrono::steady_clock::now();
-    float elapsed = std::chrono::duration<float>(now - m_startTime).count();
+    float elapsed = std::chrono::duration<float>(now - start_time_).count();
 
-    if (elapsed >= m_duration) {
-        m_isVisible = false;
+    if (elapsed >= duration_) {
+        is_visible_ = false;
         return;
     }
 
     // Fade out
     float alpha = 1.0f;
-    float timeRemaining = m_duration - elapsed;
-    if (timeRemaining < m_fadeOutDuration) {
-        alpha = timeRemaining / m_fadeOutDuration;
+    float time_remaining = duration_ - elapsed;
+    if (time_remaining < fade_out_duration_) {
+        alpha = time_remaining / fade_out_duration_;
     }
 
     // Position at bottom-right corner (more native)
     ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImVec2 workPos = viewport->WorkPos;
-    ImVec2 workSize = viewport->WorkSize;
+    ImVec2 work_pos = viewport->WorkPos;
+    ImVec2 work_size = viewport->WorkSize;
 
     float padding = 16.0f;
-    float toastWidth = 320.0f;
-    float toastHeight = 48.0f;
+    float toast_width = 320.0f;
+    float toast_height = 48.0f;
 
-    ImVec2 toastPos(
-        workPos.x + workSize.x - toastWidth - padding,
-        workPos.y + workSize.y - toastHeight - padding
+    ImVec2 toast_pos(
+        work_pos.x + work_size.x - toast_width - padding,
+        work_pos.y + work_size.y - toast_height - padding
     );
 
-    ImGui::SetNextWindowPos(toastPos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(ImVec2(toastWidth, toastHeight), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(toast_pos, ImGuiCond_Always);
+    ImGui::SetNextWindowSize(ImVec2(toast_width, toast_height), ImGuiCond_Always);
 
     // Apply alpha
-    ImVec4 bgColor = GetBackgroundColor();
-    bgColor.w *= alpha;
+    ImVec4 bg_color = get_background_color();
+    bg_color.w *= alpha;
 
-    ImVec4 textColor = GetTextColor();
-    textColor.w *= alpha;
+    ImVec4 text_color = get_text_color();
+    text_color.w *= alpha;
 
-    ImGui::PushStyleColor(ImGuiCol_WindowBg, bgColor);
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, bg_color);
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.25f, 0.25f, alpha * 0.5f));
-    ImGui::PushStyleColor(ImGuiCol_Text, textColor);
+    ImGui::PushStyleColor(ImGuiCol_Text, text_color);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
@@ -106,19 +105,19 @@ void Toast::Render() {
 
     if (ImGui::Begin("##Toast", nullptr, flags)) {
         // Calculate text size
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + toastWidth - 24.0f);
-        ImVec2 textSize = ImGui::CalcTextSize(m_message.c_str(), nullptr, true, toastWidth - 24.0f);
+        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + toast_width - 24.0f);
+        ImVec2 text_size = ImGui::CalcTextSize(message_.c_str(), nullptr, true, toast_width - 24.0f);
         ImGui::PopTextWrapPos();
 
         // Center text vertically
-        float windowHeight = ImGui::GetWindowHeight();
-        float textOffsetY = (windowHeight - textSize.y) * 0.5f;
+        float window_height = ImGui::GetWindowHeight();
+        float text_offset_y = (window_height - text_size.y) * 0.5f;
 
-        ImGui::SetCursorPosY(textOffsetY);
+        ImGui::SetCursorPosY(text_offset_y);
 
         // Render text
-        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + toastWidth - 24.0f);
-        ImGui::TextWrapped("%s", m_message.c_str());
+        ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + toast_width - 24.0f);
+        ImGui::TextWrapped("%s", message_.c_str());
         ImGui::PopTextWrapPos();
 
         ImGui::End();
@@ -128,4 +127,4 @@ void Toast::Render() {
     ImGui::PopStyleColor(3);
 }
 
-} // namespace elda::ui
+}

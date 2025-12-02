@@ -2,29 +2,29 @@
 
 namespace elda::ui {
 
-PopupMessage& PopupMessage::Instance() {
+PopupMessage& PopupMessage::instance() {
     static PopupMessage instance;
     return instance;
 }
 
-void PopupMessage::Show(const std::string& title,
+void PopupMessage::show(const std::string& title,
                         const std::string& message,
-                        std::function<void()> onConfirm,
-                        std::function<void()> onCancel) {
-    m_title = title;
-    m_message = message;
-    m_onConfirm = onConfirm;
-    m_onCancel = onCancel;
-    m_isOpen = true;
-    m_justOpened = true;
+                        std::function<void()> on_confirm,
+                        std::function<void()> on_cancel) {
+    title_ = title;
+    message_ = message;
+    on_confirm_ = on_confirm;
+    on_cancel_ = on_cancel;
+    is_open_ = true;
+    just_opened_ = true;
 }
 
-void PopupMessage::Render() {
-    if (!m_isOpen) return;
+void PopupMessage::render() {
+    if (!is_open_) return;
 
-    if (m_justOpened) {
-        ImGui::OpenPopup(m_title.c_str());
-        m_justOpened = false;
+    if (just_opened_) {
+        ImGui::OpenPopup(title_.c_str());
+        just_opened_ = false;
     }
 
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
@@ -38,26 +38,26 @@ void PopupMessage::Render() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 20.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
 
-    if (ImGui::BeginPopupModal(m_title.c_str(), nullptr,
-                                ImGuiWindowFlags_NoResize |
-                                ImGuiWindowFlags_NoMove)) {
+    if (ImGui::BeginPopupModal(title_.c_str(), nullptr,
+                               ImGuiWindowFlags_NoResize |
+                               ImGuiWindowFlags_NoMove)) {
 
         // Message text
         ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 410.0f);
-        ImGui::TextWrapped("%s", m_message.c_str());
+        ImGui::TextWrapped("%s", message_.c_str());
         ImGui::PopTextWrapPos();
 
         ImGui::Spacing();
         ImGui::Spacing();
 
         // Buttons
-        float buttonWidth = 120.0f;
-        float buttonHeight = 32.0f;
+        float button_width = 120.0f;
+        float button_height = 32.0f;
         float spacing = 12.0f;
-        float totalWidth = (buttonWidth * 2) + spacing;
-        float offsetX = (ImGui::GetContentRegionAvail().x - totalWidth) * 0.5f;
+        float total_width = (button_width * 2) + spacing;
+        float offset_x = (ImGui::GetContentRegionAvail().x - total_width) * 0.5f;
 
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offsetX);
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + offset_x);
 
         // Cancel button (gray)
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.25f, 0.25f, 0.25f, 1.0f));
@@ -65,11 +65,11 @@ void PopupMessage::Render() {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.20f, 0.20f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-        if (ImGui::Button("Cancel", ImVec2(buttonWidth, buttonHeight))) {
-            if (m_onCancel) {
-                m_onCancel();
+        if (ImGui::Button("Cancel", ImVec2(button_width, button_height))) {
+            if (on_cancel_) {
+                on_cancel_();
             }
-            m_isOpen = false;
+            is_open_ = false;
             ImGui::CloseCurrentPopup();
         }
 
@@ -84,11 +84,11 @@ void PopupMessage::Render() {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.40f, 0.9f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-        if (ImGui::Button("OK", ImVec2(buttonWidth, buttonHeight))) {
-            if (m_onConfirm) {
-                m_onConfirm();
+        if (ImGui::Button("OK", ImVec2(button_width, button_height))) {
+            if (on_confirm_) {
+                on_confirm_();
             }
-            m_isOpen = false;
+            is_open_ = false;
             ImGui::CloseCurrentPopup();
         }
 
@@ -97,11 +97,11 @@ void PopupMessage::Render() {
 
         ImGui::EndPopup();
     } else {
-        m_isOpen = false;
+        is_open_ = false;
     }
 
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(3);
 }
 
-} // namespace elda::ui
+}

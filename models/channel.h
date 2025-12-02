@@ -1,96 +1,77 @@
 #pragma once
 #include "base_model.h"
 #include <string>
+#include <string_view>
 
 namespace elda::models {
 
-    struct Channel : public BaseModel {
+    struct Channel final : BaseModel {
         std::string name;
-        std::string color;
-        bool selected;
+        std::string color        = "#FFFFFF";
+        bool        selected     = false;
 
-        int amplifierChannel;
-        std::string signalType;
-        double sensorGain;
-        double sensorOffset;
+        int         amplifier_channel = -1;
+        std::string signal_type       = "EEG";
+        double      sensor_gain       = 1.0;
+        double      sensor_offset     = 0.0;
 
-        bool filtered;
-        double highPassCutoff;
-        double lowPassCutoff;
+        bool   filtered         = false;
+        double high_pass_cutoff = 0.0;
+        double low_pass_cutoff  = 0.0;
 
-        float impedanceX;
-        float impedanceY;
+        float impedance_x = 0.0f;
+        float impedance_y = 0.0f;
 
-        Channel()
+        // Default ctor uses default member initializers
+        Channel() = default;
+
+        // Create channel without id (BaseModel default ctor)
+        explicit Channel(const std::string_view name,
+                         const std::string_view color = "#FFFFFF")
             : BaseModel()
-            , color("#FFFFFF")
-            , selected(false)
-            , amplifierChannel(-1)
-            , signalType("EEG")
-            , sensorGain(1.0)
-            , sensorOffset(0.0)
-            , filtered(false)
-            , highPassCutoff(0.0)
-            , lowPassCutoff(0.0)
-            , impedanceX(0.0f)
-            , impedanceY(0.0f) {}
+            , name(name)
+            , color(color)
+        {}
 
-        Channel(const std::string& name_, const std::string& color_ = "#FFFFFF")
-            : BaseModel()
-            , name(name_)
-            , color(color_)
-            , selected(false)
-            , amplifierChannel(-1)
-            , signalType("EEG")
-            , sensorGain(1.0)
-            , sensorOffset(0.0)
-            , filtered(false)
-            , highPassCutoff(0.0)
-            , lowPassCutoff(0.0)
-            , impedanceX(0.0f)
-            , impedanceY(0.0f) {}
+        // Create channel with id
+        Channel(const std::string& id,
+                const std::string_view name,
+                const std::string_view color = "#FFFFFF")
+            : BaseModel(id)
+            , name(name)
+            , color(color)
+        {}
 
-        Channel(const std::string& id_, const std::string& name_, const std::string& color_ = "#FFFFFF")
-            : BaseModel(id_)
-            , name(name_)
-            , color(color_)
-            , selected(false)
-            , amplifierChannel(-1)
-            , signalType("EEG")
-            , sensorGain(1.0)
-            , sensorOffset(0.0)
-            , filtered(false)
-            , highPassCutoff(0.0)
-            , lowPassCutoff(0.0)
-            , impedanceX(0.0f)
-            , impedanceY(0.0f) {}
-
-        void SetSelected(bool isSelected) {
-            if (selected != isSelected) {
-                selected = isSelected;
-                OnUpdate();
+        void set_selected(const bool is_selected) {
+            if (selected != is_selected) {
+                selected = is_selected;
+                on_update();
             }
         }
 
-        void SetGain(double gain) {
-            if (sensorGain != gain) {
-                sensorGain = gain;
-                OnUpdate();
+        void set_gain(const double gain) {
+            if (sensor_gain != gain) {
+                sensor_gain = gain;
+                on_update();
             }
         }
 
-        void SetFiltering(bool enable, double highPass = 0.0, double lowPass = 0.0) {
-            filtered = enable;
-            highPassCutoff = highPass;
-            lowPassCutoff = lowPass;
-            OnUpdate();
+        void set_filtering(const bool enable, const double high_pass = 0.0, const double low_pass = 0.0) {
+            if (filtered != enable ||
+                high_pass_cutoff != high_pass ||
+                low_pass_cutoff != low_pass) {
+                filtered         = enable;
+                high_pass_cutoff = high_pass;
+                low_pass_cutoff  = low_pass;
+                on_update();
+            }
         }
 
-        void SetImpedancePosition(float x, float y) {
-            if (impedanceX != x || impedanceY != y) {
-                impedanceX = x;
-                impedanceY = y;
-                OnUpdate();
+        void set_impedance_position(const float x, const float y) {
+            if (impedance_x != x || impedance_y != y) {
+                impedance_x = x;
+                impedance_y = y;
+                on_update();
             }
         }
     };

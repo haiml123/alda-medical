@@ -73,7 +73,7 @@ private:
     }
 
 public:
-    static std::string Hash(const std::string& data) {
+    static std::string hash(const std::string& data) {
         // Initial hash values (first 32 bits of fractional parts of square roots of first 8 primes)
         uint32_t h[8] = {
             0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -82,7 +82,7 @@ public:
 
         // Prepare message
         std::vector<uint8_t> msg(data.begin(), data.end());
-        uint64_t msgLen = msg.size() * 8;
+        uint64_t msg_len = msg.size() * 8;
 
         // Padding
         msg.push_back(0x80);
@@ -92,7 +92,7 @@ public:
 
         // Append length
         for (int i = 7; i >= 0; --i) {
-            msg.push_back((msgLen >> (i * 8)) & 0xFF);
+            msg.push_back((msg_len >> (i * 8)) & 0xFF);
         }
 
         // Process message in 512-bit chunks
@@ -158,18 +158,18 @@ public:
 class SecurityUtils {
 public:
     // Calculate SHA-256 checksum for data integrity
-    static std::string CalculateChecksum(const std::string& data) {
-        return SHA256::Hash(data);
+    static std::string calculate_checksum(const std::string& data) {
+        return SHA256::hash(data);
     }
 
     // Verify data integrity
-    static bool VerifyChecksum(const std::string& data, const std::string& expectedChecksum) {
-        std::string calculatedChecksum = CalculateChecksum(data);
-        return calculatedChecksum == expectedChecksum;
+    static bool verify_checksum(const std::string& data, const std::string& expected_checksum) {
+        std::string calculated_checksum = calculate_checksum(data);
+        return calculated_checksum == expected_checksum;
     }
 
     // Get timestamp for audit trail
-    static std::string GetTimestamp() {
+    static std::string get_timestamp() {
         auto t = std::time(nullptr);
         auto tm = *std::gmtime(&t);  // Use GMT for consistency
         char buf[32];
@@ -178,7 +178,7 @@ public:
     }
 
     // Set secure file permissions (owner read/write only)
-    static void SetSecurePermissions(const std::string& filepath) {
+    static void set_secure_permissions(const std::string& filepath) {
         #ifndef _WIN32
             // Unix/Linux: Set to 600 (rw-------)
             std::filesystem::permissions(
@@ -200,7 +200,7 @@ public:
 class SecureStorageService {
 public:
     // Get secure application data directory
-    static std::string GetStorageDirectory() {
+    static std::string get_storage_directory() {
         #ifdef _WIN32
             const char* appdata = std::getenv("LOCALAPPDATA");
             if (appdata) {
@@ -217,9 +217,9 @@ public:
     }
 
     // Ensure storage directory exists with secure permissions
-    static bool EnsureStorageDirectory() {
+    static bool ensure_storage_directory() {
         try {
-            std::string dir = GetStorageDirectory();
+            std::string dir = get_storage_directory();
             std::filesystem::create_directories(dir);
 
             #ifndef _WIN32
@@ -238,33 +238,33 @@ public:
     }
 
     // Get full path for a data file
-    static std::string GetFilePath(const std::string& filename) {
-        return GetStorageDirectory() + filename;
+    static std::string get_file_path(const std::string& filename) {
+        return get_storage_directory() + filename;
     }
 
     // Get backup path for a data file
-    static std::string GetBackupPath(const std::string& filename) {
-        return GetStorageDirectory() + filename + ".backup";
+    static std::string get_backup_path(const std::string& filename) {
+        return get_storage_directory() + filename + ".backup";
     }
 
     // Atomic write: Write to temp file, then rename
-    static bool WriteFileAtomic(const std::string& filepath, const std::string& content) {
+    static bool write_file_atomic(const std::string& filepath, const std::string& content) {
         try {
-            EnsureStorageDirectory();
+            ensure_storage_directory();
 
             // Write to temporary file first
-            std::string tempPath = filepath + ".tmp";
-            std::ofstream file(tempPath, std::ios::binary);
+            std::string temp_path = filepath + ".tmp";
+            std::ofstream file(temp_path, std::ios::binary);
             if (!file.is_open()) return false;
 
             file << content;
             file.close();
 
             // Set secure permissions
-            SecurityUtils::SetSecurePermissions(tempPath);
+            SecurityUtils::set_secure_permissions(temp_path);
 
             // Atomic rename (replaces old file)
-            std::filesystem::rename(tempPath, filepath);
+            std::filesystem::rename(temp_path, filepath);
 
             return true;
         } catch (const std::exception& e) {
@@ -273,7 +273,7 @@ public:
     }
 
     // Read file with integrity check
-    static bool ReadFileSecure(const std::string& filepath, std::string& content) {
+    static bool read_file_secure(const std::string& filepath, std::string& content) {
         try {
             std::ifstream file(filepath, std::ios::binary);
             if (!file.is_open()) return false;
@@ -289,18 +289,18 @@ public:
     }
 
     // Create backup of file
-    static bool BackupFile(const std::string& filename) {
+    static bool backup_file(const std::string& filename) {
         try {
-            std::string filepath = GetFilePath(filename);
-            std::string backupPath = GetBackupPath(filename);
+            std::string filepath = get_file_path(filename);
+            std::string backup_path = get_backup_path(filename);
 
             if (std::filesystem::exists(filepath)) {
                 std::filesystem::copy(
                     filepath,
-                    backupPath,
+                    backup_path,
                     std::filesystem::copy_options::overwrite_existing
                 );
-                SecurityUtils::SetSecurePermissions(backupPath);
+                SecurityUtils::set_secure_permissions(backup_path);
                 return true;
             }
             return false;
@@ -310,14 +310,14 @@ public:
     }
 
     // Restore from backup
-    static bool RestoreFromBackup(const std::string& filename) {
+    static bool restore_from_backup(const std::string& filename) {
         try {
-            std::string filepath = GetFilePath(filename);
-            std::string backupPath = GetBackupPath(filename);
+            std::string filepath = get_file_path(filename);
+            std::string backup_path = get_backup_path(filename);
 
-            if (std::filesystem::exists(backupPath)) {
+            if (std::filesystem::exists(backup_path)) {
                 std::filesystem::copy(
-                    backupPath,
+                    backup_path,
                     filepath,
                     std::filesystem::copy_options::overwrite_existing
                 );
@@ -330,9 +330,9 @@ public:
     }
 
     // Delete file securely
-    static bool DeleteFile(const std::string& filename) {
+    static bool delete_file(const std::string& filename) {
         try {
-            std::string filepath = GetFilePath(filename);
+            std::string filepath = get_file_path(filename);
             if (std::filesystem::exists(filepath)) {
                 return std::filesystem::remove(filepath);
             }
@@ -343,8 +343,8 @@ public:
     }
 
     // Check if file exists
-    static bool FileExists(const std::string& filename) {
-        std::string filepath = GetFilePath(filename);
+    static bool file_exists(const std::string& filename) {
+        std::string filepath = get_file_path(filename);
         return std::filesystem::exists(filepath);
     }
 };
@@ -364,52 +364,52 @@ public:
         T data;
         std::string timestamp;
         std::string checksum;
-        bool isVerified;
+        bool is_verified;
     };
 
 private:
     std::string filename_;
     SerializeFunc serialize_;
     DeserializeFunc deserialize_;
-    bool enableBackup_;
+    bool enable_backup_;
 
 public:
     SecureConfigManager(const std::string& filename,
-                       SerializeFunc serializeFunc,
-                       DeserializeFunc deserializeFunc,
-                       bool enableBackup = true)
+                       SerializeFunc serialize_func,
+                       DeserializeFunc deserialize_func,
+                       bool enable_backup = true)
         : filename_(filename)
-        , serialize_(serializeFunc)
-        , deserialize_(deserializeFunc)
-        , enableBackup_(enableBackup) {}
+        , serialize_(serialize_func)
+        , deserialize_(deserialize_func)
+        , enable_backup_(enable_backup) {}
 
     // Save with integrity check
-    bool Save(const std::string& name, const T& item) {
-        auto items = LoadAll();
+    bool save(const std::string& name, const T& item) {
+        auto items = load_all();
 
         // Create entry with checksum
         ConfigEntry entry;
         entry.name = name;
         entry.data = item;
-        entry.timestamp = SecurityUtils::GetTimestamp();
+        entry.timestamp = SecurityUtils::get_timestamp();
 
         std::string serialized = serialize_(item);
-        entry.checksum = SecurityUtils::CalculateChecksum(serialized);
-        entry.isVerified = true;
+        entry.checksum = SecurityUtils::calculate_checksum(serialized);
+        entry.is_verified = true;
 
         items[name] = entry;
 
         // Backup old file before saving
-        if (enableBackup_ && SecureStorageService::FileExists(filename_)) {
-            SecureStorageService::BackupFile(filename_);
+        if (enable_backup_ && SecureStorageService::file_exists(filename_)) {
+            SecureStorageService::backup_file(filename_);
         }
 
-        return SaveAll(items);
+        return save_all(items);
     }
 
     // Load with integrity verification
-    bool Load(const std::string& name, T& item) {
-        auto items = LoadAll();
+    bool load(const std::string& name, T& item) {
+        auto items = load_all();
         auto it = items.find(name);
 
         if (it != items.end()) {
@@ -417,15 +417,15 @@ public:
 
             // Verify integrity
             std::string serialized = serialize_(entry.data);
-            std::string calculatedChecksum = SecurityUtils::CalculateChecksum(serialized);
+            std::string calculated_checksum = SecurityUtils::calculate_checksum(serialized);
 
-            if (calculatedChecksum != entry.checksum) {
+            if (calculated_checksum != entry.checksum) {
                 // Data corruption detected!
                 // Try to restore from backup
-                if (enableBackup_) {
-                    SecureStorageService::RestoreFromBackup(filename_);
+                if (enable_backup_) {
+                    SecureStorageService::restore_from_backup(filename_);
                     // Try loading again
-                    items = LoadAll();
+                    items = load_all();
                     it = items.find(name);
                     if (it != items.end()) {
                         item = it->second.data;
@@ -443,7 +443,7 @@ public:
     }
 
     // Save all configurations
-    bool SaveAll(const std::map<std::string, ConfigEntry>& items) {
+    bool save_all(const std::map<std::string, ConfigEntry>& items) {
         std::ostringstream oss;
 
         // File format with checksums:
@@ -452,7 +452,7 @@ public:
         //
 
         for (const auto& [name, entry] : items) {
-            oss << "[" << EscapeString(name) << "]|"
+            oss << "[" << escape_string(name) << "]|"
                 << entry.timestamp << "|"
                 << entry.checksum << "\n";
 
@@ -460,99 +460,99 @@ public:
             oss << serialized << "\n\n";
         }
 
-        std::string filepath = SecureStorageService::GetFilePath(filename_);
-        return SecureStorageService::WriteFileAtomic(filepath, oss.str());
+        std::string filepath = SecureStorageService::get_file_path(filename_);
+        return SecureStorageService::write_file_atomic(filepath, oss.str());
     }
 
     // Load all configurations with integrity check
-    std::map<std::string, ConfigEntry> LoadAll() {
+    std::map<std::string, ConfigEntry> load_all() {
         std::map<std::string, ConfigEntry> items;
-        std::string filepath = SecureStorageService::GetFilePath(filename_);
+        std::string filepath = SecureStorageService::get_file_path(filename_);
 
         std::string content;
-        if (!SecureStorageService::ReadFileSecure(filepath, content)) {
+        if (!SecureStorageService::read_file_secure(filepath, content)) {
             return items;
         }
 
         std::istringstream iss(content);
         std::string line;
-        ConfigEntry currentEntry;
-        std::ostringstream currentData;
-        bool readingEntry = false;
+        ConfigEntry current_entry;
+        std::ostringstream current_data;
+        bool reading_entry = false;
 
         while (std::getline(iss, line)) {
             if (line.empty()) {
                 // End of entry
-                if (readingEntry) {
-                    std::string dataStr = currentData.str();
-                    currentEntry.data = deserialize_(dataStr);
+                if (reading_entry) {
+                    std::string data_str = current_data.str();
+                    current_entry.data = deserialize_(data_str);
 
                     // Verify checksum
-                    std::string calculatedChecksum = SecurityUtils::CalculateChecksum(dataStr);
-                    currentEntry.isVerified = (calculatedChecksum == currentEntry.checksum);
+                    std::string calculated_checksum = SecurityUtils::calculate_checksum(data_str);
+                    current_entry.is_verified = (calculated_checksum == current_entry.checksum);
 
-                    items[currentEntry.name] = currentEntry;
+                    items[current_entry.name] = current_entry;
 
-                    readingEntry = false;
-                    currentData.str("");
-                    currentData.clear();
+                    reading_entry = false;
+                    current_data.str("");
+                    current_data.clear();
                 }
             } else if (line[0] == '[') {
                 // New entry header: [name]|timestamp|checksum
-                size_t endBracket = line.find(']');
-                if (endBracket != std::string::npos) {
-                    currentEntry.name = UnescapeString(line.substr(1, endBracket - 1));
+                size_t end_bracket = line.find(']');
+                if (end_bracket != std::string::npos) {
+                    current_entry.name = unescape_string(line.substr(1, end_bracket - 1));
 
-                    size_t firstPipe = line.find('|', endBracket);
-                    size_t secondPipe = line.find('|', firstPipe + 1);
+                    size_t first_pipe = line.find('|', end_bracket);
+                    size_t second_pipe = line.find('|', first_pipe + 1);
 
-                    if (firstPipe != std::string::npos && secondPipe != std::string::npos) {
-                        currentEntry.timestamp = line.substr(firstPipe + 1, secondPipe - firstPipe - 1);
-                        currentEntry.checksum = line.substr(secondPipe + 1);
+                    if (first_pipe != std::string::npos && second_pipe != std::string::npos) {
+                        current_entry.timestamp = line.substr(first_pipe + 1, second_pipe - first_pipe - 1);
+                        current_entry.checksum = line.substr(second_pipe + 1);
                     }
 
-                    readingEntry = true;
+                    reading_entry = true;
                 }
             } else {
                 // Data line
-                currentData << line << "\n";
+                current_data << line << "\n";
             }
         }
 
         // Handle last entry
-        if (readingEntry) {
-            std::string dataStr = currentData.str();
-            currentEntry.data = deserialize_(dataStr);
+        if (reading_entry) {
+            std::string data_str = current_data.str();
+            current_entry.data = deserialize_(data_str);
 
-            std::string calculatedChecksum = SecurityUtils::CalculateChecksum(dataStr);
-            currentEntry.isVerified = (calculatedChecksum == currentEntry.checksum);
+            std::string calculated_checksum = SecurityUtils::calculate_checksum(data_str);
+            current_entry.is_verified = (calculated_checksum == current_entry.checksum);
 
-            items[currentEntry.name] = currentEntry;
+            items[current_entry.name] = current_entry;
         }
 
         return items;
     }
 
     // Delete configuration
-    bool Delete(const std::string& name) {
-        auto items = LoadAll();
+    bool delete_config(const std::string& name) {
+        auto items = load_all();
         auto it = items.find(name);
 
         if (it != items.end()) {
             items.erase(it);
-            return SaveAll(items);
+            return save_all(items);
         }
 
         return false;
     }
 
     // Get all configuration names
-    std::vector<std::string> GetNames() {
-        auto items = LoadAll();
+    std::vector<std::string> get_names() {
+        auto items = load_all();
         std::vector<std::string> names;
 
         for (const auto& [name, entry] : items) {
-            if (name != "__last_used__" && entry.isVerified) {
+            if (name != "__last_used__" && entry.is_verified) {
                 names.push_back(name);
             }
         }
@@ -561,27 +561,27 @@ public:
     }
 
     // Save as last used
-    bool SaveAsLastUsed(const T& item) {
-        return Save("__last_used__", item);
+    bool save_as_last_used(const T& item) {
+        return save("__last_used__", item);
     }
 
     // Load last used
-    bool LoadLastUsed(T& item) {
-        return Load("__last_used__", item);
+    bool load_last_used(T& item) {
+        return load("__last_used__", item);
     }
 
     // Check if configuration exists
-    bool Exists(const std::string& name) {
-        auto items = LoadAll();
+    bool exists(const std::string& name) {
+        auto items = load_all();
         return items.find(name) != items.end();
     }
 
     // Verify all configurations
-    bool VerifyAllIntegrity() {
-        auto items = LoadAll();
+    bool verify_all_integrity() {
+        auto items = load_all();
 
         for (const auto& [name, entry] : items) {
-            if (!entry.isVerified) {
+            if (!entry.is_verified) {
                 return false;
             }
         }
@@ -590,13 +590,13 @@ public:
     }
 
     // Get configuration info (for audit trail)
-    bool GetConfigInfo(const std::string& name, std::string& timestamp, bool& verified) {
-        auto items = LoadAll();
+    bool get_config_info(const std::string& name, std::string& timestamp, bool& verified) {
+        auto items = load_all();
         auto it = items.find(name);
 
         if (it != items.end()) {
             timestamp = it->second.timestamp;
-            verified = it->second.isVerified;
+            verified = it->second.is_verified;
             return true;
         }
 
@@ -604,7 +604,7 @@ public:
     }
 
 private:
-    std::string EscapeString(const std::string& str) {
+    std::string escape_string(const std::string& str) {
         std::string result;
         for (char c : str) {
             if (c == '|' || c == '\n' || c == '\\' || c == '[' || c == ']') {
@@ -615,7 +615,7 @@ private:
         return result;
     }
 
-    std::string UnescapeString(const std::string& str) {
+    std::string unescape_string(const std::string& str) {
         std::string result;
         bool escaped = false;
         for (char c : str) {

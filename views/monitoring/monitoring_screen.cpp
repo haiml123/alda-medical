@@ -3,37 +3,37 @@
 
 namespace elda::views::monitoring {
 
-    MonitoringScreen::MonitoringScreen(AppState& state, AppStateManager& stateManager, AppRouter& router) {
+    MonitoringScreen::MonitoringScreen(AppState& state, AppStateManager& state_manager, AppRouter& router) {
         std::cout << "[MonitoringScreen] Constructor" << std::endl;
 
         // Model gets AppState access
-        model_ = std::make_unique<MonitoringModel>(state, stateManager);
+        model_ = std::make_unique<MonitoringModel>(state, state_manager);
 
         // View has no AppState access
         view_ = std::make_unique<MonitoringView>();
 
-        auto channelsPresenter = std::make_unique<channels_selector::ChannelsGroupPresenter>(stateManager);
+        auto channels_presenter = std::make_unique<channels_selector::ChannelsGroupPresenter>(state_manager);
 
-        channelsPresenter->SetOnGroupsChangedCallback([this]() {
+        channels_presenter->set_on_groups_changed_callback([this]() {
             std::printf("[MonitoringScreen] Groups changed, refreshing available groups\n");
-            model_->RefreshAvailableGroups();
+            model_->refresh_available_groups();
         });
 
         // Presenter orchestrates - needs all three
-        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channelsPresenter);
+        presenter_ = std::make_unique<MonitoringPresenter>(*model_, *view_, *channels_presenter);
 
         // Store channelsPresenter so it doesn't get destroyed
-        channelsPresenter_ = std::move(channelsPresenter);
+        channels_presenter_ = std::move(channels_presenter);
     }
 
-    void MonitoringScreen::onEnter() {
+    void MonitoringScreen::on_enter() {
         std::cout << "[MonitoringScreen] onEnter" << std::endl;
-        presenter_->onEnter();
+        presenter_->on_enter();
     }
 
-    void MonitoringScreen::onExit() {
+    void MonitoringScreen::on_exit() {
         std::cout << "[MonitoringScreen] onExit" << std::endl;
-        presenter_->onExit();
+        presenter_->on_exit();
     }
 
     void MonitoringScreen::update(float delta_time) {

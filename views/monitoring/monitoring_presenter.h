@@ -11,38 +11,38 @@ namespace elda::views::monitoring {
         MonitoringPresenter(
             MonitoringModel& model,
             MonitoringView& view,
-            channels_selector::ChannelsGroupPresenter& channelsPresenter);
+            channels_selector::ChannelsGroupPresenter& channels_presenter);
 
-        void onEnter();
-        void onExit();
-        void update(float deltaTime);
+        void on_enter();
+        void on_exit();
+        void update(float delta_time);
         void render();
 
     private:
         MonitoringModel& model_;
         MonitoringView& view_;
-        std::unique_ptr<channels_selector::ChannelsGroupPresenter> channelsPresenter_;
+        std::unique_ptr<channels_selector::ChannelsGroupPresenter> channels_presenter_;
         // ========================================================================
         // CACHED STATE - Avoid redundant queries
         // ========================================================================
         struct CachedViewState {
             // Values that rarely change - refresh periodically
-            int windowSeconds = -1;
-            int amplitudeMicroVolts = -1;
-            double sampleRateHz = -1;
-            int activeGroupIndex = -1;
+            int window_seconds = -1;
+            int amplitude_micro_volts = -1;
+            double sample_rate_hz = -1;
+            int active_group_index = -1;
 
             // Frame counter for periodic refresh
-            int framesSinceUpdate = 0;
+            int frames_since_update = 0;
 
             // Refresh interval (frames)
             static constexpr int REFRESH_INTERVAL = 10;
 
-            bool needsRefresh() const {
-                return framesSinceUpdate >= REFRESH_INTERVAL || windowSeconds == -1;
+            bool needs_refresh() const {
+                return frames_since_update >= REFRESH_INTERVAL || window_seconds == -1;
             }
         };
-        CachedViewState cachedState_;
+        CachedViewState cached_state_;
 
         // ========================================================================
         // PRE-BUILT CALLBACKS - Avoid lambda allocation every frame
@@ -52,8 +52,8 @@ namespace elda::views::monitoring {
         // ========================================================================
         // MODAL POSITIONING
         // ========================================================================
-        ImVec2 channelModalPosition_;
-        bool useCustomModalPosition_ = false;
+        ImVec2 channel_modal_position_;
+        bool use_custom_modal_position_ = false;
 
         // ========================================================================
         // HELPER METHODS
@@ -62,17 +62,17 @@ namespace elda::views::monitoring {
         /**
          * Refresh cached state from model
          */
-        void refreshCachedState();
+        void refresh_cached_state();
 
         /**
          * Calculate default centered modal position
          */
-        ImVec2 calculateDefaultModalPosition(ImVec2 modalSize) const;
+        ImVec2 calculate_default_modal_position(ImVec2 modal_size) const;
 
         /**
          * Setup all callbacks (called once in constructor)
          */
-        void setupCallbacks();
+        void setup_callbacks();
     };
 
 }

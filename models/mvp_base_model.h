@@ -4,36 +4,29 @@
 
 namespace elda::models {
 
-    /**
-     * Abstract base class for all MVP models
-     * Provides common state observation functionality
-     */
     class MVPBaseModel {
     public:
-        explicit MVPBaseModel(AppStateManager& stateManager)
-            : stateManager_(stateManager) {}
+        explicit MVPBaseModel(AppStateManager& state_manager)
+            : state_manager_(state_manager) {}
 
         virtual ~MVPBaseModel() = default;
 
-        // Observer pattern - available to all models
-        AppStateManager::ObserverHandle addStateObserver(
-            AppStateManager::StateObserver observer
-        ) {
-            return stateManager_.AddObserver(observer);
+        AppStateManager::ObserverHandle add_state_observer(
+            const AppStateManager::StateObserver &observer
+        ) const {
+            return state_manager_.add_observer(observer);
         }
 
-        void removeStateObserver(AppStateManager::ObserverHandle handle) {
-            stateManager_.RemoveObserver(handle);
+        void remove_state_observer(const AppStateManager::ObserverHandle handle) const {
+            state_manager_.remove_observer(handle);
         }
 
     protected:
-        // Subclasses can access state manager for state changes
-        AppStateManager& stateManager_;
+        AppStateManager& state_manager_;
 
-        // Convenience method for getting current state
-        const AppState& getState() const {
-            return stateManager_.GetState();
+        const AppState& get_state() const {
+            return state_manager_.get_state();
         }
     };
 
-} // namespace elda
+}

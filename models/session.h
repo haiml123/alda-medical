@@ -1,4 +1,3 @@
-// models/session_state.h
 #pragma once
 #include "patient_info.h"
 #include <string>
@@ -8,37 +7,29 @@
 namespace elda::models {
 
     struct Session {
-        // Session identification
-        std::string sessionId;
-        std::string studyName;
+        std::string session_id;
+        std::string study_name;
 
-        // Patient information
         PatientInfo patient;
 
-        // Pre-monitoring impedance snapshot (channelId → Ω value)
-        std::map<std::string, float> preMonitoringImpedance;
+        std::map<std::string, float> pre_monitoring_impedance;
 
-        // Session timing
-        std::chrono::system_clock::time_point sessionStartTime;
+        std::chrono::system_clock::time_point session_start_time;
 
-        // Recording settings
-        double samplingRate;
+        double sampling_rate;
 
-        // Session state flags
-        bool isActive;
+        bool is_active;
 
         Session()
-            : samplingRate(5000.0)
-            , isActive(false)
+            : sampling_rate(5000.0)
+            , is_active(false)
         {}
 
-        // Validation helper
-        bool isReadyToMonitor() const {
+        static bool is_ready_to_monitor() {
             return true;
         }
 
-        // Utility methods
-        std::string generateFilename() const;
+        std::string generate_filename() const;
     };
 
-} // namespace elda::models
+}

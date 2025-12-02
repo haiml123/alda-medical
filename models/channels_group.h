@@ -6,41 +6,41 @@
 
 namespace elda::models {
 
-    struct ChannelsGroup : public BaseModel {
+    struct ChannelsGroup final : BaseModel {
         std::string name;
-        std::vector<std::string> channelIds;  // Store IDs only!
+        std::vector<std::string> channel_ids;
         std::string description;
-        bool isDefault;
+        bool is_default;
 
-        ChannelsGroup() : BaseModel(), isDefault(false) {}
+        ChannelsGroup() : BaseModel(), is_default(false) {}
 
         explicit ChannelsGroup(const std::string& name_)
-            : BaseModel(), name(name_), isDefault(false) {}
+            : BaseModel(), name(name_), is_default(false) {}
 
         ChannelsGroup(const std::string& id_, const std::string& name_)
-            : BaseModel(id_), name(name_), isDefault(false) {}
+            : BaseModel(id_), name(name_), is_default(false) {}
 
-        void addChannelId(const std::string& channelId) {
-            channelIds.push_back(channelId);
-            OnUpdate();
+        void add_channel_id(const std::string& channel_id) {
+            channel_ids.push_back(channel_id);
+            on_update();
         }
 
-        void removeChannelId(const std::string& channelId) {
-            channelIds.erase(
-                std::remove(channelIds.begin(), channelIds.end(), channelId),
-                channelIds.end()
+        void remove_channel_id(const std::string& channel_id) {
+            channel_ids.erase(
+                std::remove(channel_ids.begin(), channel_ids.end(), channel_id),
+                channel_ids.end()
             );
-            OnUpdate();
+            on_update();
         }
 
-        bool hasChannel(const std::string& channelId) const {
-            return std::find(channelIds.begin(), channelIds.end(), channelId)
-                   != channelIds.end();
+        bool has_channel(const std::string& channel_id) const {
+            return std::find(channel_ids.begin(), channel_ids.end(), channel_id)
+                   != channel_ids.end();
         }
 
-        size_t getChannelCount() const {
-            return channelIds.size();
+        size_t get_channel_count() const {
+            return channel_ids.size();
         }
     };
 
-} // namespace elda::models
+}

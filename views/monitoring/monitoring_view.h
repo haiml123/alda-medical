@@ -17,23 +17,23 @@ namespace elda::views::monitoring {
      */
     struct MonitoringViewData {
         // Chart
-        const ChartData* chartData = nullptr;
+        const ChartData* chart_data = nullptr;
 
         // Toolbar state
         bool monitoring = false;
-        bool canRecord = false;
-        bool recordingActive = false;
-        bool currentlyRecording = false;
-        bool currentlyPaused = false;
-        int windowSeconds = 10;
-        int amplitudeMicroVolts = 100;
-        double sampleRateHz = 1000.0;
-        RecordingState recordingState;
+        bool can_record = false;
+        bool recording_active = false;
+        bool currently_recording = false;
+        bool currently_paused = false;
+        int window_seconds = 10;
+        int amplitude_micro_volts = 100;
+        double sample_rate_hz = 1000.0;
+        RecordingState recording_state;
 
         // Tab bar
         const std::vector<elda::models::ChannelsGroup>* groups = nullptr;
-        int activeGroupIndex = 0;
-        const std::vector<const models::Channel*>* selectedChannels = nullptr;
+        int active_group_index = 0;
+        const std::vector<const models::Channel*>* selected_channels = nullptr;
     };
 
     /**
@@ -42,19 +42,19 @@ namespace elda::views::monitoring {
      */
     struct MonitoringViewCallbacks {
         // Toolbar actions
-        std::function<void()> onToggleMonitoring;
-        std::function<void()> onToggleRecording;
-        std::function<void()> onIncreaseWindow;
-        std::function<void()> onDecreaseWindow;
-        std::function<void()> onIncreaseAmplitude;
-        std::function<void()> onDecreaseAmplitude;
-        std::function<void()> onOpenImpedanceViewer;
-        std::function<void()> onStopRecording;
+        std::function<void()> on_toggle_monitoring;
+        std::function<void()> on_toggle_recording;
+        std::function<void()> on_increase_window;
+        std::function<void()> on_decrease_window;
+        std::function<void()> on_increase_amplitude;
+        std::function<void()> on_decrease_amplitude;
+        std::function<void()> on_open_impedance_viewer;
+        std::function<void()> on_stop_recording;
 
         // Tab actions
-        std::function<void()> onCreateChannelGroup;
-        std::function<void(const std::string&, const ui::TabBounds*)> onEditChannelGroup;
-        std::function<void(const models::ChannelsGroup*)> onGroupSelected;
+        std::function<void()> on_create_channel_group;
+        std::function<void(const std::string&, const ui::TabBounds*)> on_edit_channel_group;
+        std::function<void(const models::ChannelsGroup*)> on_group_selected;
     };
 
     /**
@@ -72,9 +72,9 @@ namespace elda::views::monitoring {
         void render(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks);
 
     private:
-        elda::ui::TabBar tabBar_;
+        elda::ui::TabBar tab_bar_;
 
-        void renderTabBar(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks);
+        void render_tab_bar(const MonitoringViewData& data, const MonitoringViewCallbacks& callbacks);
     };
 
 }

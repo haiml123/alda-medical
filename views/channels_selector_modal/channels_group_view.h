@@ -13,12 +13,12 @@ namespace elda::views::channels_selector {
      * The View calls these when user interacts with UI
      */
     struct IChannelsGroupViewCallbacks {
-        std::function<void(const std::string&)> onGroupNameChanged;
-        std::function<void(size_t, bool)> onChannelSelectionChanged;
-        std::function<void(bool)> onSelectAllChannels;
-        std::function<void()> onConfirm;
-        std::function<void()> onCancel;
-        std::function<void()> onDelete;
+        std::function<void(const std::string&)> on_group_name_changed;
+        std::function<void(size_t, bool)> on_channel_selection_changed;
+        std::function<void(bool)> on_select_all_channels;
+        std::function<void()> on_confirm;
+        std::function<void()> on_cancel;
+        std::function<void()> on_delete;
     };
 
     /**
@@ -33,17 +33,17 @@ namespace elda::views::channels_selector {
         // VIEW STATE
         // ========================================================================
 
-        void SetVisible(bool visible) { isVisible_ = visible; }
-        bool IsVisible() const { return isVisible_; }
+        void set_visible(bool visible) { is_visible_ = visible; }
+        bool is_visible() const { return is_visible_; }
 
-        void SetPosition(ImVec2 pos) { position_ = pos; }
-        void SetSize(ImVec2 size) { size_ = size; }
+        void set_position(ImVec2 pos) { position_ = pos; }
+        void set_size(ImVec2 size) { size_ = size; }
 
         // ========================================================================
         // CALLBACKS
         // ========================================================================
 
-        void SetCallbacks(const IChannelsGroupViewCallbacks& callbacks) {
+        void set_callbacks(const IChannelsGroupViewCallbacks& callbacks) {
             callbacks_ = callbacks;
         }
 
@@ -60,30 +60,30 @@ namespace elda::views::channels_selector {
          * @param canConfirm Whether confirm button should be enabled
          * @param isNewGroup Whether this is a new group (affects Delete/Cancel button)
          */
-        void Render(
-            const std::string& groupName,
+        void render(
+            const std::string& group_name,
             const std::vector<models::Channel>& channels,
-            int selectedCount,
-            int totalCount,
-            bool canConfirm,
-            bool isNewGroup
+            int selected_count,
+            int total_count,
+            bool can_confirm,
+            bool is_new_group
         );
 
     private:
-        void RenderHeader(const std::string& groupName);
-        void RenderChannelsList(const std::vector<models::Channel>& channels, int selectedCount, int totalCount);
-        void RenderFooter(bool canConfirm, bool isNewGroup);
+        void render_header(const std::string& group_name);
+        void render_channels_list(const std::vector<models::Channel>& channels, int selected_count, int total_count);
+        void render_footer(bool can_confirm, bool is_new_group);
 
         // Custom checkbox rendering
-        bool RenderCustomCheckbox(const char* label, bool value);
+        bool render_custom_checkbox(const char* label, bool value);
 
-        bool isVisible_;
+        bool is_visible_;
         ImVec2 position_;
         ImVec2 size_;
         IChannelsGroupViewCallbacks callbacks_;
 
         // Internal state for input (view-only state, not business data)
-        char nameInputBuffer_[256];
+        char name_input_buffer_[256];
     };
 
 } // namespace elda::channels_group

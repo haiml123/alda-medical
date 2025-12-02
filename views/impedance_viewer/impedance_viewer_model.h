@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <string>
-#include <cstddef>
 #include <map>
 #include "core/app_state_manager.h"
 #include "models/channel.h"
@@ -11,45 +10,45 @@ namespace elda::views::impedance_viewer {
     struct ElectrodePosition {
         float x = 0.5f;
         float y = 0.5f;
-        std::string channelId;
-        bool isDragging = false;
+        std::string channel_id;
+        bool is_dragging = false;
     };
 
     class ImpedanceViewerModel {
     public:
         ImpedanceViewerModel(
-            const std::vector<elda::models::Channel>& availableChannels,
-            AppStateManager& stateManager);
+            const std::vector<elda::models::Channel>& available_channels,
+            AppStateManager& state_manager);
 
-        const std::vector<ElectrodePosition>& GetElectrodePositions() const { return electrodePositions_; }
-        const std::vector<elda::models::Channel>& GetAvailableChannels() const { return availableChannels_; }
-        int  GetSelectedElectrodeIndex() const { return selectedElectrodeIndex_; }
+        const std::vector<ElectrodePosition>& get_electrode_positions() const { return electrode_positions_; }
+        const std::vector<elda::models::Channel>& get_available_channels() const { return available_channels_; }
+        int  get_selected_electrode_index() const { return selected_electrode_index_; }
 
-        void Update();
-        void InitializeFromChannels();
-        void UpdateElectrodePosition(size_t index, float x, float y);
-        void StartDragging(size_t index);
-        void StopDragging(size_t index);
-        void SelectElectrode(int index);
-        void ClearSelection();
+        void update();
+        void initialize_from_channels();
+        void update_electrode_position(size_t index, float x, float y);
+        void start_dragging(size_t index);
+        void stop_dragging(size_t index);
+        void select_electrode(int index);
+        void clear_selection();
 
-        void SavePositionsToState();
-        void DiscardChanges();
+        void save_positions_to_state();
+        void discard_changes();
 
-        const elda::models::Channel* GetChannelById(const std::string& id) const;
-        bool IsPositionValid(float x, float y) const;
+        const models::Channel* get_channel_by_id(const std::string& id) const;
+        bool is_position_valid(float x, float y) const;
 
     private:
-        void NotifyPositionChanged();
-        void InitializeDefaultPositions();
+        void notify_position_changed();
+        void initialize_default_positions();
 
-        std::vector<ElectrodePosition> electrodePositions_;
-        std::map<std::string, std::pair<float, float>> originalPositions_;
-        std::vector<elda::models::Channel> availableChannels_;
-        AppStateManager& stateManager_;
+        std::vector<ElectrodePosition> electrode_positions_;
+        std::map<std::string, std::pair<float, float> > original_positions_;
+        std::vector<models::Channel> available_channels_;
+        AppStateManager& state_manager_;
 
-        int selectedElectrodeIndex_ = -1;
-        const float capRadius_ = 0.48f;
+        int selected_electrode_index_ = -1;
+        const float cap_radius_ = 0.48f;
     };
 
-} // namespace elda::impedance_viewer
+}

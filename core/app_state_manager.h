@@ -23,8 +23,8 @@ struct StateChangeError {
     std::string message;
 
     // Helper methods
-    bool IsSuccess() const { return result == StateChangeResult::Success; }
-    explicit operator bool() const { return IsSuccess(); }
+    bool is_success() const { return result == StateChangeResult::Success; }
+    explicit operator bool() const { return is_success(); }
 };
 
 // ===== State Field Enum for Observers =====
@@ -59,12 +59,12 @@ public:
      * @param enable True to start monitoring, false to stop
      * @return Result of state change
      */
-    StateChangeError SetMonitoring(bool enable);
+    StateChangeError set_monitoring(bool enable);
 
     /**
      * Check if monitoring is currently active
      */
-    bool IsMonitoring() const { return state_.isMonitoring; }
+    bool is_monitoring() const { return state_.is_monitoring; }
 
     // === RECORDING CONTROL ===
 
@@ -73,40 +73,40 @@ public:
      * Validates: monitoring must be active, channels must be selected, impedance must be valid
      * @return Result of state change
      */
-    StateChangeError StartRecording();
+    StateChangeError start_recording();
 
     /**
      * Stop recording to file
      * @return Result of state change
      */
-    StateChangeError StopRecording();
+    StateChangeError stop_recording();
 
     /**
      * Pause recording (keeps monitoring active)
      * @return Result of state change
      */
-    StateChangeError PauseRecording();
+    StateChangeError pause_recording();
 
     /**
      * Resume recording from pause
      * @return Result of state change
      */
-    StateChangeError ResumeRecording();
+    StateChangeError resume_recording();
 
-    bool IsRecordingActive() const { return state_.isRecordingToFile; }
+    bool is_recording_active() const { return state_.is_recording_to_file; }
 
     /**
      * Check if recording is currently active
      */
-    bool IsRecording() const { return state_.recordingState == RecordingState::Recording; }
+    bool is_recording() const { return state_.recording_state == RecordingState::Recording; }
 
-    RecordingState GetRecordingState() const { return state_.recordingState; }
+    RecordingState get_recording_state() const { return state_.recording_state; }
     /**
      * Check if recording is paused
      */
-    bool IsPaused() const { return state_.recordingState == RecordingState::Paused; }
+    bool is_paused() const { return state_.recording_state == RecordingState::Paused; }
 
-    bool IsStopped() const { return !state_.isRecordingToFile && state_.recordingState == RecordingState::None; }
+    bool is_stopped() const { return !state_.is_recording_to_file && state_.recording_state == RecordingState::None; }
 
     // === CHANNEL CONFIGURATION ===
 
@@ -116,17 +116,17 @@ public:
      * @param group The channel group to activate
      * @return Result of state change
      */
-    StateChangeError SetActiveChannelGroup(const models::ChannelsGroup& group);
+    StateChangeError set_active_channel_group(const models::ChannelsGroup& group);
 
     /**
      * Get current channel configuration name
      */
-    std::string GetChannelGroupName() const { return state_.currentChannelGroupName; }
+    std::string get_channel_group_name() const { return state_.current_channel_group_name; }
 
     /**
      * Get number of selected channels
      */
-    size_t GetSelectedChannelCount() const { return state_.selectedChannels.size(); }
+    size_t get_selected_channel_count() const { return state_.selected_channels.size(); }
 
     // === DISPLAY SETTINGS ===
 
@@ -135,34 +135,34 @@ public:
      * @param windowIndex Index into WINDOW_OPTIONS array (0-4)
      * @return Result of state change
      */
-    StateChangeError SetDisplayWindow(int windowIndex);
+    StateChangeError set_display_window(int windowIndex);
 
     /**
      * Set display amplitude scale
      * @param amplitudeIndex Index into AMP_PP_UV_OPTIONS array (0-6)
      * @return Result of state change
      */
-    StateChangeError SetDisplayAmplitude(int amplitudeIndex);
+    StateChangeError set_display_amplitude(int amplitudeIndex);
 
     /**
      * Get current window index
      */
-    int GetWindowIndex() const { return state_.winIdx; }
+    int get_window_index() const { return state_.win_idx; }
 
     /**
      * Get current amplitude index
      */
-    int GetAmplitudeIndex() const { return state_.ampIdx; }
+    int get_amplitude_index() const { return state_.amp_idx; }
 
     /**
      * Get current window size in seconds
      */
-    float GetWindowSeconds() const { return state_.windowSec(); }
+    float get_window_seconds() const { return state_.window_sec(); }
 
     /**
      * Get current amplitude scale in microvolts
      */
-    int GetAmplitudeMicroVolts() const { return state_.ampPPuV(); }
+    int get_amplitude_micro_volts() const { return state_.amp_pp_uv(); }
 
     // === NOISE/ARTIFACT CONTROL ===
 
@@ -171,16 +171,16 @@ public:
      * @param scale Multiplier (0.0 to 5.0)
      * @return Result of state change
      */
-    StateChangeError SetNoiseScale(float scale);
+    StateChangeError set_noise_scale(float scale);
 
     /**
      * Set artifact scale multiplier
      * @param scale Multiplier (0.0 to 5.0)
      * @return Result of state change
      */
-    StateChangeError SetArtifactScale(float scale);
+    StateChangeError set_artifact_scale(float scale);
 
-    std::vector<const models::Channel *>& GetSelectedChannels() const;
+    std::vector<const models::Channel *>& get_selected_channels() const;
 
     // === READ-ONLY STATE ACCESS ===
 
@@ -188,7 +188,7 @@ public:
      * Get const reference to underlying app state
      * Use this for reading state in UI components
      */
-    const AppState& GetState() const { return state_; }
+    const AppState& get_state() const { return state_; }
 
     // === OBSERVER PATTERN ===
 
@@ -198,18 +198,18 @@ public:
      * @param observer Callback function
      * @return Handle to use for removing the observer
      */
-    ObserverHandle AddObserver(StateObserver observer);
+    ObserverHandle add_observer(StateObserver observer);
 
     /**
      * Remove a specific observer by handle
      * @param handle Handle returned from AddObserver
      */
-    void RemoveObserver(ObserverHandle handle);
+    void remove_observer(ObserverHandle handle);
 
     /**
      * Clear all observers
      */
-    void ClearObservers();
+    void clear_observers();
 
     // === IMPEDANCE VALIDATION ===
 
@@ -217,33 +217,33 @@ public:
      * Set whether impedance check has been performed
      * @param passed True if all channels passed impedance check (<50kΩ)
      */
-    void SetImpedanceCheckPassed(bool passed) { impedanceCheckPassed_ = passed; }
+    void set_impedance_check_passed(bool passed) { impedance_check_passed_ = passed; }
 
     /**
      * Check if impedance validation has passed
      */
-    bool IsImpedanceCheckPassed() const { return impedanceCheckPassed_; }
+    bool is_impedance_check_passed() const { return impedance_check_passed_; }
 
 private:
     // === VALIDATION HELPERS ===
 
-    bool ValidateCanStartMonitoring(std::string& errorMsg);
-    bool ValidateCanStartRecording(std::string& errorMsg);
-    bool ValidateCanChangeChannels(std::string& errorMsg);
-    bool ValidateWindowIndex(int index, std::string& errorMsg);
-    bool ValidateAmplitudeIndex(int index, std::string& errorMsg);
-    bool ValidateScale(float scale, const std::string& paramName, std::string& errorMsg);
+    bool validate_can_start_monitoring(std::string& error_msg);
+    bool validate_can_start_recording(std::string& error_msg);
+    bool validate_can_change_channels(std::string& error_msg);
+    bool validate_window_index(int index, std::string& error_msg);
+    bool validate_amplitude_index(int index, std::string& error_msg);
+    bool validate_scale(float scale, const std::string& param_name, std::string& error_msg);
 
     // === OBSERVER NOTIFICATION ===
 
-    void NotifyStateChanged(StateField field);
+    void notify_state_changed(StateField field);
 
     // === MEMBERS ===
 
     AppState& state_;                                           // Reference to actual app state
     std::vector<std::pair<ObserverHandle, StateObserver>> observers_;  // Registered observers with handles
-    ObserverHandle nextHandle_{0};                              // Next observer handle to assign
-    bool impedanceCheckPassed_{false};                          // Impedance validation flag
+    ObserverHandle next_handle_{0};                              // Next observer handle to assign
+    bool impedance_check_passed_{false};                          // Impedance validation flag
 };
 
 } // namespace elda
