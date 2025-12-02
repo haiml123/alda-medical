@@ -18,9 +18,9 @@ namespace elda::models {
         std::string notes;
 
         Patient()
-            : sex("X")
-            , age(0)
-            , recording_date(std::time(nullptr)) {}
+            : recording_date(std::time(nullptr))
+            , sex("X")
+            , age(0) {}
 
         std::string to_edf_patient_field() const {
             std::string field = subject_id + " " + sex + " 01-JAN-1900 Subject";

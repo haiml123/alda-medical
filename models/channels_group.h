@@ -6,7 +6,7 @@
 
 namespace elda::models {
 
-    struct ChannelsGroup : public BaseModel {
+    struct ChannelsGroup final : BaseModel {
         std::string name;
         std::vector<std::string> channel_ids;
         std::string description;

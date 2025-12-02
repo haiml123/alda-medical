@@ -9,12 +9,12 @@
 
 namespace elda::views::impedance_viewer {
 
-ImpedanceViewerView::ImpedanceViewerView() {}
+ImpedanceViewerView::ImpedanceViewerView() = default;
 
 void ImpedanceViewerView::render(const ImpedanceViewerViewData& data,
                                  const ImpedanceViewerViewCallbacks& callbacks)
 {
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(viewport->Pos);
     ImGui::SetNextWindowSize(viewport->Size);
 
@@ -36,7 +36,7 @@ void ImpedanceViewerView::render(const ImpedanceViewerViewData& data,
 void ImpedanceViewerView::render_body(const ImpedanceViewerViewData& data,
                                       const ImpedanceViewerViewCallbacks& callbacks)
 {
-    const float range_panel_height = 110.0f;
+    constexpr float range_panel_height = 110.0f;
     const float available_cap_height = ImGui::GetContentRegionAvail().y - range_panel_height;
 
     canvas_pos_  = ImGui::GetCursorScreenPos();
@@ -182,9 +182,9 @@ void ImpedanceViewerView::render_single_electrode(
     ImU32 color_base = channel_color_from_id(channel ? channel->id : std::string());
 
     if (hovered) {
-        int r = (color_base      & 0xFF) + 15;
-        int g = ((color_base>>8) & 0xFF) + 15;
-        int b = ((color_base>>16)& 0xFF) + 15;
+        const int r = (color_base      & 0xFF) + 15;
+        const int g = ((color_base>>8) & 0xFF) + 15;
+        const int b = ((color_base>>16)& 0xFF) + 15;
         color_base = IM_COL32(std::min(r,255), std::min(g,255), std::min(b,255), 255);
     }
     if (is_selected) {
@@ -210,7 +210,7 @@ void ImpedanceViewerView::render_single_electrode(
         label = fallback;
     }
 
-    ImVec2 label_size = ImGui::CalcTextSize(label);
+    const ImVec2 label_size = ImGui::CalcTextSize(label);
     draw_list->AddText(ImVec2(pos.x - label_size.x * 0.5f,
                               pos.y - label_size.y * 0.5f),
                        IM_COL32(0,0,0,255),

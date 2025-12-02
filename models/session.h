@@ -25,7 +25,7 @@ namespace elda::models {
             , is_active(false)
         {}
 
-        bool is_ready_to_monitor() const {
+        static bool is_ready_to_monitor() {
             return true;
         }
 

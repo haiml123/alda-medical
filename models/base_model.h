@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 #include <random>
+#include <utility>
 
 namespace elda::models {
 
@@ -51,7 +52,7 @@ namespace elda::models {
             auto now = std::chrono::system_clock::now();
             auto time_t_now = std::chrono::system_clock::to_time_t(now);
 
-            std::tm tm_utc;
+            std::tm tm_utc{};
             #ifdef _WIN32
                 gmtime_s(&tm_utc, &time_t_now);
             #else
@@ -64,8 +65,8 @@ namespace elda::models {
         }
 
         static std::string generate_unique_id() {
-            auto now = std::chrono::system_clock::now();
-            auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            const auto now = std::chrono::system_clock::now();
+            const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
                 now.time_since_epoch()).count();
 
             std::random_device rd;
@@ -82,11 +83,11 @@ namespace elda::models {
 
     protected:
         BaseModel() = default;
-        explicit BaseModel(const std::string& id) : id(id) {}
-        BaseModel(const std::string& id,
-                  const std::string& created_at,
-                  const std::string& updated_at)
-            : id(id), created_at_(created_at), updated_at_(updated_at) {}
+        explicit BaseModel(std::string  id) : id(std::move(id)) {}
+        BaseModel(std::string  id,
+                  std::string  created_at,
+                  std::string  updated_at)
+            : id(std::move(id)), created_at_(std::move(created_at)), updated_at_(std::move(updated_at)) {}
 
     private:
         std::string created_at_;
