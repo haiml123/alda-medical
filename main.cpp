@@ -16,10 +16,18 @@
 #include "eeg_theme.h"
 #include "UI/popup_message/popup_message.h"
 #include "UI/toast/toast.h"
+#include "views/admin_modal/admin_login_modal.h"
+#include "views/admin_settings/admin_settings_presenter.h"
+#include "views/admin_settings/admin_settings_screen.h"
 #include "views/impedance_viewer/impedance_viewer_screen.h"
+#include "views/user_settings/user_settings_screen.h"
+#include "views/cap_placement/cap_placement_screen.h"
 
 using elda::views::impedance_viewer::ImpedanceViewerScreen;
 using elda::views::monitoring::MonitoringScreen;
+using elda::views::user_settings::UserSettingsScreen;
+using elda::views::cap_placement::CapPlacementScreen;
+using elda::views::admin_settings::AdminSettingsScreen;
 
 int main() {
     // ========================================================================
@@ -62,7 +70,7 @@ int main() {
 
     ImFontConfig cfg;
     cfg.MergeMode = true;
-    static const ImWchar greek_range[] = { 0x0370, 0x03FF, 0 }; // Greek & Coptic
+    static constexpr ImWchar greek_range[] = { 0x0370, 0x03FF, 0 }; // Greek & Coptic
 
     const char* font_path = "fonts/Roboto-Medium.ttf";
     ImFont* merged_font = io.Fonts->AddFontFromFileTTF(font_path, 16.0f, &cfg, greek_range);
@@ -95,14 +103,34 @@ int main() {
     // ========================================================================
     // Create Screens
     // ========================================================================
-    auto monitoring_screen = std::make_unique<MonitoringScreen>(app_state, state_manager, router);
-    auto impedance_screen  = std::make_unique<ImpedanceViewerScreen>(app_state, state_manager, router);
+    auto monitoring_screen     = std::make_unique<MonitoringScreen>(app_state, state_manager, router);
+    auto impedance_screen      = std::make_unique<ImpedanceViewerScreen>(app_state, state_manager, router);
+    auto user_settings_screen  = std::make_unique<UserSettingsScreen>(app_state, state_manager, router);
+    auto cap_placement_screen  = std::make_unique<CapPlacementScreen>(app_state, state_manager, router);
+    auto admin_settings_screen = std::make_unique<AdminSettingsScreen>(app_state, state_manager, router);
+
 
     // ========================================================================
     // Register Screens with Router
     // ========================================================================
     router.register_screen(AppMode::MONITORING, monitoring_screen.get());
     router.register_screen(AppMode::IMPEDANCE_VIEWER, impedance_screen.get());
+    router.register_screen(AppMode::USER_SETTINGS, user_settings_screen.get());
+    router.register_screen(AppMode::CAP_PLACEMENT, cap_placement_screen.get());
+    router.register_screen(AppMode::ADMIN_SETTINGS, admin_settings_screen.get());
+
+    // After state_manager initialization:
+    elda::ui::AdminLoginModal::instance().set_callbacks({
+        .on_login = [](const std::string& user, const std::string& pass) {
+            if (user == "admin" && pass == "admin123") {
+                elda::ui::AdminLoginModal::instance().close();
+                std::cout << "[Admin] Login successful\n";
+            } else {
+                elda::ui::AdminLoginModal::instance().set_error("Invalid credentials");
+            }
+        },
+        .on_cancel = []() {}
+    });
 
     // ========================================================================
     // Main Loop
@@ -112,7 +140,7 @@ int main() {
     while (!glfwWindowShouldClose(window)) {
         // delta_time
         double current_time = glfwGetTime();
-        float delta_time = static_cast<float>(current_time - last_time);
+        auto delta_time = static_cast<float>(current_time - last_time);
         last_time = current_time;
 
         glfwPollEvents();
@@ -128,6 +156,8 @@ int main() {
         IScreen* current_screen = router.get_current_screen();
         elda::ui::PopupMessage::instance().render();
         elda::ui::Toast::instance().render();
+        elda::ui::AdminLoginModal::instance().handle_input();
+        elda::ui::AdminLoginModal::instance().render();
 
         if (current_screen) {
             current_screen->update(delta_time);

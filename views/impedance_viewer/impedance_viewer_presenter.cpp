@@ -51,20 +51,25 @@ namespace elda::views::impedance_viewer {
             on_save();
         };
 
-        callbacks_.on_redirect_to_monitoring = [this](){
-            // TODO save impedance values
-       //      elda::ui::PopupMessage::Instance().Show(
-       //     "Low Impedance Warning",
-       //     "Some channels have impedance below 50kΩ. Are you sure you want to proceed to monitoring?",
-       //     [this]() {
-       //     router_.transitionTo(AppMode::MONITORING);
-       //     }
-       // );
-            router_.transition_to(AppMode::MONITORING);
+        callbacks_.on_back = [this](){
+            std::cout << "[ImpedanceViewer] Back - navigating to cap placement\n";
+            router_.transition_to(AppMode::CAP_PLACEMENT);
         };
 
-        callbacks_.on_redirect_to_settings = [this](){
-            router_.transition_to(AppMode::SETTINGS);
+        callbacks_.on_settings = [this](){
+            std::cout << "[ImpedanceViewer] Settings\n";
+            router_.transition_to(AppMode::USER_SETTINGS);
+        };
+
+        callbacks_.on_monitoring = [this](){
+            std::cout << "[ImpedanceViewer] Monitoring\n";
+            // TODO: save impedance values and validate
+            // elda::ui::PopupMessage::instance().show(
+            //     "Low Impedance Warning",
+            //     "Some channels have impedance above 50kΩ. Are you sure you want to proceed?",
+            //     [this]() { router_.transition_to(AppMode::MONITORING); }
+            // );
+            router_.transition_to(AppMode::MONITORING);
         };
     }
 

@@ -14,8 +14,10 @@ class IScreen;
 enum class AppMode {
     IDLE,
     MONITORING,
-    SETTINGS,
-    IMPEDANCE_VIEWER
+    USER_SETTINGS,
+    ADMIN_SETTINGS,
+    IMPEDANCE_VIEWER,
+    CAP_PLACEMENT,
 };
 
 // Convert mode to string for debugging
@@ -23,8 +25,10 @@ inline const char* app_mode_to_string(const AppMode mode) {
     switch (mode) {
         case AppMode::IDLE: return "IDLE";
         case AppMode::MONITORING: return "MONITORING";
-        case AppMode::SETTINGS: return "SETTINGS";
+        case AppMode::USER_SETTINGS: return "USER_SETTINGS";
         case AppMode::IMPEDANCE_VIEWER: return "IMPEDANCE_VIEWER";
+        case AppMode::CAP_PLACEMENT: return "CAP_PLACEMENT";
+        case AppMode::ADMIN_SETTINGS: return "ADMIN_SETTINGS";
         default: return "UNKNOWN";
     }
 }
@@ -32,10 +36,11 @@ inline const char* app_mode_to_string(const AppMode mode) {
 // Router for screen navigation with built-in screen management
 class AppRouter {
 public:
-    AppRouter() : current_mode(AppMode::IMPEDANCE_VIEWER), previous_mode(AppMode::IMPEDANCE_VIEWER) {}
+    AppRouter() : current_mode(AppMode::USER_SETTINGS), previous_mode() {
+    }
 
     // Register a screen for a specific mode
-    void register_screen(AppMode mode, IScreen* screen) {
+    void register_screen(const AppMode mode, IScreen* screen) {
         screens_[mode] = screen;
     }
 
@@ -43,7 +48,7 @@ public:
     AppMode get_current_mode() const { return current_mode; }
 
     // Transition to new mode
-    void transition_to(const AppMode newMode) {
+    void transition_to(const AppMode new_mode) {
         // Exit current screen
         if (const auto current_screen = get_screen(current_mode)) {
             std::cout << "← Exiting: " << app_mode_to_string(current_mode) << std::endl;
@@ -52,12 +57,12 @@ public:
 
         // Perform the transition
         previous_mode = current_mode;
-        current_mode = newMode;
+        current_mode = new_mode;
 
         // Enter new screen
-        if (const auto newScreen = get_screen(current_mode)) {
+        if (const auto new_screen = get_screen(current_mode)) {
             std::cout << "→ Entering: " << app_mode_to_string(current_mode) << std::endl;
-            newScreen->on_enter();
+            new_screen->on_enter();
         }
     }
 

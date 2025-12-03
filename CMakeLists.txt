@@ -74,6 +74,38 @@ set(VIEWS
         views/impedance_viewer/impedance_viewer_header.h
         views/impedance_viewer/impedance_viewer_header.cpp
         views/impedance_viewer/impedance_viewer_toolbar.h
+
+        views/user_settings/user_settings_model.h
+        views/user_settings/user_settings_view.h
+        views/user_settings/user_settings_view.cpp
+        views/user_settings/user_settings_presenter.h
+        views/user_settings/user_settings_presenter.cpp
+        views/user_settings/user_settings_screen.h
+        views/user_settings/user_settings_screen.cpp
+        views/user_settings/user_settings_header.h
+
+        views/admin_settings/admin_settings_model.h
+        views/admin_settings/admin_settings_view.h
+        views/admin_settings/admin_settings_view.cpp
+        views/admin_settings/admin_settings_presenter.h
+        views/admin_settings/admin_settings_presenter.cpp
+        views/admin_settings/admin_settings_screen.h
+
+        views/admin_settings/tabs/channels_config/channels_config_model.h
+        views/admin_settings/tabs/channels_config/channels_config_view.h
+        views/admin_settings/tabs/channels_config/channels_config_view.cpp
+        views/admin_settings/tabs/channels_config/channels_config_presenter.h
+        views/admin_settings/tabs/channels_config/channels_config_presenter.cpp
+
+        views/cap_placement/cap_placement_view.h
+        views/cap_placement/cap_placement_view.cpp
+        views/cap_placement/cap_placement_presenter.h
+        views/cap_placement/cap_placement_presenter.cpp
+        views/cap_placement/cap_placement_model.h
+        views/cap_placement/cap_placement_header.h
+        views/cap_placement/cap_placement_screen.h
+
+        views/admin_modal/admin_login_modal.h
 )
 
 set(UI
@@ -88,6 +120,13 @@ set(UI
         UI/popup_message/popup_message.h
         UI/toast/toast.cpp
         UI/toast/toast.h
+
+        UI/dynamic_form/fields.h
+        UI/dynamic_form/fields.cpp
+        UI/dynamic_form/dynamic_form.h
+        UI/dynamic_form/dynamic_form.cpp
+
+        UI/screen_header/screen_header.h
 )
 
 set(CORE

@@ -1,6 +1,7 @@
 #pragma once
 #include "imgui.h"
 #include "impedance_viewer_model.h"
+#include "UI/screen_header/screen_header.h"
 #include <functional>
 #include <vector>
 
@@ -10,8 +11,9 @@ namespace elda::views::impedance_viewer {
         std::function<void(int electrode_index)> on_electrode_mouse_down;
         std::function<void(size_t electrode_index, ImVec2 normalized_drop_pos)> on_electrode_dropped;
         std::function<void()> on_save;
-        std::function<void()> on_redirect_to_settings;
-        std::function<void()> on_redirect_to_monitoring;
+        std::function<void()> on_back;
+        std::function<void()> on_settings;
+        std::function<void()> on_monitoring;
     };
 
     struct ImpedanceViewerViewData {

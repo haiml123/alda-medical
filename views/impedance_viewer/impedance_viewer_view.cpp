@@ -1,11 +1,11 @@
 #include "impedance_viewer_view.h"
-#include "impedance_viewer_toolbar.h"
 #include "imgui_internal.h"
 #include <algorithm>
 #include <cmath>
 
 #include "views/impedance_viewer/impedance_viewer_helper.h"
 #include "UI/impedance_range/impedance_range.h"
+#include "UI/screen_header/screen_header.h"
 
 namespace elda::views::impedance_viewer {
 
@@ -25,7 +25,28 @@ void ImpedanceViewerView::render(const ImpedanceViewerViewData& data,
                  ImGuiWindowFlags_NoResize |
                  ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-    render_impedance_viewer_toolbar(callbacks);
+    // Header using reusable component
+    ui::render_screen_header({
+        .title = "Impedance Setup",
+        .show_back_button = true,
+        .on_back = callbacks.on_back,
+        .buttons = {
+            {
+                .label = "SETTINGS",
+                .on_click = callbacks.on_settings,
+                .enabled = true,
+                .primary = false,
+                .width = 100.0f
+            },
+            {
+                .label = "MONITORING",
+                .on_click = callbacks.on_monitoring,
+                .enabled = true,
+                .primary = true,
+                .width = 120.0f
+            }
+        }
+    });
 
     render_body(data, callbacks);
 
