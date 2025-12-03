@@ -21,6 +21,7 @@ set(IMGUI_SOURCES
         ${IMGUI_DIR}/imgui_widgets.cpp
         ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
         ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+        ${IMGUI_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 set(IMPLOT_SOURCES
@@ -88,6 +89,8 @@ set(UI
         UI/popup_message/popup_message.h
         UI/toast/toast.cpp
         UI/toast/toast.h
+        UI/dynamic_form/dynamic_form.cpp
+        UI/dynamic_form/dynamic_form.h
 )
 
 set(CORE
