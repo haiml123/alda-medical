@@ -1,13 +1,16 @@
 #pragma once
 
 #include "fields.h"
-#include <vector>
+
 #include <memory>
+#include <vector>
 
-namespace elda::ui {
+namespace elda::ui
+{
 
-class DynamicForm {
-public:
+class DynamicForm
+{
+  public:
     DynamicForm() = default;
 
     // -------------------------------------------------------------------------
@@ -54,7 +57,10 @@ public:
     // -------------------------------------------------------------------------
 
     bool validate();
-    bool is_valid() const { return is_valid_; }
+    bool is_valid() const
+    {
+        return is_valid_;
+    }
     std::string get_first_error() const;
     void mark_all_dirty();  // Mark all fields dirty to show errors
 
@@ -73,16 +79,16 @@ public:
     FieldBase* get_field(const std::string& id);
     const FieldBase* get_field(const std::string& id) const;
 
-private:
+  private:
     std::vector<std::unique_ptr<FieldBase>> fields_;
     std::vector<std::vector<std::string>> layout_;
     bool is_valid_ = false;
 
-    template<typename T>
+    template <typename T>
     T& add_field(const std::string& id, const std::string& label);
 
     void render_default(float label_width);
     void render_with_layout(float label_width);
 };
 
-} // namespace elda::ui
+}  // namespace elda::ui

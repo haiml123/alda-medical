@@ -1,97 +1,132 @@
 #pragma once
 
-#include <string>
 #include <chrono>
 #include <ctime>
 #include <iomanip>
-#include <sstream>
 #include <random>
+#include <sstream>
+#include <string>
 #include <utility>
 
-namespace elda::models {
+namespace elda::models
+{
 
-    class BaseModel {
-    public:
-        std::string id;
+class BaseModel
+{
+  public:
+    std::string id;
 
-        virtual ~BaseModel() = default;
+    virtual ~BaseModel() = default;
 
-        const std::string& get_id() const { return id; }
+    const std::string& get_id() const
+    {
+        return id;
+    }
 
-        const std::string& get_created_at() const { return created_at_; }
-        const std::string& get_updated_at() const { return updated_at_; }
+    const std::string& get_created_at() const
+    {
+        return created_at_;
+    }
+    const std::string& get_updated_at() const
+    {
+        return updated_at_;
+    }
 
-        void set_id(const std::string& new_id) { id = new_id; }
-        void set_id() { id = generate_unique_id(); }
+    void set_id(const std::string& new_id)
+    {
+        id = new_id;
+    }
+    void set_id()
+    {
+        id = generate_unique_id();
+    }
 
-        void set_created_at(const std::string& timestamp) { created_at_ = timestamp; }
-        void set_created_at() { created_at_ = get_current_timestamp(); }
+    void set_created_at(const std::string& timestamp)
+    {
+        created_at_ = timestamp;
+    }
+    void set_created_at()
+    {
+        created_at_ = get_current_timestamp();
+    }
 
-        void set_updated_at(const std::string& timestamp) { updated_at_ = timestamp; }
-        void set_updated_at() { updated_at_ = get_current_timestamp(); }
+    void set_updated_at(const std::string& timestamp)
+    {
+        updated_at_ = timestamp;
+    }
+    void set_updated_at()
+    {
+        updated_at_ = get_current_timestamp();
+    }
 
-        void on_create() {
-            if (id.empty()) {
-                set_id();
-            }
-            if (created_at_.empty()) {
-                set_created_at();
-            }
-            set_updated_at();
+    void on_create()
+    {
+        if (id.empty())
+        {
+            set_id();
         }
-
-        void on_update() {
-            set_updated_at();
+        if (created_at_.empty())
+        {
+            set_created_at();
         }
+        set_updated_at();
+    }
 
-        bool is_initialized() const {
-            return !id.empty() && !created_at_.empty() && !updated_at_.empty();
-        }
+    void on_update()
+    {
+        set_updated_at();
+    }
 
-        static std::string get_current_timestamp() {
-            auto now = std::chrono::system_clock::now();
-            auto time_t_now = std::chrono::system_clock::to_time_t(now);
+    bool is_initialized() const
+    {
+        return !id.empty() && !created_at_.empty() && !updated_at_.empty();
+    }
 
-            std::tm tm_utc{};
-            #ifdef _WIN32
-                gmtime_s(&tm_utc, &time_t_now);
-            #else
-                gmtime_r(&time_t_now, &tm_utc);
-            #endif
+    static std::string get_current_timestamp()
+    {
+        auto now = std::chrono::system_clock::now();
+        auto time_t_now = std::chrono::system_clock::to_time_t(now);
 
-            std::ostringstream oss;
-            oss << std::put_time(&tm_utc, "%Y-%m-%dT%H:%M:%SZ");
-            return oss.str();
-        }
+        std::tm tm_utc{};
+#ifdef _WIN32
+        gmtime_s(&tm_utc, &time_t_now);
+#else
+        gmtime_r(&time_t_now, &tm_utc);
+#endif
 
-        static std::string generate_unique_id() {
-            const auto now = std::chrono::system_clock::now();
-            const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                now.time_since_epoch()).count();
+        std::ostringstream oss;
+        oss << std::put_time(&tm_utc, "%Y-%m-%dT%H:%M:%SZ");
+        return oss.str();
+    }
 
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<> dis(0, 0xFFFFFF);
+    static std::string generate_unique_id()
+    {
+        const auto now = std::chrono::system_clock::now();
+        const auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-            std::ostringstream oss;
-            oss << "ent_"
-                << std::hex << std::setfill('0') << std::setw(12) << timestamp
-                << "_" << std::setw(6) << dis(gen);
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, 0xFFFFFF);
 
-            return oss.str();
-        }
+        std::ostringstream oss;
+        oss << "ent_" << std::hex << std::setfill('0') << std::setw(12) << timestamp << "_" << std::setw(6) << dis(gen);
 
-    protected:
-        BaseModel() = default;
-        explicit BaseModel(std::string  id) : id(std::move(id)) {}
-        BaseModel(std::string  id,
-                  std::string  created_at,
-                  std::string  updated_at)
-            : id(std::move(id)), created_at_(std::move(created_at)), updated_at_(std::move(updated_at)) {}
+        return oss.str();
+    }
 
-    private:
-        std::string created_at_;
-        std::string updated_at_;
-    };
+  protected:
+    BaseModel() = default;
+    explicit BaseModel(std::string id) : id(std::move(id))
+    {
+    }
+    BaseModel(std::string id, std::string created_at, std::string updated_at)
+        : id(std::move(id)), created_at_(std::move(created_at)), updated_at_(std::move(updated_at))
+    {
+    }
 
-}
+  private:
+    std::string created_at_;
+    std::string updated_at_;
+};
+
+}  // namespace elda::models

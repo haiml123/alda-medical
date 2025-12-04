@@ -1,30 +1,34 @@
-#include "core/core.h"
-#include "core/app_state_manager.h"
 #include "user_settings_screen.h"
 
-namespace elda::views::user_settings {
+#include "core/app_state_manager.h"
+#include "core/core.h"
 
-UserSettingsScreen::UserSettingsScreen(AppState& /*state*/,
-                                       AppStateManager& state_manager, 
-                                       AppRouter& router)
+namespace elda::views::user_settings
+{
+
+UserSettingsScreen::UserSettingsScreen(AppState& /*state*/, AppStateManager& state_manager, AppRouter& router)
     : presenter_(model_, view_, router, state_manager)
 {
 }
 
-void UserSettingsScreen::on_enter() {
+void UserSettingsScreen::on_enter()
+{
     presenter_.on_enter();
 }
 
-void UserSettingsScreen::on_exit() {
+void UserSettingsScreen::on_exit()
+{
     presenter_.on_exit();
 }
 
-void UserSettingsScreen::update(float delta_time) {
+void UserSettingsScreen::update(float delta_time)
+{
     presenter_.update(delta_time);
 }
 
-void UserSettingsScreen::render() {
+void UserSettingsScreen::render()
+{
     presenter_.render();
 }
 
-} // namespace elda::views::user_settings
+}  // namespace elda::views::user_settings

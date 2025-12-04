@@ -1,25 +1,26 @@
 #include "button.h"
 
-namespace elda::ui {
+namespace elda::ui
+{
 
 Button::Button(const std::string& label, const ButtonStyle& style)
-    : label_(label)
-    , style_(style)
-    , enabled_(true)
-    , wasClicked_(false)
-    , callback_(nullptr) {
+    : label_(label), style_(style), enabled_(true), wasClicked_(false), callback_(nullptr)
+{
 }
 
-bool Button::render() {
+bool Button::render()
+{
     wasClicked_ = false;
 
     // Disable if needed
-    if (!enabled_) {
+    if (!enabled_)
+    {
         ImGui::BeginDisabled();
     }
 
     // Apply custom font if specified
-    if (style_.font) {
+    if (style_.font)
+    {
         ImGui::PushFont(style_.font);
     }
 
@@ -34,7 +35,8 @@ bool Button::render() {
 
     // Build button label with optional icon
     std::string displayLabel = label_;
-    if (!icon_.empty()) {
+    if (!icon_.empty())
+    {
         displayLabel = icon_ + " " + label_;
     }
 
@@ -42,7 +44,8 @@ bool Button::render() {
     bool clicked = ImGui::Button(displayLabel.c_str(), style_.size);
 
     // Tooltip if hovering and tooltip is set
-    if (!tooltip_.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+    if (!tooltip_.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+    {
         ImGui::BeginTooltip();
         ImGui::Text("%s", tooltip_.c_str());
         ImGui::EndTooltip();
@@ -52,18 +55,22 @@ bool Button::render() {
     ImGui::PopStyleColor(4);
     ImGui::PopStyleVar(2);
 
-    if (style_.font) {
+    if (style_.font)
+    {
         ImGui::PopFont();
     }
 
-    if (!enabled_) {
+    if (!enabled_)
+    {
         ImGui::EndDisabled();
     }
 
     // Handle click
-    if (clicked && enabled_) {
+    if (clicked && enabled_)
+    {
         wasClicked_ = true;
-        if (callback_) {
+        if (callback_)
+        {
             callback_();
         }
     }
@@ -71,10 +78,11 @@ bool Button::render() {
     return wasClicked_;
 }
 
-bool Button::RenderButton(const std::string& label, const ButtonStyle& style, bool enabled) {
+bool Button::RenderButton(const std::string& label, const ButtonStyle& style, bool enabled)
+{
     Button btn(label, style);
     btn.setEnabled(enabled);
     return btn.render();
 }
 
-}
+}  // namespace elda::ui

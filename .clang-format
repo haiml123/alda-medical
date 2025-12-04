@@ -1,0 +1,104 @@
+# .clang-format for Medical Device Software (IEC 62304 / FDA compliance)
+# Prioritizes: readability, consistency, traceability, code review efficiency
+
+Language: Cpp
+BasedOnStyle: LLVM
+
+# === Indentation ===
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+NamespaceIndentation: None
+
+# === Line Length ===
+ColumnLimit: 120
+# 120 is readable on modern screens while allowing descriptive names
+
+# === Braces (Allman style - clearer for code reviews and audits) ===
+BreakBeforeBraces: Allman
+# Each brace on its own line improves diff clarity and traceability
+
+# === Alignment ===
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+
+# === Line Breaks ===
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortLambdasOnASingleLine: Empty
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+
+# === Spaces ===
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: false
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# === Pointers and References ===
+DerivePointerAlignment: false
+PointerAlignment: Left
+# int* ptr (not int *ptr) - consistent with modern C++ style
+
+# === Includes ===
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Project headers first
+  - Regex: '^".*"'
+    Priority: 1
+  # System headers
+  - Regex: '^<.*>'
+    Priority: 2
+SortIncludes: true
+
+# === Comments ===
+ReflowComments: true
+FixNamespaceComments: true
+
+# === Modern C++ ===
+Cpp11BracedListStyle: true
+Standard: c++17
+
+# === Other ===
+BreakConstructorInitializers: BeforeColon
+BreakInheritanceList: BeforeColon
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+SortUsingDeclarations: true
+
+# === Penalties (controls line breaking decisions) ===
+PenaltyBreakAssignment: 2
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 60

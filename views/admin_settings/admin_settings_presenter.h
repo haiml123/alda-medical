@@ -2,15 +2,17 @@
 
 #include "admin_settings_model.h"
 #include "admin_settings_view.h"
-#include "core/router/app_router.h"
 #include "core/app_state_manager.h"
+#include "core/router/app_router.h"
 
-namespace elda::views::admin_settings {
+namespace elda::views::admin_settings
+{
 
-class AdminSettingsPresenter {
-public:
-    AdminSettingsPresenter(AdminSettingsModel& model, 
-                           AdminSettingsView& view, 
+class AdminSettingsPresenter
+{
+  public:
+    AdminSettingsPresenter(AdminSettingsModel& model,
+                           AdminSettingsView& view,
                            AppRouter& router,
                            AppStateManager& state_manager);
 
@@ -19,7 +21,7 @@ public:
     void update(float delta_time);
     void render();
 
-private:
+  private:
     void setup_callbacks();
     void sync_form_to_model();
     void handle_save();
@@ -32,4 +34,4 @@ private:
     AdminSettingsViewCallbacks callbacks_;
 };
 
-} // namespace elda::views::admin_settings
+}  // namespace elda::views::admin_settings

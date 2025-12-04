@@ -1,39 +1,41 @@
 #define GL_SILENCE_DEPRECATION
 
+#include "UI/popup_message/popup_message.h"
+#include "UI/toast/toast.h"
+#include "core/app_state_manager.h"
+#include "core/core.h"
+#include "core/router/IScreen.h"
+#include "core/router/app_router.h"
+#include "eeg_theme.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
+#include "views/admin_modal/admin_login_modal.h"
+#include "views/admin_settings/admin_settings_presenter.h"
+#include "views/admin_settings/admin_settings_screen.h"
+#include "views/cap_placement/cap_placement_screen.h"
+#include "views/impedance_viewer/impedance_viewer_screen.h"
+#include "views/monitoring/monitoring_screen.h"
+#include "views/user_settings/user_settings_screen.h"
+
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <memory>
 
-#include "core/core.h"
-#include "core/app_state_manager.h"
-#include "core/router/app_router.h"
-#include "core/router/IScreen.h"
-#include "views/monitoring/monitoring_screen.h"
-#include "eeg_theme.h"
-#include "UI/popup_message/popup_message.h"
-#include "UI/toast/toast.h"
-#include "views/admin_modal/admin_login_modal.h"
-#include "views/admin_settings/admin_settings_presenter.h"
-#include "views/admin_settings/admin_settings_screen.h"
-#include "views/impedance_viewer/impedance_viewer_screen.h"
-#include "views/user_settings/user_settings_screen.h"
-#include "views/cap_placement/cap_placement_screen.h"
-
+using elda::views::admin_settings::AdminSettingsScreen;
+using elda::views::cap_placement::CapPlacementScreen;
 using elda::views::impedance_viewer::ImpedanceViewerScreen;
 using elda::views::monitoring::MonitoringScreen;
 using elda::views::user_settings::UserSettingsScreen;
-using elda::views::cap_placement::CapPlacementScreen;
-using elda::views::admin_settings::AdminSettingsScreen;
 
-int main() {
+int main()
+{
     // ========================================================================
     // GLFW + OpenGL Setup
     // ========================================================================
-    if (!glfwInit()) {
+    if (!glfwInit())
+    {
         std::cerr << "failed to initialize GLFW" << std::endl;
         return -1;
     }
@@ -45,7 +47,8 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     GLFWwindow* window = glfwCreateWindow(1920, 1080, "ELDA - EEG Acquisition", nullptr, nullptr);
-    if (!window) {
+    if (!window)
+    {
         std::cerr << "failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
@@ -70,11 +73,12 @@ int main() {
 
     ImFontConfig cfg;
     cfg.MergeMode = true;
-    static constexpr ImWchar greek_range[] = { 0x0370, 0x03FF, 0 }; // Greek & Coptic
+    static constexpr ImWchar greek_range[] = {0x0370, 0x03FF, 0};  // Greek & Coptic
 
     const char* font_path = "fonts/Roboto-Medium.ttf";
     ImFont* merged_font = io.Fonts->AddFontFromFileTTF(font_path, 16.0f, &cfg, greek_range);
-    if (!merged_font) {
+    if (!merged_font)
+    {
         std::fprintf(stderr, "[Fonts] could not load %s — Ω may render as '?'\n", font_path);
     }
 
@@ -103,12 +107,11 @@ int main() {
     // ========================================================================
     // Create Screens
     // ========================================================================
-    auto monitoring_screen     = std::make_unique<MonitoringScreen>(app_state, state_manager, router);
-    auto impedance_screen      = std::make_unique<ImpedanceViewerScreen>(app_state, state_manager, router);
-    auto user_settings_screen  = std::make_unique<UserSettingsScreen>(app_state, state_manager, router);
-    auto cap_placement_screen  = std::make_unique<CapPlacementScreen>(app_state, state_manager, router);
+    auto monitoring_screen = std::make_unique<MonitoringScreen>(app_state, state_manager, router);
+    auto impedance_screen = std::make_unique<ImpedanceViewerScreen>(app_state, state_manager, router);
+    auto user_settings_screen = std::make_unique<UserSettingsScreen>(app_state, state_manager, router);
+    auto cap_placement_screen = std::make_unique<CapPlacementScreen>(app_state, state_manager, router);
     auto admin_settings_screen = std::make_unique<AdminSettingsScreen>(app_state, state_manager, router);
-
 
     // ========================================================================
     // Register Screens with Router
@@ -120,24 +123,29 @@ int main() {
     router.register_screen(AppMode::ADMIN_SETTINGS, admin_settings_screen.get());
 
     // After state_manager initialization:
-    elda::ui::AdminLoginModal::instance().set_callbacks({
-        .on_login = [](const std::string& user, const std::string& pass) {
-            if (user == "admin" && pass == "admin123") {
-                elda::ui::AdminLoginModal::instance().close();
-                std::cout << "[Admin] Login successful\n";
-            } else {
-                elda::ui::AdminLoginModal::instance().set_error("Invalid credentials");
-            }
-        },
-        .on_cancel = []() {}
-    });
+    elda::ui::AdminLoginModal::instance().set_callbacks({.on_login =
+                                                             [](const std::string& user, const std::string& pass)
+                                                         {
+                                                             if (user == "admin" && pass == "admin123")
+                                                             {
+                                                                 elda::ui::AdminLoginModal::instance().close();
+                                                                 std::cout << "[Admin] Login successful\n";
+                                                             }
+                                                             else
+                                                             {
+                                                                 elda::ui::AdminLoginModal::instance().set_error(
+                                                                     "Invalid credentials");
+                                                             }
+                                                         },
+                                                         .on_cancel = []() {}});
 
     // ========================================================================
     // Main Loop
     // ========================================================================
     double last_time = glfwGetTime();
 
-    while (!glfwWindowShouldClose(window)) {
+    while (!glfwWindowShouldClose(window))
+    {
         // delta_time
         double current_time = glfwGetTime();
         auto delta_time = static_cast<float>(current_time - last_time);
@@ -159,17 +167,18 @@ int main() {
         elda::ui::AdminLoginModal::instance().handle_input();
         elda::ui::AdminLoginModal::instance().render();
 
-        if (current_screen) {
+        if (current_screen)
+        {
             current_screen->update(delta_time);
             current_screen->render();
-        } else {
+        }
+        else
+        {
             ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImGui::SetNextWindowPos(viewport->Pos);
             ImGui::SetNextWindowSize(viewport->Size);
-            ImGui::Begin("No Screen", nullptr,
-                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
-            ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100,
-                                       viewport->Size.y * 0.5f - 20));
+            ImGui::Begin("No Screen", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove);
+            ImGui::SetCursorPos(ImVec2(viewport->Size.x * 0.5f - 100, viewport->Size.y * 0.5f - 20));
             ImGui::Text("no screen registered for current mode");
             ImGui::End();
         }
@@ -177,33 +186,45 @@ int main() {
         // ====================================================================
         // Global hotkeys
         // ====================================================================
-        if (ImGui::IsKeyPressed(ImGuiKey_F5)) {
+        if (ImGui::IsKeyPressed(ImGuiKey_F5))
+        {
             bool monitoring = state_manager.is_monitoring();
             auto result = state_manager.set_monitoring(!monitoring);
-            if (!result.is_success()) {
+            if (!result.is_success())
+            {
                 std::fprintf(stderr, "[Main] F5 toggle failed: %s\n", result.message.c_str());
             }
         }
 
-        if (ImGui::IsKeyPressed(ImGuiKey_F7)) {
-            if (state_manager.is_monitoring()) {
+        if (ImGui::IsKeyPressed(ImGuiKey_F7))
+        {
+            if (state_manager.is_monitoring())
+            {
                 bool recording_active = state_manager.is_recording() && !state_manager.is_paused();
                 bool currently_paused = state_manager.is_recording() && state_manager.is_paused();
 
-                if (recording_active) {
+                if (recording_active)
+                {
                     auto result = state_manager.pause_recording();
-                    if (!result.is_success()) {
+                    if (!result.is_success())
+                    {
                         std::fprintf(stderr, "[Main] F7 pause failed: %s\n", result.message.c_str());
                     }
-                } else {
+                }
+                else
+                {
                     elda::StateChangeError result;
-                    if (currently_paused) {
+                    if (currently_paused)
+                    {
                         result = state_manager.resume_recording();
-                    } else {
+                    }
+                    else
+                    {
                         result = state_manager.start_recording();
                     }
 
-                    if (!result.is_success()) {
+                    if (!result.is_success())
+                    {
                         std::fprintf(stderr, "[Main] F7 record failed: %s\n", result.message.c_str());
                     }
                 }
@@ -228,10 +249,12 @@ int main() {
     // ========================================================================
     std::cout << "[Main] shutting down..." << std::endl;
 
-    if (state_manager.is_recording()) {
+    if (state_manager.is_recording())
+    {
         state_manager.stop_recording();
     }
-    if (state_manager.is_monitoring()) {
+    if (state_manager.is_monitoring())
+    {
         state_manager.set_monitoring(false);
     }
 

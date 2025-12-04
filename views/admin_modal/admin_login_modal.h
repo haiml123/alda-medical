@@ -1,47 +1,59 @@
 #pragma once
 
-#include "imgui.h"
 #include "UI/dynamic_form/dynamic_form.h"
-#include <string>
+#include "imgui.h"
+
 #include <functional>
+#include <string>
 
-namespace elda::ui {
+namespace elda::ui
+{
 
-struct AdminLoginCallbacks {
+struct AdminLoginCallbacks
+{
     std::function<void(const std::string& username, const std::string& password)> on_login;
     std::function<void()> on_cancel;
 };
 
-class AdminLoginModal {
-public:
+class AdminLoginModal
+{
+  public:
     // Singleton access
-    static AdminLoginModal& instance() {
+    static AdminLoginModal& instance()
+    {
         static AdminLoginModal inst;
         return inst;
     }
 
-    void set_callbacks(AdminLoginCallbacks callbacks) {
+    void set_callbacks(AdminLoginCallbacks callbacks)
+    {
         callbacks_ = std::move(callbacks);
     }
 
-    void handle_input() {
+    void handle_input()
+    {
         // Detect double-F press
-        if (ImGui::IsKeyPressed(ImGuiKey_F, false)) {
+        if (ImGui::IsKeyPressed(ImGuiKey_F, false))
+        {
             double current_time = ImGui::GetTime();
-            if (current_time - last_f_press_time_ < double_press_threshold_) {
+            if (current_time - last_f_press_time_ < double_press_threshold_)
+            {
                 open();
             }
             last_f_press_time_ = current_time;
         }
 
         // Close on Escape
-        if (is_open_ && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+        if (is_open_ && ImGui::IsKeyPressed(ImGuiKey_Escape))
+        {
             close();
         }
     }
 
-    void render() {
-        if (!is_open_) return;
+    void render()
+    {
+        if (!is_open_)
+            return;
 
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
         ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -56,12 +68,11 @@ public:
         ImGui::PushStyleColor(ImGuiCol_TitleBg, ImVec4(0.10f, 0.11f, 0.12f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_TitleBgActive, ImVec4(0.10f, 0.11f, 0.12f, 1.0f));
 
-        ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize |
-                                  ImGuiWindowFlags_NoMove |
-                                  ImGuiWindowFlags_NoCollapse |
-                                  ImGuiWindowFlags_AlwaysAutoResize;
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+                                 ImGuiWindowFlags_AlwaysAutoResize;
 
-        if (ImGui::Begin("Admin Login", &is_open_, flags)) {
+        if (ImGui::Begin("Admin Login", &is_open_, flags))
+        {
             const float label_width = 90.0f;
             const float input_width = 240.0f;
             const float form_width = label_width + input_width;
@@ -76,7 +87,8 @@ public:
             ImGui::EndGroup();
 
             // Error message
-            if (!error_message_.empty()) {
+            if (!error_message_.empty())
+            {
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + form_offset);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.35f, 0.35f, 1.0f));
                 ImGui::TextWrapped("%s", error_message_.c_str());
@@ -90,7 +102,8 @@ public:
             render_button(form_offset, form_width);
 
             // Enter key submits
-            if (ImGui::IsKeyPressed(ImGuiKey_Enter)) {
+            if (ImGui::IsKeyPressed(ImGuiKey_Enter))
+            {
                 handle_login();
             }
         }
@@ -100,28 +113,36 @@ public:
         ImGui::PopStyleVar(3);
     }
 
-    void open() {
+    void open()
+    {
         is_open_ = true;
         clear();
     }
 
-    void close() {
+    void close()
+    {
         is_open_ = false;
         clear();
     }
 
-    bool is_open() const { return is_open_; }
+    bool is_open() const
+    {
+        return is_open_;
+    }
 
-    void set_error(const std::string& message) {
+    void set_error(const std::string& message)
+    {
         error_message_ = message;
     }
 
-    void clear_error() {
+    void clear_error()
+    {
         error_message_.clear();
     }
 
-private:
-    AdminLoginModal() {
+  private:
+    AdminLoginModal()
+    {
         setup_form();
     }
 
@@ -129,17 +150,15 @@ private:
     AdminLoginModal(const AdminLoginModal&) = delete;
     AdminLoginModal& operator=(const AdminLoginModal&) = delete;
 
-    void setup_form() {
-        form_.add_text("username", "Username")
-             .width(240.0f)
-             .required();
+    void setup_form()
+    {
+        form_.add_text("username", "Username").width(240.0f).required();
 
-        form_.add_password("password", "Password")
-             .width(240.0f)
-             .required();
+        form_.add_password("password", "Password").width(240.0f).required();
     }
 
-    void render_button(float form_offset, float form_width) {
+    void render_button(float form_offset, float form_width)
+    {
         const float button_width = 100.0f;
         const float button_height = 36.0f;
 
@@ -152,26 +171,30 @@ private:
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.16f, 0.46f, 0.90f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.14f, 0.42f, 0.85f, 1.0f));
 
-        if (ImGui::Button("Login", ImVec2(button_width, button_height))) {
+        if (ImGui::Button("Login", ImVec2(button_width, button_height)))
+        {
             handle_login();
         }
 
         ImGui::PopStyleColor(3);
     }
 
-    void handle_login() {
+    void handle_login()
+    {
         form_.mark_all_dirty();
-        if (!form_.validate()) {
+        if (!form_.validate())
+        {
             return;
         }
 
-        if (callbacks_.on_login) {
-            callbacks_.on_login(form_.get_string("username"),
-                               form_.get_string("password"));
+        if (callbacks_.on_login)
+        {
+            callbacks_.on_login(form_.get_string("username"), form_.get_string("password"));
         }
     }
 
-    void clear() {
+    void clear()
+    {
         form_.set_string("username", "");
         form_.set_string("password", "");
         error_message_.clear();
@@ -186,4 +209,4 @@ private:
     const double double_press_threshold_ = 0.3;  // 300ms
 };
 
-} // namespace elda::ui
+}  // namespace elda::ui

@@ -1,13 +1,16 @@
 #include "toast.h"
 
-namespace elda::ui {
+namespace elda::ui
+{
 
-Toast& Toast::instance() {
+Toast& Toast::instance()
+{
     static Toast instance;
     return instance;
 }
 
-void Toast::show(const std::string& message, ToastType type, float duration) {
+void Toast::show(const std::string& message, ToastType type, float duration)
+{
     message_ = message;
     type_ = type;
     duration_ = duration;
@@ -15,9 +18,11 @@ void Toast::show(const std::string& message, ToastType type, float duration) {
     start_time_ = std::chrono::steady_clock::now();
 }
 
-ImVec4 Toast::get_background_color() const {
+ImVec4 Toast::get_background_color() const
+{
     // Subtle, professional dark backgrounds
-    switch (type_) {
+    switch (type_)
+    {
         case ToastType::Success:
             return ImVec4(0.16f, 0.20f, 0.17f, 0.95f);  // Dark green tint
         case ToastType::Warning:
@@ -30,9 +35,11 @@ ImVec4 Toast::get_background_color() const {
     }
 }
 
-ImVec4 Toast::get_text_color() const {
+ImVec4 Toast::get_text_color() const
+{
     // Subtle colored text instead of borders
-    switch (type_) {
+    switch (type_)
+    {
         case ToastType::Success:
             return ImVec4(0.4f, 0.9f, 0.5f, 1.0f);  // Light green
         case ToastType::Warning:
@@ -45,13 +52,16 @@ ImVec4 Toast::get_text_color() const {
     }
 }
 
-void Toast::render() {
-    if (!is_visible_) return;
+void Toast::render()
+{
+    if (!is_visible_)
+        return;
 
     auto now = std::chrono::steady_clock::now();
     float elapsed = std::chrono::duration<float>(now - start_time_).count();
 
-    if (elapsed >= duration_) {
+    if (elapsed >= duration_)
+    {
         is_visible_ = false;
         return;
     }
@@ -59,7 +69,8 @@ void Toast::render() {
     // Fade out
     float alpha = 1.0f;
     float time_remaining = duration_ - elapsed;
-    if (time_remaining < fade_out_duration_) {
+    if (time_remaining < fade_out_duration_)
+    {
         alpha = time_remaining / fade_out_duration_;
     }
 
@@ -72,10 +83,8 @@ void Toast::render() {
     float toast_width = 320.0f;
     float toast_height = 48.0f;
 
-    ImVec2 toast_pos(
-        work_pos.x + work_size.x - toast_width - padding,
-        work_pos.y + work_size.y - toast_height - padding
-    );
+    ImVec2 toast_pos(work_pos.x + work_size.x - toast_width - padding,
+                     work_pos.y + work_size.y - toast_height - padding);
 
     ImGui::SetNextWindowPos(toast_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(ImVec2(toast_width, toast_height), ImGuiCond_Always);
@@ -94,16 +103,12 @@ void Toast::render() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(12.0f, 12.0f));
 
-    ImGuiWindowFlags flags =
-        ImGuiWindowFlags_NoTitleBar |
-        ImGuiWindowFlags_NoResize |
-        ImGuiWindowFlags_NoMove |
-        ImGuiWindowFlags_NoScrollbar |
-        ImGuiWindowFlags_NoSavedSettings |
-        ImGuiWindowFlags_NoFocusOnAppearing |
-        ImGuiWindowFlags_NoNav;
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+                             ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 
-    if (ImGui::Begin("##Toast", nullptr, flags)) {
+    if (ImGui::Begin("##Toast", nullptr, flags))
+    {
         // Calculate text size
         ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + toast_width - 24.0f);
         ImVec2 text_size = ImGui::CalcTextSize(message_.c_str(), nullptr, true, toast_width - 24.0f);
@@ -127,4 +132,4 @@ void Toast::render() {
     ImGui::PopStyleColor(3);
 }
 
-}
+}  // namespace elda::ui

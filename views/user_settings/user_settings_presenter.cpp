@@ -1,34 +1,37 @@
 #include "user_settings_presenter.h"
+
 #include <iostream>
 
-namespace elda::views::user_settings {
+namespace elda::views::user_settings
+{
 
 UserSettingsPresenter::UserSettingsPresenter(UserSettingsModel& model,
                                              UserSettingsView& view,
                                              AppRouter& router,
                                              AppStateManager& state_manager)
-    : model_(model)
-    , view_(view)
-    , router_(router)
-    , state_manager_(state_manager)
+    : model_(model), view_(view), router_(router), state_manager_(state_manager)
 {
     view_.setup_form();
     setup_callbacks();
 }
 
-void UserSettingsPresenter::on_enter() {
+void UserSettingsPresenter::on_enter()
+{
     std::cout << "[UserSettings] Enter\n";
 }
 
-void UserSettingsPresenter::on_exit() {
+void UserSettingsPresenter::on_exit()
+{
     std::cout << "[UserSettings] Exit\n";
 }
 
-void UserSettingsPresenter::update(float /*delta_time*/) {
+void UserSettingsPresenter::update(float /*delta_time*/)
+{
     // Form manages its own state
 }
 
-void UserSettingsPresenter::render() {
+void UserSettingsPresenter::render()
+{
     auto& form = view_.form();
     form.validate();
 
@@ -38,22 +41,27 @@ void UserSettingsPresenter::render() {
     view_.render(view_data, callbacks_);
 }
 
-void UserSettingsPresenter::setup_callbacks() {
-    callbacks_.on_proceed = [this]() {
+void UserSettingsPresenter::setup_callbacks()
+{
+    callbacks_.on_proceed = [this]()
+    {
         handle_proceed();
     };
 
-    callbacks_.on_back = [this]() {
+    callbacks_.on_back = [this]()
+    {
         std::cout << "[UserSettings] Back\n";
         router_.return_to_previous_mode();
     };
-    callbacks_.on_admin = [this]() {
+    callbacks_.on_admin = [this]()
+    {
         std::cout << "[UserSettings] Admin\n";
         router_.transition_to(AppMode::ADMIN_SETTINGS);
     };
 }
 
-void UserSettingsPresenter::sync_form_to_model() {
+void UserSettingsPresenter::sync_form_to_model()
+{
     auto& form = view_.form();
 
     // Mode
@@ -67,7 +75,8 @@ void UserSettingsPresenter::sync_form_to_model() {
     patient.notes = form.get_string("notes");
 
     // MRI settings
-    if (model_.get_mode() == AcquisitionMode::MRI) {
+    if (model_.get_mode() == AcquisitionMode::MRI)
+    {
         auto& mri = model_.mri_settings();
         mri.scanner_id = form.get_string("scanner_id");
         mri.tr_ms = form.get_int("tr_ms");
@@ -75,7 +84,8 @@ void UserSettingsPresenter::sync_form_to_model() {
     }
 
     // Custom/NVX settings
-    if (model_.get_mode() == AcquisitionMode::CUSTOM) {
+    if (model_.get_mode() == AcquisitionMode::CUSTOM)
+    {
         auto& custom = model_.custom_settings();
         custom.nvx_mode = form.get_selected_value("nvx_mode");
         custom.sampling_rate = form.get_selected_value("sampling_rate");
@@ -87,13 +97,15 @@ void UserSettingsPresenter::sync_form_to_model() {
     }
 }
 
-void UserSettingsPresenter::handle_proceed() {
+void UserSettingsPresenter::handle_proceed()
+{
     auto& form = view_.form();
 
     // Mark all fields dirty so validation errors show
     form.mark_all_dirty();
 
-    if (!form.validate()) {
+    if (!form.validate())
+    {
         std::cout << "[UserSettings] Validation failed: " << form.get_first_error() << "\n";
         return;
     }
@@ -108,7 +120,8 @@ void UserSettingsPresenter::handle_proceed() {
               << "  Subject: " << patient.subject_code << "\n"
               << "  Age: " << patient.age << "\n";
 
-    if (model_.get_mode() == AcquisitionMode::CUSTOM) {
+    if (model_.get_mode() == AcquisitionMode::CUSTOM)
+    {
         const auto& custom = model_.custom_settings();
         std::cout << "  NVX Mode: " << custom.nvx_mode << "\n"
                   << "  Sampling Rate: " << custom.sampling_rate << " Hz\n"
@@ -122,4 +135,4 @@ void UserSettingsPresenter::handle_proceed() {
     router_.transition_to(AppMode::CAP_PLACEMENT);
 }
 
-} // namespace elda::views::user_settings
+}  // namespace elda::views::user_settings

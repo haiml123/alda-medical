@@ -1,8 +1,10 @@
 #include "popup_message.h"
 
-namespace elda::ui {
+namespace elda::ui
+{
 
-PopupMessage& PopupMessage::instance() {
+PopupMessage& PopupMessage::instance()
+{
     static PopupMessage instance;
     return instance;
 }
@@ -10,7 +12,8 @@ PopupMessage& PopupMessage::instance() {
 void PopupMessage::show(const std::string& title,
                         const std::string& message,
                         std::function<void()> on_confirm,
-                        std::function<void()> on_cancel) {
+                        std::function<void()> on_cancel)
+{
     title_ = title;
     message_ = message;
     on_confirm_ = on_confirm;
@@ -19,10 +22,13 @@ void PopupMessage::show(const std::string& title,
     just_opened_ = true;
 }
 
-void PopupMessage::render() {
-    if (!is_open_) return;
+void PopupMessage::render()
+{
+    if (!is_open_)
+        return;
 
-    if (just_opened_) {
+    if (just_opened_)
+    {
         ImGui::OpenPopup(title_.c_str());
         just_opened_ = false;
     }
@@ -38,10 +44,8 @@ void PopupMessage::render() {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 20.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
 
-    if (ImGui::BeginPopupModal(title_.c_str(), nullptr,
-                               ImGuiWindowFlags_NoResize |
-                               ImGuiWindowFlags_NoMove)) {
-
+    if (ImGui::BeginPopupModal(title_.c_str(), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove))
+    {
         // Message text
         ImGui::PushTextWrapPos(ImGui::GetCursorPos().x + 410.0f);
         ImGui::TextWrapped("%s", message_.c_str());
@@ -65,8 +69,10 @@ void PopupMessage::render() {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.20f, 0.20f, 0.20f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-        if (ImGui::Button("Cancel", ImVec2(button_width, button_height))) {
-            if (on_cancel_) {
+        if (ImGui::Button("Cancel", ImVec2(button_width, button_height)))
+        {
+            if (on_cancel_)
+            {
                 on_cancel_();
             }
             is_open_ = false;
@@ -84,8 +90,10 @@ void PopupMessage::render() {
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.40f, 0.9f, 1.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 
-        if (ImGui::Button("OK", ImVec2(button_width, button_height))) {
-            if (on_confirm_) {
+        if (ImGui::Button("OK", ImVec2(button_width, button_height)))
+        {
+            if (on_confirm_)
+            {
                 on_confirm_();
             }
             is_open_ = false;
@@ -96,7 +104,9 @@ void PopupMessage::render() {
         ImGui::PopStyleColor(3);
 
         ImGui::EndPopup();
-    } else {
+    }
+    else
+    {
         is_open_ = false;
     }
 
@@ -104,4 +114,4 @@ void PopupMessage::render() {
     ImGui::PopStyleColor(3);
 }
 
-}
+}  // namespace elda::ui

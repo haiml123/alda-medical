@@ -1,13 +1,15 @@
 #pragma once
 #include <string>
 
-namespace elda::models {
+namespace elda::models
+{
 
-    struct PatientInfo {
-        std::string id;
-        std::string name;
-        std::string date_of_birth;
-        std::string gender;
-    };
+struct PatientInfo
+{
+    std::string id;
+    std::string name;
+    std::string date_of_birth;
+    std::string gender;
+};
 
-}
+}  // namespace elda::models
